@@ -1,0 +1,57 @@
+export const COMPANY = {
+  name: 'SEEK Equipment',
+  phone: '1-210-802-0000',
+  phoneHref: 'tel:+12108020000',
+  email: 'sales@seekequipment.com',
+  address: {
+    street: '12330 Interstate 35 Access Rd',
+    city: 'Von Ormy',
+    state: 'TX',
+    zip: '78073',
+    country: 'US',
+    full: '12330 Interstate 35 Access Rd, Von Ormy, TX 78073',
+  },
+  url: 'https://seekequipment.com',
+  description:
+    'Trailer rental and leasing company with 250+ trailers including DryVan, Tanker, Flatbed, Sand Chassis, and Belly Dump trailers in Texas.',
+  fleetSize: 250,
+} as const
+
+export const NAV_ITEMS = [
+  { label: 'Home', href: '/' },
+  { label: 'About', href: '/about' },
+  {
+    label: 'Services',
+    href: '/services',
+    children: [
+      { label: 'DryVan Trailers', href: '/services/dryvan' },
+      { label: 'Tanker Trailers', href: '/services/tanker' },
+      { label: 'Flatbed Trailers', href: '/services/flatbed' },
+      { label: 'Sand Chassis', href: '/services/sand-chassis' },
+      { label: 'Belly Dump Trailers', href: '/services/belly-dump' },
+    ],
+  },
+  { label: 'Blog', href: '/blog' },
+  { label: 'FAQ', href: '/faq' },
+  { label: 'Contact', href: '/contact' },
+] as const
+
+export const BRAND = {
+  blue: '#35668d',
+  orange: '#ee5519',
+  blueDark: '#2a5170',
+  orangeDark: '#d44a14',
+  blueLight: '#4a7fa8',
+  gray: {
+    50: '#f9fafb',
+    100: '#f3f4f6',
+    200: '#e5e7eb',
+    300: '#d1d5db',
+    400: '#9ca3af',
+    500: '#6b7280',
+    600: '#4b5563',
+    700: '#374151',
+    800: '#1f2937',
+    900: '#111827',
+  },
+} as const
