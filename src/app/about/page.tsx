@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   title: 'About SEEK Equipment | Texas Trailer Rental Experts',
   description:
     'Learn about SEEK Equipment, a leading trailer rental and leasing company in Von Ormy, TX. 250+ trailers serving San Antonio, Eagle Ford Shale, Permian Basin, and all of Texas.',
+  alternates: { canonical: '/about' },
   openGraph: {
     title: 'About SEEK Equipment | Texas Trailer Rental Experts',
     description:

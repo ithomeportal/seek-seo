@@ -15,9 +15,7 @@ export const metadata: Metadata = {
   title: 'Trailer Rental & Leasing Services | SEEK Equipment',
   description:
     'Explore SEEK Equipment\'s full fleet of rental trailers: DryVan, Tanker, Flatbed, Sand Chassis, and Belly Dump trailers. Flexible short-term and long-term leasing in Texas. Call 1-210-802-0000.',
-  alternates: {
-    canonical: `${COMPANY.url}/services`,
-  },
+  alternates: { canonical: '/services' },
 }
 
 const SPEC_PREVIEWS: Record<string, string[]> = {

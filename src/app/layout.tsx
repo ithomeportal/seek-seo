@@ -25,6 +25,16 @@ export const metadata: Metadata = {
   },
   description: COMPANY.description,
   metadataBase: new URL(COMPANY.url),
+  alternates: {
+    canonical: '/',
+  },
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: '48x48' },
+    ],
+    apple: '/apple-icon.png',
+  },
   openGraph: {
     type: 'website',
     locale: 'en_US',
@@ -32,11 +42,20 @@ export const metadata: Metadata = {
     siteName: COMPANY.name,
     title: 'SEEK Equipment | Trailer Rental & Leasing in Texas',
     description: COMPANY.description,
+    images: [
+      {
+        url: '/images/hero/hero-bg.jpg',
+        width: 1920,
+        height: 1080,
+        alt: 'SEEK Equipment — Trailer Rental & Leasing in Texas',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'SEEK Equipment | Trailer Rental & Leasing in Texas',
     description: COMPANY.description,
+    images: ['/images/hero/hero-bg.jpg'],
   },
   robots: {
     index: true,
@@ -48,6 +67,9 @@ export const metadata: Metadata = {
       'max-image-preview': 'large',
       'max-snippet': -1,
     },
+  },
+  other: {
+    'theme-color': '#35668d',
   },
 }
 

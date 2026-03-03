@@ -10,6 +10,7 @@ export const metadata: Metadata = {
   title: 'Blog & Resources | SEEK Equipment',
   description:
     'Industry insights, equipment guides, and compliance tips for trailer rental, leasing, and fleet management from the SEEK Equipment team.',
+  alternates: { canonical: '/blog' },
   openGraph: {
     title: 'Blog & Resources | SEEK Equipment',
     description:

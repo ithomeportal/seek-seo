@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   title: 'Request a Trailer Rental Quote | SEEK Equipment',
   description:
     'Request a free, no-obligation trailer rental or leasing quote from SEEK Equipment. Customized pricing for DryVan, Tanker, Flatbed, Sand Chassis, and Belly Dump trailers.',
+  alternates: { canonical: '/quote' },
   openGraph: {
     title: 'Request a Trailer Rental Quote | SEEK Equipment',
     description:

@@ -13,6 +13,7 @@ export const metadata: Metadata = {
   title: 'Trailer Rental FAQs | SEEK Equipment',
   description:
     'Find answers to common questions about trailer rental, leasing, pricing, trailer types, maintenance, and compliance at SEEK Equipment in Von Ormy, TX.',
+  alternates: { canonical: '/faq' },
   openGraph: {
     title: 'Trailer Rental FAQs | SEEK Equipment',
     description:
