@@ -22,7 +22,7 @@ export function ServiceCards() {
           centered
         />
 
-        <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
           {services.map((service) => (
             <Link
               key={service.slug}
@@ -30,13 +30,13 @@ export function ServiceCards() {
               className="group block bg-white rounded-2xl overflow-hidden border border-gray-100/80 shadow-sm hover:shadow-lg hover:shadow-gray-200/50 hover:-translate-y-1 transition-all duration-300 ease-out"
             >
               {/* Image with overlay */}
-              <div className="relative h-56 overflow-hidden">
+              <div className="relative h-48 lg:h-44 overflow-hidden">
                 <Image
                   src={serviceImages[service.slug] ?? '/images/trailers/dryvan.jpg'}
                   alt={service.shortTitle}
                   fill
                   className="object-cover transition-transform duration-500 group-hover:scale-110"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 20vw"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-gray-900/60 via-gray-900/10 to-transparent" />
 

@@ -87,7 +87,7 @@ export default function ServicesPage() {
 
       <section className="py-16 md:py-24 bg-gray-50">
         <Container>
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
             {services.map((service) => {
               const specKeys = SPEC_PREVIEWS[service.slug] ?? Object.keys(service.specs).slice(0, 3)
               return (
@@ -98,7 +98,7 @@ export default function ServicesPage() {
                       alt={service.shortTitle}
                       fill
                       className="object-cover group-hover:scale-105 transition-transform duration-300"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 20vw"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                     <div className="absolute bottom-3 left-4">
