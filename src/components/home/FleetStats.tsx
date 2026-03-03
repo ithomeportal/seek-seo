@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
 import { Container } from '@/components/ui/Container'
 
 interface Stat {
@@ -30,7 +31,6 @@ function useCountUp(target: number, isVisible: boolean, duration = 1500): number
       const elapsed = timestamp - startTime
       const progress = Math.min(elapsed / duration, 1)
 
-      // Ease-out quad
       const eased = 1 - (1 - progress) * (1 - progress)
       setCount(Math.round(eased * target))
 
@@ -51,12 +51,14 @@ function AnimatedStat({ stat, isVisible }: { stat: Stat; isVisible: boolean }) {
   const count = useCountUp(stat.value, isVisible)
 
   return (
-    <div className="text-center">
-      <div className="text-4xl md:text-5xl font-bold text-white">
+    <div className="text-center px-6 py-4">
+      <div className="text-4xl md:text-5xl font-extrabold text-white tracking-tight">
         {count}
-        <span>{stat.suffix}</span>
+        <span className="text-brand-orange">{stat.suffix}</span>
       </div>
-      <p className="mt-2 text-lg text-white/80 font-medium">{stat.label}</p>
+      <p className="mt-2 text-sm text-white/60 font-medium uppercase tracking-wider">
+        {stat.label}
+      </p>
     </div>
   )
 }
@@ -85,9 +87,19 @@ export function FleetStats() {
   }, [])
 
   return (
-    <section ref={sectionRef} className="py-20 bg-brand-blue">
-      <Container>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-10">
+    <section ref={sectionRef} className="relative py-20 overflow-hidden">
+      {/* Background image */}
+      <Image
+        src="/images/gallery/shipping-delivery.jpg"
+        alt="Fleet on the road"
+        fill
+        className="object-cover"
+        sizes="100vw"
+      />
+      <div className="absolute inset-0 bg-brand-blue/90" />
+
+      <Container className="relative z-10">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:divide-x lg:divide-white/10">
           {stats.map((stat) => (
             <AnimatedStat key={stat.label} stat={stat} isVisible={isVisible} />
           ))}

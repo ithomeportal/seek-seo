@@ -10,19 +10,19 @@ const valueProps = [
   },
   {
     number: '02',
-    title: 'Reliable Rental Fleet Provider',
+    title: 'Reliable Rental Fleet',
     description:
       'Well-maintained, inspected trailers ready to work. Every unit meets DOT safety standards before delivery.',
   },
   {
     number: '03',
-    title: 'Ensuring On-Time Delivery',
+    title: 'On-Time Delivery',
     description:
       'We deliver to your site across Texas. From San Antonio to the Permian Basin, we keep your operation moving.',
   },
   {
     number: '04',
-    title: 'Smart Value-Added Services',
+    title: 'Value-Added Services',
     description:
       'Dedicated team with decades of industry experience. Get the right equipment recommendation every time.',
   },
@@ -30,7 +30,7 @@ const valueProps = [
 
 export function ValuePropositions() {
   return (
-    <section className="py-20 bg-white">
+    <section className="py-24 bg-white">
       <Container>
         <SectionHeading
           title="Why Choose SEEK Equipment"
@@ -38,19 +38,22 @@ export function ValuePropositions() {
           centered
         />
 
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-6">
           {valueProps.map((prop) => (
-            <div key={prop.number} className="text-center group">
-              {/* Large number */}
-              <div className="text-5xl font-bold text-brand-orange/20 group-hover:text-brand-orange/40 transition-colors">
+            <div
+              key={prop.number}
+              className="relative pl-6 border-l-2 border-gray-100 hover:border-brand-orange transition-colors duration-300 group"
+            >
+              {/* Number */}
+              <span className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-b from-brand-orange/30 to-brand-orange/10 group-hover:from-brand-orange/50 group-hover:to-brand-orange/20 transition-all duration-300 leading-none">
                 {prop.number}
-              </div>
+              </span>
 
-              <h3 className="mt-3 text-lg font-bold text-gray-900">
+              <h3 className="mt-3 text-base font-bold text-gray-900 tracking-tight">
                 {prop.title}
               </h3>
 
-              <p className="mt-3 text-gray-600 leading-relaxed">
+              <p className="mt-2 text-sm text-gray-500 leading-relaxed">
                 {prop.description}
               </p>
             </div>
