@@ -124,78 +124,95 @@ export default function AboutPage() {
         </Container>
       </section>
 
-      {/* Company Story */}
-      <section className="py-16 md:py-20">
+      {/* Our Story / Mission / Strategy 2030 — 3-column grid */}
+      <section className="py-16 md:py-24">
         <Container>
-          <SectionHeading title="Our Story" />
-          <div className="mt-8 space-y-6 text-gray-700 text-lg leading-relaxed max-w-4xl">
-            <p>
-              SEEK Equipment is a leading trailer rental and leasing company headquartered in
-              Von Ormy, Texas, just south of San Antonio. Founded to serve the growing demand
-              for reliable trailer solutions across Texas, we have built a fleet of over 250
-              trailers including DryVan, Tanker, Flatbed, Sand Chassis, and Belly Dump units.
-              Our clients span the transportation, oil and gas, construction, and logistics
-              industries, and we take pride in keeping their operations moving with
-              well-maintained, road-ready equipment.
-            </p>
-            <p>
-              Our strategic location on the I-35 corridor provides easy access to the major
-              freight arteries connecting San Antonio, Austin, Dallas, Houston, and the
-              Laredo border crossing. This positioning allows us to serve clients across the
-              entire state efficiently, with particularly strong coverage in South Texas, the
-              Eagle Ford Shale region, and the Permian Basin. Whether you need a single
-              flatbed for a short-term construction project or a fleet of tankers for ongoing
-              oilfield operations, SEEK Equipment delivers.
-            </p>
-            <p>
-              What sets us apart is our commitment to personalized service and rapid
-              turnaround. We understand that downtime costs money, which is why we maintain
-              our fleet to the highest standards and respond to quote requests within two
-              business hours. Our team works directly with each customer to understand their
-              hauling requirements, recommend the right trailer type, and structure rental or
-              lease terms that fit their budget and timeline.
-            </p>
-          </div>
-        </Container>
-      </section>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-6">
+            {/* Our Story */}
+            <div className="relative p-8 rounded-2xl bg-white border border-gray-100 shadow-sm">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-10 h-10 rounded-xl bg-brand-blue/10 flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5 text-brand-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                </div>
+                <h2 className="text-xl font-bold text-gray-900">Our Story</h2>
+              </div>
+              <div className="space-y-4 text-sm text-gray-600 leading-relaxed">
+                <p>
+                  SEEK Equipment is a leading trailer rental and leasing company headquartered in
+                  Von Ormy, Texas, just south of San Antonio. We have built a fleet of over 250
+                  trailers including DryVan, Tanker, Flatbed, Sand Chassis, and Belly Dump units.
+                </p>
+                <p>
+                  Our strategic location on the I-35 corridor provides easy access to the major
+                  freight arteries connecting San Antonio, Austin, Dallas, Houston, and the
+                  Laredo border crossing — with strong coverage in South Texas, the
+                  Eagle Ford Shale region, and the Permian Basin.
+                </p>
+                <p>
+                  What sets us apart is our commitment to personalized service and rapid
+                  turnaround. We respond to quote requests within two business hours and work
+                  directly with each customer to recommend the right trailer type.
+                </p>
+              </div>
+            </div>
 
-      {/* Mission */}
-      <section className="py-16 md:py-20 bg-gray-50">
-        <Container>
-          <div className="max-w-4xl mx-auto text-center">
-            <SectionHeading
-              title="Our Mission"
-              centered
-            />
-            <p className="mt-8 text-xl text-gray-700 leading-relaxed">
-              To provide reliable, flexible trailer rental and leasing solutions that keep
-              businesses moving. We are committed to maintaining the highest safety standards,
-              delivering exceptional customer service, and offering competitive pricing that
-              helps our clients succeed in a demanding marketplace.
-            </p>
-          </div>
-        </Container>
-      </section>
+            {/* Mission */}
+            <div className="relative p-8 rounded-2xl bg-brand-blue text-white shadow-sm">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5 text-brand-orange" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <h2 className="text-xl font-bold">Our Mission</h2>
+              </div>
+              <div className="space-y-4 text-sm text-white/80 leading-relaxed">
+                <p>
+                  To provide reliable, flexible trailer rental and leasing solutions that keep
+                  businesses moving.
+                </p>
+                <p>
+                  We are committed to maintaining the highest safety standards,
+                  delivering exceptional customer service, and offering competitive pricing that
+                  helps our clients succeed in a demanding marketplace.
+                </p>
+                <p>
+                  Our clients span the transportation, oil and gas, construction, and logistics
+                  industries — and we take pride in keeping their operations moving with
+                  well-maintained, road-ready equipment.
+                </p>
+              </div>
+            </div>
 
-      {/* Strategy 2030 */}
-      <section className="py-16 md:py-20">
-        <Container>
-          <SectionHeading title="Strategy 2030" />
-          <div className="mt-8 space-y-6 text-gray-700 text-lg leading-relaxed max-w-4xl">
-            <p>
-              As Texas continues to grow as one of the nation&apos;s busiest logistics and energy
-              hubs, SEEK Equipment is investing in a bold vision for the next chapter. Our
-              Strategy 2030 plan focuses on expanding our fleet to 500+ trailers,
-              diversifying into specialty equipment for emerging industries, and establishing
-              satellite yards in key markets including Houston, Laredo, and the Permian Basin.
-            </p>
-            <p>
-              We are also investing in technology to streamline the rental process, from
-              online quoting and digital contracts to GPS-enabled fleet tracking. Our goal is
-              to make renting a trailer as simple and transparent as possible while
-              maintaining the personal relationships and hands-on service our customers
-              value.
-            </p>
+            {/* Strategy 2030 */}
+            <div className="relative p-8 rounded-2xl bg-white border border-gray-100 shadow-sm">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-10 h-10 rounded-xl bg-brand-orange/10 flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5 text-brand-orange" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                </div>
+                <h2 className="text-xl font-bold text-gray-900">Strategy 2030</h2>
+              </div>
+              <div className="space-y-4 text-sm text-gray-600 leading-relaxed">
+                <p>
+                  As Texas continues to grow as one of the nation&apos;s busiest logistics and energy
+                  hubs, SEEK Equipment is investing in a bold vision for the next chapter.
+                </p>
+                <p>
+                  Our Strategy 2030 plan focuses on expanding our fleet to 500+ trailers,
+                  diversifying into specialty equipment for emerging industries, and establishing
+                  satellite yards in key markets including Houston, Laredo, and the Permian Basin.
+                </p>
+                <p>
+                  We are also investing in technology — online quoting, digital contracts, and
+                  GPS-enabled fleet tracking — to make renting a trailer as simple and transparent
+                  as possible.
+                </p>
+              </div>
+            </div>
           </div>
         </Container>
       </section>
