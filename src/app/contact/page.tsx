@@ -4,6 +4,7 @@ import { Container } from '@/components/ui/Container'
 import { SectionHeading } from '@/components/ui/SectionHeading'
 import { Card } from '@/components/ui/Card'
 import { ContactForm } from '@/components/forms/ContactForm'
+import { MapBox } from '@/components/ui/MapBox'
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { COMPANY } from '@/lib/constants'
@@ -204,9 +205,13 @@ export default function ContactPage() {
             </p>
           </div>
           <div className="mt-8 rounded-xl overflow-hidden shadow-md">
-            <div className="bg-gray-200 h-80 flex items-center justify-center">
-              <p className="text-gray-500 text-lg">Map loading...</p>
-            </div>
+            <MapBox
+              latitude={29.2864}
+              longitude={-98.4906}
+              zoom={14}
+              markerLabel="SEEK Equipment"
+              className="h-80 w-full"
+            />
           </div>
         </Container>
       </section>
