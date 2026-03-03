@@ -7,7 +7,7 @@ import { SectionHeading } from '@/components/ui/SectionHeading'
 const serviceImages: Record<string, string> = {
   dryvan: '/images/trailers/dryvan.jpg',
   tanker: '/images/trailers/tanker.jpg',
-  flatbed: '/images/trailers/flatbed.jpg',
+  flatbed: '/images/trailers/flatbed-front.jpg',
   'sand-chassis': '/images/trailers/sand-chassis.jpg',
   'belly-dump': '/images/trailers/belly-dump.jpg',
 }
@@ -15,7 +15,7 @@ const serviceImages: Record<string, string> = {
 export function ServiceCards() {
   return (
     <section className="py-24 bg-gray-50/50">
-      <Container>
+      <Container className="max-w-[90rem]">
         <SectionHeading
           title="Our Trailer Fleet"
           subtitle="Five specialized trailer types for transportation, construction, oil & gas, and logistics."
@@ -30,7 +30,7 @@ export function ServiceCards() {
               className="group block bg-white rounded-2xl overflow-hidden border border-gray-100/80 shadow-sm hover:shadow-lg hover:shadow-gray-200/50 hover:-translate-y-1 transition-all duration-300 ease-out"
             >
               {/* Image with overlay */}
-              <div className="relative h-48 lg:h-44 overflow-hidden">
+              <div className="relative h-48 lg:h-56 overflow-hidden">
                 <Image
                   src={serviceImages[service.slug] ?? '/images/trailers/dryvan.jpg'}
                   alt={service.shortTitle}
@@ -50,7 +50,7 @@ export function ServiceCards() {
 
               {/* Content */}
               <div className="p-5">
-                <p className="text-sm text-gray-500 leading-relaxed line-clamp-2">
+                <p className="text-sm text-gray-500 leading-relaxed line-clamp-3">
                   {service.description}
                 </p>
 
