@@ -45,3 +45,6 @@ docs/
 CLAUDE.md
 *.md
 !README.md
+
+# stock image originals (local only, ~160MB unoptimized)
+public/images/stock/
