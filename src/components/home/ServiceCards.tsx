@@ -7,7 +7,7 @@ import { SectionHeading } from '@/components/ui/SectionHeading'
 const serviceImages: Record<string, string> = {
   dryvan: '/images/trailers/dryvan.jpg',
   tanker: '/images/trailers/tanker.jpg',
-  flatbed: '/images/trailers/flatbed-highway.png',
+  flatbed: '/images/trailers/flatbed-cinematic.png',
   'sand-chassis': '/images/trailers/sand-chassis.jpg',
   'belly-dump': '/images/trailers/belly-dump.jpg',
 }
@@ -30,7 +30,7 @@ export function ServiceCards() {
               className="group block bg-white rounded-2xl overflow-hidden border border-gray-100/80 shadow-sm hover:shadow-lg hover:shadow-gray-200/50 hover:-translate-y-1 transition-all duration-300 ease-out"
             >
               {/* Image with overlay */}
-              <div className="relative h-52 lg:h-68 overflow-hidden">
+              <div className="relative h-56 lg:h-85 overflow-hidden">
                 <Image
                   src={serviceImages[service.slug] ?? '/images/trailers/dryvan.jpg'}
                   alt={service.shortTitle}
@@ -50,7 +50,7 @@ export function ServiceCards() {
 
               {/* Content */}
               <div className="p-5">
-                <p className="text-sm text-gray-500 leading-relaxed line-clamp-3">
+                <p className="text-sm text-gray-500 leading-relaxed">
                   {service.description}
                 </p>
 

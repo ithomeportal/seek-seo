@@ -29,7 +29,7 @@ const SPEC_PREVIEWS: Record<string, string[]> = {
 const SERVICE_IMAGES: Record<string, string> = {
   dryvan: '/images/trailers/dryvan.jpg',
   tanker: '/images/trailers/tanker.jpg',
-  flatbed: '/images/trailers/flatbed.jpg',
+  flatbed: '/images/trailers/flatbed-cinematic.png',
   'sand-chassis': '/images/trailers/sand-chassis.jpg',
   'belly-dump': '/images/trailers/belly-dump.jpg',
 }
@@ -92,7 +92,7 @@ export default function ServicesPage() {
               const specKeys = SPEC_PREVIEWS[service.slug] ?? Object.keys(service.specs).slice(0, 3)
               return (
                 <Card key={service.slug} hover>
-                  <div className="relative h-48 overflow-hidden">
+                  <div className="relative h-56 lg:h-60 overflow-hidden">
                     <Image
                       src={SERVICE_IMAGES[service.slug] ?? '/images/trailers/dryvan.jpg'}
                       alt={service.shortTitle}
@@ -115,7 +115,7 @@ export default function ServicesPage() {
                       </Link>
                     </h3>
 
-                    <p className="mt-3 text-gray-600 text-sm leading-relaxed line-clamp-3">
+                    <p className="mt-3 text-gray-600 text-sm leading-relaxed">
                       {service.description}
                     </p>
 
