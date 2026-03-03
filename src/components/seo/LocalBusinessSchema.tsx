@@ -20,8 +20,8 @@ export function LocalBusinessSchema() {
     },
     geo: {
       '@type': 'GeoCoordinates',
-      latitude: 29.2864,
-      longitude: -98.4906,
+      latitude: 29.2891,
+      longitude: -98.6438,
     },
     areaServed: [
       {

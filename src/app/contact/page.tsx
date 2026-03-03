@@ -42,8 +42,8 @@ export default function ContactPage() {
     },
     geo: {
       '@type': 'GeoCoordinates',
-      latitude: 29.2864,
-      longitude: -98.4906,
+      latitude: 29.2891,
+      longitude: -98.6438,
     },
     openingHoursSpecification: [
       {
@@ -207,8 +207,8 @@ export default function ContactPage() {
           </div>
           <div className="mt-8 rounded-xl overflow-hidden shadow-md">
             <MapBox
-              latitude={29.2864}
-              longitude={-98.4906}
+              latitude={29.2891}
+              longitude={-98.6438}
               zoom={14}
               markerLabel="SEEK Equipment"
               className="h-80 w-full"

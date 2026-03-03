@@ -28,9 +28,9 @@ export function CTABanner() {
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link href="/quote">
               <Button
-                variant="primary"
+                variant="ghost"
                 size="lg"
-                className="bg-white text-brand-orange shadow-xl shadow-black/10 hover:bg-gray-50 hover:shadow-2xl"
+                className="bg-white !text-brand-orange font-bold shadow-xl shadow-black/10 hover:bg-gray-50 hover:shadow-2xl"
               >
                 Request a Quote
               </Button>
