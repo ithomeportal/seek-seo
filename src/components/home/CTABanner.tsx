@@ -1,12 +1,24 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Button } from '@/components/ui/Button'
 import { Container } from '@/components/ui/Container'
 import { COMPANY } from '@/lib/constants'
 
 export function CTABanner() {
   return (
-    <section className="py-20 bg-brand-orange">
-      <Container>
+    <section className="relative py-20 overflow-hidden">
+      {/* Background image */}
+      <Image
+        src="/images/gallery/shipping-delivery.jpg"
+        alt="Shipping and delivery fleet"
+        fill
+        className="object-cover"
+        sizes="100vw"
+      />
+      {/* Orange overlay */}
+      <div className="absolute inset-0 bg-brand-orange/85" />
+
+      <Container className="relative z-10">
         <div className="text-center max-w-3xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold text-white">
             Ready to Get Moving?

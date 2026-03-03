@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { HeroSection } from '@/components/home/HeroSection'
 import { ServiceCards } from '@/components/home/ServiceCards'
 import { ValuePropositions } from '@/components/home/ValuePropositions'
+import { CargoSection } from '@/components/home/CargoSection'
 import { FleetStats } from '@/components/home/FleetStats'
 import { CTABanner } from '@/components/home/CTABanner'
 import { JsonLd } from '@/components/seo/JsonLd'
@@ -69,6 +70,7 @@ export default function HomePage() {
       <HeroSection />
       <ServiceCards />
       <ValuePropositions />
+      <CargoSection />
       <FleetStats />
       <CTABanner />
     </>

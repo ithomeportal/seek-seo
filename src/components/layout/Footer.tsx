@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Phone, Mail, MapPin, Facebook, Linkedin, Twitter } from 'lucide-react'
 import { COMPANY, NAV_ITEMS } from '@/lib/constants'
 
@@ -24,11 +25,14 @@ export function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* Column 1: Company */}
           <div>
-            <Link
-              href="/"
-              className="text-xl font-bold text-white hover:text-gray-200 transition-colors"
-            >
-              SEEK Equipment
+            <Link href="/" className="inline-block">
+              <Image
+                src="/images/logo/logo-dark.png"
+                alt="SEEK Equipment Rentals"
+                width={160}
+                height={53}
+                className="h-11 w-auto brightness-0 invert"
+              />
             </Link>
             <p className="mt-4 text-sm leading-relaxed text-gray-400">
               {COMPANY.description}

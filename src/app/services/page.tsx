@@ -1,5 +1,6 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
+import Image from 'next/image'
 import { services } from '@/data/services'
 import { COMPANY } from '@/lib/constants'
 import { Container } from '@/components/ui/Container'
@@ -27,32 +28,12 @@ const SPEC_PREVIEWS: Record<string, string[]> = {
   'belly-dump': ['Capacity', 'Max Payload', 'Gate Type'],
 }
 
-const SERVICE_ICONS: Record<string, React.ReactNode> = {
-  dryvan: (
-    <svg className="w-10 h-10 text-brand-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
-    </svg>
-  ),
-  tanker: (
-    <svg className="w-10 h-10 text-brand-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
-    </svg>
-  ),
-  flatbed: (
-    <svg className="w-10 h-10 text-brand-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0l4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0l-5.571 3-5.571-3" />
-    </svg>
-  ),
-  'sand-chassis': (
-    <svg className="w-10 h-10 text-brand-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
-    </svg>
-  ),
-  'belly-dump': (
-    <svg className="w-10 h-10 text-brand-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" />
-    </svg>
-  ),
+const SERVICE_IMAGES: Record<string, string> = {
+  dryvan: '/images/trailers/dryvan.jpg',
+  tanker: '/images/trailers/tanker.jpg',
+  flatbed: '/images/trailers/flatbed.jpg',
+  'sand-chassis': '/images/trailers/sand-chassis.jpg',
+  'belly-dump': '/images/trailers/belly-dump.jpg',
 }
 
 export default function ServicesPage() {
@@ -113,17 +94,21 @@ export default function ServicesPage() {
               const specKeys = SPEC_PREVIEWS[service.slug] ?? Object.keys(service.specs).slice(0, 3)
               return (
                 <Card key={service.slug} hover>
-                  <div className="p-6 md:p-8">
-                    <div className="flex items-start gap-4 mb-4">
-                      <div className="flex-shrink-0 p-3 bg-brand-blue/5 rounded-lg">
-                        {SERVICE_ICONS[service.slug]}
-                      </div>
-                      <div>
-                        <Badge variant="blue">{service.shortTitle}</Badge>
-                      </div>
+                  <div className="relative h-48 overflow-hidden">
+                    <Image
+                      src={SERVICE_IMAGES[service.slug] ?? '/images/trailers/dryvan.jpg'}
+                      alt={service.shortTitle}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                    <div className="absolute bottom-3 left-4">
+                      <Badge variant="orange">{service.shortTitle}</Badge>
                     </div>
-
-                    <h3 className="text-xl font-bold text-gray-900 mt-2">
+                  </div>
+                  <div className="p-6 md:p-8">
+                    <h3 className="text-xl font-bold text-gray-900">
                       <Link
                         href={`/services/${service.slug}`}
                         className="hover:text-brand-blue transition-colors"

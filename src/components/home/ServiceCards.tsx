@@ -1,15 +1,16 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { services } from '@/data/services'
 import { Card } from '@/components/ui/Card'
 import { Container } from '@/components/ui/Container'
 import { SectionHeading } from '@/components/ui/SectionHeading'
 
-const serviceIcons: Record<string, string> = {
-  dryvan: '\uD83D\uDE9A',
-  tanker: '\uD83D\uDEE2\uFE0F',
-  flatbed: '\uD83D\uDEFB',
-  'sand-chassis': '\u2699\uFE0F',
-  'belly-dump': '\uD83D\uDEA7',
+const serviceImages: Record<string, string> = {
+  dryvan: '/images/trailers/dryvan.jpg',
+  tanker: '/images/trailers/tanker.jpg',
+  flatbed: '/images/trailers/flatbed.jpg',
+  'sand-chassis': '/images/trailers/sand-chassis.jpg',
+  'belly-dump': '/images/trailers/belly-dump.jpg',
 }
 
 export function ServiceCards() {
@@ -25,19 +26,23 @@ export function ServiceCards() {
         <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {services.map((service) => (
             <Card key={service.slug} hover>
-              <div className="h-2 bg-brand-orange" />
-              <div className="p-6">
-                <div className="w-14 h-14 rounded-lg bg-brand-blue/10 flex items-center justify-center text-2xl mb-4">
-                  {serviceIcons[service.slug] ?? '\uD83D\uDE9A'}
-                </div>
-
-                <h3 className="text-xl font-bold text-gray-900">
+              <div className="relative h-52 overflow-hidden">
+                <Image
+                  src={serviceImages[service.slug] ?? '/images/trailers/dryvan.jpg'}
+                  alt={service.shortTitle}
+                  fill
+                  className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                <span className="absolute bottom-3 left-4 text-white font-bold text-lg drop-shadow-lg">
                   {service.shortTitle}
-                </h3>
-
-                <p className="mt-3 text-gray-600 leading-relaxed">
-                  {service.description.length > 100
-                    ? `${service.description.slice(0, 100)}...`
+                </span>
+              </div>
+              <div className="p-6">
+                <p className="text-gray-600 leading-relaxed">
+                  {service.description.length > 120
+                    ? `${service.description.slice(0, 120)}...`
                     : service.description}
                 </p>
 

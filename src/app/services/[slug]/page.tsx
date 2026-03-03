@@ -1,5 +1,6 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
+import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import { getServiceBySlug, getAllServiceSlugs, services } from '@/data/services'
 import { COMPANY } from '@/lib/constants'
@@ -170,6 +171,14 @@ const USE_CASES: Record<string, { heading: string; items: { title: string; descr
   },
 }
 
+const serviceImages: Record<string, string> = {
+  dryvan: '/images/trailers/dryvan.jpg',
+  tanker: '/images/trailers/tanker.jpg',
+  flatbed: '/images/trailers/flatbed.jpg',
+  'sand-chassis': '/images/trailers/sand-chassis.jpg',
+  'belly-dump': '/images/trailers/belly-dump.jpg',
+}
+
 function CheckIcon() {
   return (
     <svg
@@ -237,8 +246,17 @@ export default async function ServicePage({ params }: PageProps) {
       <JsonLd data={faqSchema} />
 
       {/* Hero Section */}
-      <section className="bg-brand-blue py-16 md:py-20">
-        <Container>
+      <section className="relative py-16 md:py-20 overflow-hidden">
+        <Image
+          src={serviceImages[slug] ?? '/images/trailers/dryvan.jpg'}
+          alt={service.shortTitle}
+          fill
+          className="object-cover"
+          priority
+          sizes="100vw"
+        />
+        <div className="absolute inset-0 bg-brand-blue/80" />
+        <Container className="relative z-10">
           <Breadcrumbs
             items={[
               { label: 'Home', href: '/' },
@@ -370,6 +388,15 @@ export default async function ServicePage({ params }: PageProps) {
           <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {relatedServices.map((related) => (
               <Card key={related.slug} hover>
+                <div className="relative h-32 overflow-hidden">
+                  <Image
+                    src={serviceImages[related.slug] ?? '/images/trailers/dryvan.jpg'}
+                    alt={related.shortTitle}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                  />
+                </div>
                 <div className="p-5">
                   <h3 className="font-bold text-gray-900 mb-2">
                     <Link

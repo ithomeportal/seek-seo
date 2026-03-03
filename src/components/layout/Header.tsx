@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Phone, Mail, Menu, X, ChevronDown, MapPin } from 'lucide-react'
 import { COMPANY, NAV_ITEMS } from '@/lib/constants'
 import { cn } from '@/lib/utils'
@@ -73,11 +74,15 @@ export function Header() {
       {/* Main nav */}
       <nav className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between">
         {/* Logo */}
-        <Link
-          href="/"
-          className="text-xl font-bold tracking-tight text-[#35668d] hover:text-[#2a5170] transition-colors"
-        >
-          SEEK Equipment
+        <Link href="/" className="flex-shrink-0">
+          <Image
+            src="/images/logo/logo.png"
+            alt="SEEK Equipment Rentals"
+            width={180}
+            height={60}
+            className="h-12 w-auto"
+            priority
+          />
         </Link>
 
         {/* Desktop nav */}

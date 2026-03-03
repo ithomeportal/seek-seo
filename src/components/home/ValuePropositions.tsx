@@ -1,29 +1,28 @@
-import { Settings, Shield, Truck, Headphones } from 'lucide-react'
 import { Container } from '@/components/ui/Container'
 import { SectionHeading } from '@/components/ui/SectionHeading'
 
 const valueProps = [
   {
-    icon: Settings,
-    title: 'Flexible Leasing',
+    number: '01',
+    title: 'Flexible Leasing Solutions',
     description:
       'Daily, weekly, monthly, or long-term lease options tailored to your project timeline and budget.',
   },
   {
-    icon: Shield,
-    title: 'Reliable Fleet',
+    number: '02',
+    title: 'Reliable Rental Fleet Provider',
     description:
       'Well-maintained, inspected trailers ready to work. Every unit meets DOT safety standards before delivery.',
   },
   {
-    icon: Truck,
-    title: 'On-Time Delivery',
+    number: '03',
+    title: 'Ensuring On-Time Delivery',
     description:
       'We deliver to your site across Texas. From San Antonio to the Permian Basin, we keep your operation moving.',
   },
   {
-    icon: Headphones,
-    title: 'Expert Support',
+    number: '04',
+    title: 'Smart Value-Added Services',
     description:
       'Dedicated team with decades of industry experience. Get the right equipment recommendation every time.',
   },
@@ -40,24 +39,22 @@ export function ValuePropositions() {
         />
 
         <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {valueProps.map((prop) => {
-            const Icon = prop.icon
-            return (
-              <div key={prop.title} className="text-center">
-                <div className="mx-auto w-16 h-16 rounded-full bg-brand-blue/10 flex items-center justify-center">
-                  <Icon className="w-8 h-8 text-brand-blue" />
-                </div>
-
-                <h3 className="mt-5 text-lg font-bold text-gray-900">
-                  {prop.title}
-                </h3>
-
-                <p className="mt-3 text-gray-600 leading-relaxed">
-                  {prop.description}
-                </p>
+          {valueProps.map((prop) => (
+            <div key={prop.number} className="text-center group">
+              {/* Large number */}
+              <div className="text-5xl font-bold text-brand-orange/20 group-hover:text-brand-orange/40 transition-colors">
+                {prop.number}
               </div>
-            )
-          })}
+
+              <h3 className="mt-3 text-lg font-bold text-gray-900">
+                {prop.title}
+              </h3>
+
+              <p className="mt-3 text-gray-600 leading-relaxed">
+                {prop.description}
+              </p>
+            </div>
+          ))}
         </div>
       </Container>
     </section>
