@@ -32,9 +32,9 @@ export function HeroSection() {
           </div>
 
           <h1 className="mt-5 text-4xl md:text-5xl lg:text-[3.5rem] font-extrabold text-white leading-[1.1] tracking-tight animate-fade-in-up delay-100">
-            On the Move
+            Trailer Rental &amp; Leasing
             <br />
-            <span className="text-brand-orange">Solutions</span>
+            <span className="text-brand-orange">in Texas</span>
           </h1>
 
           <p className="mt-6 text-lg text-white/75 max-w-lg leading-relaxed animate-fade-in-up delay-200">

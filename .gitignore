@@ -40,11 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# documentation (local only)
+# documentation (local only, never commit)
 docs/
 CLAUDE.md
 *.md
-!README.md
 
 # stock image originals (local only, ~160MB unoptimized)
 public/images/stock/
