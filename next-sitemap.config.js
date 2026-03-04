@@ -9,6 +9,7 @@ module.exports = {
     ],
     additionalSitemaps: [],
   },
+  exclude: ['/rentalagree', '/rentalapp'],
   changefreq: 'weekly',
   priority: 0.7,
   transform: async (config, path) => {
