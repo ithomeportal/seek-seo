@@ -9,7 +9,7 @@ module.exports = {
     ],
     additionalSitemaps: [],
   },
-  exclude: ['/rentalagree', '/rentalapp', '/ach'],
+  exclude: ['/rentalagree', '/rentalapp', '/ach', '/apple-icon.png', '/icon.svg'],
   changefreq: 'weekly',
   priority: 0.7,
   transform: async (config, path) => {
