@@ -180,7 +180,7 @@ export default function ServicesPage() {
                 </div>
                 <h3 className="font-bold text-gray-900 mb-2">DOT Compliant</h3>
                 <p className="text-sm text-gray-600">
-                  Every trailer is inspected and maintained to DOT standards. Road-ready upon delivery with current safety certifications.
+                  Every trailer is DOT inspected before delivery. Road-ready upon arrival with current safety certifications and GPS tracking.
                 </p>
               </div>
               <div className="text-center">

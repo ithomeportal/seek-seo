@@ -26,7 +26,7 @@ const values = [
   {
     title: 'Safety First',
     description:
-      'Every trailer in our fleet undergoes rigorous inspection and maintenance before each rental. We meet or exceed all DOT and FMCSA safety standards so you can focus on your operations with confidence.',
+      'Every trailer in our fleet undergoes rigorous DOT inspection before each rental. We meet or exceed all DOT and FMCSA safety standards so you can focus on your operations with confidence.',
     icon: (
       <svg className="w-10 h-10 text-brand-orange" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -46,7 +46,7 @@ const values = [
   {
     title: 'Reliability',
     description:
-      'With 250+ well-maintained trailers and a strategic location on the I-35 corridor, we deliver consistent availability and rapid deployment. When you need a trailer, we have you covered.',
+      'With 250+ DOT-inspected trailers and a strategic location on the I-35 corridor, we deliver consistent availability and rapid deployment. Every unit has GPS tracking for real-time visibility.',
     icon: (
       <svg className="w-10 h-10 text-brand-orange" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
@@ -182,7 +182,7 @@ export default function AboutPage() {
                 <p>
                   Our clients span the transportation, oil and gas, construction, and logistics
                   industries — and we take pride in keeping their operations moving with
-                  well-maintained, road-ready equipment.
+                  DOT-inspected, road-ready equipment.
                 </p>
               </div>
             </div>

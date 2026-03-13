@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 const benefits = [
   'Customized pricing for your needs',
   'Flexible rental and lease terms',
-  'Fleet of 250+ well-maintained trailers',
+  'Fleet of 250+ DOT-inspected trailers with GPS tracking',
   'Fast turnaround — most quotes within 2 hours',
   'No obligation',
 ]

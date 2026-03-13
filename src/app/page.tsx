@@ -41,12 +41,12 @@ const homepageFaqs = [
   {
     question: 'What are the leasing terms available?',
     answer:
-      'We offer flexible leasing terms including daily, weekly, monthly, 6-month, and 12-month lease agreements. Long-term leases come with discounted rates. All leases include maintenance support to keep your operations running smoothly.',
+      'We offer flexible leasing terms including daily, weekly, monthly, 6-month, and 12-month lease agreements. Long-term leases come with discounted rates. Every trailer is DOT inspected and road-ready before delivery.',
   },
   {
     question: 'How large is the SEEK Equipment trailer fleet?',
     answer:
-      'Our fleet includes over 250 trailers across five categories: DryVan, Tanker, Flatbed, Sand Chassis, and Belly Dump trailers. All trailers are regularly inspected, well-maintained, and meet DOT safety standards.',
+      'Our fleet includes over 250 trailers across five categories: DryVan, Tanker, Flatbed, Sand Chassis, and Belly Dump trailers. All trailers are DOT inspected before each rental, GPS tracked, and meet federal safety standards.',
   },
 ]
 

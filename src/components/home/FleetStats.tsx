@@ -13,7 +13,8 @@ interface Stat {
 const stats: Stat[] = [
   { value: 250, suffix: '+', label: 'Trailers Available' },
   { value: 5, suffix: '', label: 'Trailer Types' },
-  { value: 100, suffix: '%', label: 'Maintenance Included' },
+  { value: 100, suffix: '%', label: 'DOT Inspected' },
+  { value: 100, suffix: '%', label: 'GPS Tracked' },
   { value: 24, suffix: '/7', label: 'Support' },
 ]
 
@@ -99,7 +100,7 @@ export function FleetStats() {
       <div className="absolute inset-0 bg-brand-blue/90" />
 
       <Container className="relative z-10">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:divide-x lg:divide-white/10">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 lg:divide-x lg:divide-white/10">
           {stats.map((stat) => (
             <AnimatedStat key={stat.label} stat={stat} isVisible={isVisible} />
           ))}

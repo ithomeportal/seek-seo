@@ -54,7 +54,7 @@ export const services: Service[] = [
       {
         question: 'What condition are the dry van trailers in?',
         answer:
-          'All SEEK Equipment trailers undergo thorough inspection and maintenance before each rental. Our fleet includes both newer and well-maintained older units. We ensure every trailer meets DOT safety standards and is road-ready upon delivery.',
+          'All SEEK Equipment trailers undergo thorough DOT inspection before each rental. Our fleet includes both newer and well-kept older units. We ensure every trailer meets safety standards and is road-ready upon delivery.',
       },
       {
         question: 'Do dry van trailers come with load securement equipment?',

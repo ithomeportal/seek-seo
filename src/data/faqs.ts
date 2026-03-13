@@ -97,12 +97,12 @@ export const faqCategories: FAQCategory[] = [
       {
         question: 'What condition are the rental trailers in?',
         answer:
-          'All SEEK Equipment trailers are inspected and maintained before each rental period. We perform thorough safety checks including brakes, tires, lights, structural integrity, and DOT compliance items. Our fleet includes both newer and well-maintained units, and we stand behind the road-readiness of every trailer we rent.',
+          'All SEEK Equipment trailers are thoroughly inspected before each rental period. We perform safety checks including brakes, tires, lights, structural integrity, and DOT compliance items. Our fleet includes both newer and well-kept units, and we stand behind the road-readiness of every trailer we deliver.',
       },
       {
         question: 'Who is responsible for maintenance during the rental period?',
         answer:
-          'For short-term rentals, SEEK Equipment covers major mechanical maintenance. The renter is responsible for daily pre-trip inspections, tire pressure checks, and reporting any issues promptly. For long-term leases, maintenance responsibilities are outlined in your lease agreement and may vary based on the lease type.',
+          'The renter is responsible for routine care including daily pre-trip inspections, tire pressure checks, and reporting any issues promptly. Maintenance responsibilities and terms are outlined in your rental or lease agreement. Contact us at 1-210-802-0000 for questions about your specific agreement terms.',
       },
       {
         question: 'What happens if a trailer breaks down during my rental?',

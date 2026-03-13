@@ -12,7 +12,7 @@ const valueProps = [
     number: '02',
     title: 'Reliable Rental Fleet',
     description:
-      'Well-maintained, inspected trailers ready to work. Every unit meets DOT safety standards before delivery.',
+      'DOT-inspected, road-ready trailers with GPS tracking on every unit. We ensure every trailer meets safety standards before delivery.',
   },
   {
     number: '03',

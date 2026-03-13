@@ -298,7 +298,7 @@ export default async function ServicePage({ params }: PageProps) {
           <div className="max-w-4xl">
             <SectionHeading
               title={`${service.shortTitle} Features`}
-              subtitle={`Every ${service.shortTitle.toLowerCase()} trailer in our fleet is maintained to the highest standards and comes equipped with the features you need.`}
+              subtitle={`Every ${service.shortTitle.toLowerCase()} trailer in our fleet is DOT inspected, GPS tracked, and comes equipped with the features you need.`}
             />
             <ul className="mt-10 grid gap-4 sm:grid-cols-2">
               {service.features.map((feature) => (
