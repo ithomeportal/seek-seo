@@ -65,7 +65,7 @@ export function CargoSection() {
             <div className="relative h-80 rounded-2xl overflow-hidden shadow-xl">
               <Image
                 src="/images/gallery/trailers-loading.jpg"
-                alt="Trailers at loading dock"
+                alt="American flatbed trailer on highway with mountains"
                 fill
                 className="object-cover"
                 sizes="(max-width: 1024px) 100vw, 50vw"
@@ -76,7 +76,7 @@ export function CargoSection() {
             <div className="absolute -bottom-8 -left-6 w-48 h-36 rounded-xl overflow-hidden shadow-lg border-4 border-white">
               <Image
                 src="/images/gallery/distribution-center.jpg"
-                alt="Distribution center with trailers"
+                alt="Belly dump trailer at oilfield at night"
                 fill
                 className="object-cover"
                 sizes="200px"

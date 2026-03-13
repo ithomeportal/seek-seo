@@ -91,7 +91,7 @@ export function FleetStats() {
       {/* Background image */}
       <Image
         src="/images/gallery/shipping-delivery.jpg"
-        alt="Fleet on the road"
+        alt="American truck cab at golden hour"
         fill
         className="object-cover"
         sizes="100vw"
