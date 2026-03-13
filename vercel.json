@@ -20,7 +20,7 @@
   ],
   "redirects": [
     { "source": "/industry-news", "destination": "/blog", "permanent": true },
-    { "source": "/industry-news/:slug*", "destination": "/blog/:slug*", "permanent": true },
+    { "source": "/industry-news/:slug*", "destination": "/blog", "permanent": true },
     { "source": "/contact-us", "destination": "/contact", "permanent": true },
     { "source": "/faqs", "destination": "/faq", "permanent": true },
     { "source": "/services/dry-van", "destination": "/services/dryvan", "permanent": true },
@@ -28,8 +28,18 @@
     { "source": "/services/energy-plants", "destination": "/services/flatbed", "permanent": true },
     { "source": "/services/ai-robotics", "destination": "/services/sand-chassis", "permanent": true },
     { "source": "/services/belly-dump-trailers", "destination": "/services/belly-dump", "permanent": true },
+    { "source": "/about-us", "destination": "/about", "permanent": true },
+    { "source": "/sample-page", "destination": "/", "permanent": true },
+    { "source": "/feed", "destination": "/blog", "permanent": true },
+    { "source": "/feed/:path*", "destination": "/blog", "permanent": true },
+    { "source": "/author/:path*", "destination": "/about", "permanent": true },
+    { "source": "/category/:path*", "destination": "/blog", "permanent": true },
+    { "source": "/tag/:path*", "destination": "/blog", "permanent": true },
     { "source": "/wp-admin/:path*", "destination": "/", "permanent": true },
     { "source": "/wp-login.php", "destination": "/", "permanent": true },
-    { "source": "/wp-content/:path*", "destination": "/", "permanent": true }
+    { "source": "/wp-content/:path*", "destination": "/", "permanent": true },
+    { "source": "/wp-includes/:path*", "destination": "/", "permanent": true },
+    { "source": "/xmlrpc.php", "destination": "/", "permanent": true },
+    { "source": "/wp-json/:path*", "destination": "/", "permanent": true }
   ]
 }
