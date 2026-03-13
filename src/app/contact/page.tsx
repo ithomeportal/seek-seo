@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Image from 'next/image'
 import { MapPin, Phone, Mail, Clock } from 'lucide-react'
 import { Container } from '@/components/ui/Container'
 import { SectionHeading } from '@/components/ui/SectionHeading'
@@ -34,16 +35,11 @@ export default function ContactPage() {
     email: COMPANY.email,
     address: {
       '@type': 'PostalAddress',
-      streetAddress: COMPANY.address.street,
-      addressLocality: COMPANY.address.city,
-      addressRegion: COMPANY.address.state,
-      postalCode: COMPANY.address.zip,
-      addressCountry: COMPANY.address.country,
-    },
-    geo: {
-      '@type': 'GeoCoordinates',
-      latitude: 29.2891,
-      longitude: -98.6438,
+      streetAddress: COMPANY.hqAddress.street,
+      addressLocality: COMPANY.hqAddress.city,
+      addressRegion: COMPANY.hqAddress.state,
+      postalCode: COMPANY.hqAddress.zip,
+      addressCountry: COMPANY.hqAddress.country,
     },
     openingHoursSpecification: [
       {
@@ -68,8 +64,17 @@ export default function ContactPage() {
       <JsonLd data={localBusinessSchema} />
 
       {/* Hero */}
-      <section className="bg-brand-blue text-white py-16 md:py-24">
-        <Container>
+      <section className="relative text-white py-16 md:py-24 overflow-hidden">
+        <Image
+          src="/images/gallery/shipping-delivery.jpg"
+          alt="Shipping and delivery"
+          fill
+          className="object-cover"
+          sizes="100vw"
+          priority
+        />
+        <div className="absolute inset-0 bg-brand-blue/85" />
+        <Container className="relative z-10">
           <Breadcrumbs
             items={[
               { label: 'Home', href: '/' },
@@ -107,7 +112,14 @@ export default function ContactPage() {
                       <MapPin className="w-5 h-5 text-brand-blue" />
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900">Address</p>
+                      <p className="font-semibold text-gray-900">HQ Office</p>
+                      <p className="text-gray-600 mt-1">
+                        {COMPANY.hqAddress.street}
+                        <br />
+                        {COMPANY.hqAddress.city}, {COMPANY.hqAddress.state}{' '}
+                        {COMPANY.hqAddress.zip}
+                      </p>
+                      <p className="font-semibold text-gray-900 mt-3">Trailer Yard</p>
                       <p className="text-gray-600 mt-1">
                         {COMPANY.address.street}
                         <br />
@@ -192,7 +204,7 @@ export default function ContactPage() {
       <section className="py-16 md:py-20 bg-gray-50">
         <Container>
           <SectionHeading
-            title="Visit Our Facility"
+            title="Visit Our Trailer Yard"
             subtitle="Come see our fleet in person. We are conveniently located off I-35 South, just minutes from downtown San Antonio."
             centered
           />

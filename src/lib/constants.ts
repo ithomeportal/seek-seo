@@ -11,6 +11,14 @@ export const COMPANY = {
     country: 'US',
     full: '12330 Interstate 35 Access Rd, Von Ormy, TX 78073',
   },
+  hqAddress: {
+    street: '16414 San Pedro Ave, Ste 335',
+    city: 'San Antonio',
+    state: 'TX',
+    zip: '78232',
+    country: 'US',
+    full: '16414 San Pedro Ave, Ste 335, San Antonio, TX 78232',
+  },
   url: 'https://seekequipment.com',
   description:
     'Trailer rental and leasing company with 250+ trailers including DryVan, Tanker, Flatbed, Sand Chassis, and Belly Dump trailers in Texas.',

@@ -214,11 +214,11 @@ export default async function ServicePage({ params }: PageProps) {
       telephone: COMPANY.phone,
       address: {
         '@type': 'PostalAddress',
-        streetAddress: COMPANY.address.street,
-        addressLocality: COMPANY.address.city,
-        addressRegion: COMPANY.address.state,
-        postalCode: COMPANY.address.zip,
-        addressCountry: COMPANY.address.country,
+        streetAddress: COMPANY.hqAddress.street,
+        addressLocality: COMPANY.hqAddress.city,
+        addressRegion: COMPANY.hqAddress.state,
+        postalCode: COMPANY.hqAddress.zip,
+        addressCountry: COMPANY.hqAddress.country,
       },
     },
     areaServed: {
@@ -426,8 +426,16 @@ export default async function ServicePage({ params }: PageProps) {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 md:py-20 bg-brand-blue">
-        <Container>
+      <section className="relative py-16 md:py-20 overflow-hidden">
+        <Image
+          src="/images/gallery/distribution-center.jpg"
+          alt="Distribution center operations"
+          fill
+          className="object-cover"
+          sizes="100vw"
+        />
+        <div className="absolute inset-0 bg-brand-blue/85" />
+        <Container className="relative z-10">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl md:text-4xl font-bold text-white">
               Ready to Rent a {service.shortTitle.replace(' Trailers', '').replace(' Trailer', '')} Trailer?

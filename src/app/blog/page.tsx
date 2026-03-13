@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Image from 'next/image'
 import { Container } from '@/components/ui/Container'
 import { SectionHeading } from '@/components/ui/SectionHeading'
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs'
@@ -24,8 +25,17 @@ export default function BlogPage() {
   return (
     <>
       {/* Hero */}
-      <section className="bg-brand-blue text-white py-16 md:py-24">
-        <Container>
+      <section className="relative text-white py-16 md:py-24 overflow-hidden">
+        <Image
+          src="/images/about/seek-tanker.jpg"
+          alt="SEEK Equipment tanker trailer"
+          fill
+          className="object-cover"
+          sizes="100vw"
+          priority
+        />
+        <div className="absolute inset-0 bg-brand-blue/85" />
+        <Container className="relative z-10">
           <Breadcrumbs
             items={[
               { label: 'Home', href: '/' },

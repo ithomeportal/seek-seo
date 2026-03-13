@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import { Container } from '@/components/ui/Container'
 import { Badge } from '@/components/ui/Badge'
@@ -113,8 +114,17 @@ export default async function BlogPostPage({ params }: PageProps) {
       <JsonLd data={articleSchema} />
 
       {/* Hero */}
-      <section className="bg-brand-blue text-white py-16 md:py-24">
-        <Container>
+      <section className="relative text-white py-16 md:py-24 overflow-hidden">
+        <Image
+          src="/images/gallery/trailers-loading.jpg"
+          alt="Trailers at loading dock"
+          fill
+          className="object-cover"
+          sizes="100vw"
+          priority
+        />
+        <div className="absolute inset-0 bg-brand-blue/85" />
+        <Container className="relative z-10">
           <Breadcrumbs
             items={[
               { label: 'Home', href: '/' },
@@ -175,8 +185,16 @@ export default async function BlogPostPage({ params }: PageProps) {
       )}
 
       {/* CTA */}
-      <section className="py-16 md:py-20 bg-brand-blue text-white">
-        <Container>
+      <section className="relative py-16 md:py-20 text-white overflow-hidden">
+        <Image
+          src="/images/gallery/shipping-delivery.jpg"
+          alt="Shipping and delivery operations"
+          fill
+          className="object-cover"
+          sizes="100vw"
+        />
+        <div className="absolute inset-0 bg-brand-blue/85" />
+        <Container className="relative z-10">
           <div className="text-center max-w-3xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold">
               Need a Trailer Rental?

@@ -86,7 +86,7 @@ export function Header() {
           </div>
           <div className="flex items-center gap-1.5 text-white/70">
             <MapPin className="h-3 w-3" />
-            <span>{COMPANY.address.full}</span>
+            <span>{COMPANY.hqAddress.full}</span>
           </div>
         </div>
       </div>

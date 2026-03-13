@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Container } from '@/components/ui/Container'
 import { SectionHeading } from '@/components/ui/SectionHeading'
 import { Accordion } from '@/components/ui/Accordion'
@@ -44,8 +45,17 @@ export default function FaqPage() {
       <JsonLd data={faqPageSchema} />
 
       {/* Hero */}
-      <section className="bg-brand-blue text-white py-16 md:py-24">
-        <Container>
+      <section className="relative text-white py-16 md:py-24 overflow-hidden">
+        <Image
+          src="/images/gallery/distribution-center.jpg"
+          alt="Distribution center"
+          fill
+          className="object-cover"
+          sizes="100vw"
+          priority
+        />
+        <div className="absolute inset-0 bg-brand-blue/85" />
+        <Container className="relative z-10">
           <Breadcrumbs
             items={[
               { label: 'Home', href: '/' },

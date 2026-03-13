@@ -1,4 +1,4 @@
-import { Metadata } from 'next'
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
 import { services } from '@/data/services'
@@ -61,8 +61,17 @@ export default function ServicesPage() {
     <>
       <JsonLd data={serviceSchemaData} />
 
-      <section className="bg-brand-blue py-16 md:py-20">
-        <Container>
+      <section className="relative py-16 md:py-20 overflow-hidden">
+        <Image
+          src="/images/about/chassis-yard.jpg"
+          alt="SEEK Equipment trailer yard"
+          fill
+          className="object-cover"
+          sizes="100vw"
+          priority
+        />
+        <div className="absolute inset-0 bg-brand-blue/85" />
+        <Container className="relative z-10">
           <Breadcrumbs
             items={[
               { label: 'Home', href: '/' },
@@ -199,8 +208,16 @@ export default function ServicesPage() {
         </Container>
       </section>
 
-      <section className="py-16 md:py-20 bg-brand-blue">
-        <Container>
+      <section className="relative py-16 md:py-20 overflow-hidden">
+        <Image
+          src="/images/gallery/distribution-center.jpg"
+          alt="Distribution center operations"
+          fill
+          className="object-cover"
+          sizes="100vw"
+        />
+        <div className="absolute inset-0 bg-brand-blue/85" />
+        <Container className="relative z-10">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl md:text-4xl font-bold text-white">
               Need Help Choosing the Right Trailer?

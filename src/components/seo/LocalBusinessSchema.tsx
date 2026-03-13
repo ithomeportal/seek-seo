@@ -14,17 +14,43 @@ export function LocalBusinessSchema() {
     image: `${COMPANY.url}/images/logo/logo.png`,
     address: {
       '@type': 'PostalAddress',
-      streetAddress: COMPANY.address.street,
-      addressLocality: COMPANY.address.city,
-      addressRegion: COMPANY.address.state,
-      postalCode: COMPANY.address.zip,
-      addressCountry: COMPANY.address.country,
+      streetAddress: COMPANY.hqAddress.street,
+      addressLocality: COMPANY.hqAddress.city,
+      addressRegion: COMPANY.hqAddress.state,
+      postalCode: COMPANY.hqAddress.zip,
+      addressCountry: COMPANY.hqAddress.country,
     },
-    geo: {
-      '@type': 'GeoCoordinates',
-      latitude: 29.2891,
-      longitude: -98.6438,
-    },
+    location: [
+      {
+        '@type': 'Place',
+        name: 'SEEK Equipment HQ',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: COMPANY.hqAddress.street,
+          addressLocality: COMPANY.hqAddress.city,
+          addressRegion: COMPANY.hqAddress.state,
+          postalCode: COMPANY.hqAddress.zip,
+          addressCountry: COMPANY.hqAddress.country,
+        },
+      },
+      {
+        '@type': 'Place',
+        name: 'SEEK Equipment Trailer Yard',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: COMPANY.address.street,
+          addressLocality: COMPANY.address.city,
+          addressRegion: COMPANY.address.state,
+          postalCode: COMPANY.address.zip,
+          addressCountry: COMPANY.address.country,
+        },
+        geo: {
+          '@type': 'GeoCoordinates',
+          latitude: 29.2891,
+          longitude: -98.6438,
+        },
+      },
+    ],
     openingHoursSpecification: [
       {
         '@type': 'OpeningHoursSpecification',

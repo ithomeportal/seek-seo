@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Container } from '@/components/ui/Container'
 import { SectionHeading } from '@/components/ui/SectionHeading'
 import { Card } from '@/components/ui/Card'
@@ -84,11 +85,11 @@ export default function AboutPage() {
     description: COMPANY.description,
     address: {
       '@type': 'PostalAddress',
-      streetAddress: COMPANY.address.street,
-      addressLocality: COMPANY.address.city,
-      addressRegion: COMPANY.address.state,
-      postalCode: COMPANY.address.zip,
-      addressCountry: COMPANY.address.country,
+      streetAddress: COMPANY.hqAddress.street,
+      addressLocality: COMPANY.hqAddress.city,
+      addressRegion: COMPANY.hqAddress.state,
+      postalCode: COMPANY.hqAddress.zip,
+      addressCountry: COMPANY.hqAddress.country,
     },
     telephone: COMPANY.phone,
     email: COMPANY.email,
@@ -108,8 +109,17 @@ export default function AboutPage() {
       <JsonLd data={organizationSchema} />
 
       {/* Hero */}
-      <section className="bg-brand-blue text-white py-16 md:py-24">
-        <Container>
+      <section className="relative text-white py-16 md:py-24 overflow-hidden">
+        <Image
+          src="/images/about/seek-tanker.jpg"
+          alt="SEEK Equipment tanker trailer"
+          fill
+          className="object-cover"
+          sizes="100vw"
+          priority
+        />
+        <div className="absolute inset-0 bg-brand-blue/85" />
+        <Container className="relative z-10">
           <Breadcrumbs
             items={[
               { label: 'Home', href: '/' },
@@ -219,18 +229,27 @@ export default function AboutPage() {
       </section>
 
       {/* Service Areas */}
-      <section className="py-16 md:py-20 bg-gray-50">
-        <Container>
+      <section className="relative py-16 md:py-20 overflow-hidden">
+        <Image
+          src="/images/gallery/trailers-loading.jpg"
+          alt="Trailers at loading dock"
+          fill
+          className="object-cover"
+          sizes="100vw"
+        />
+        <div className="absolute inset-0 bg-brand-blue/90" />
+        <Container className="relative z-10">
           <SectionHeading
             title="Service Areas"
             subtitle="Serving key regions across Texas with reliable trailer rental and leasing"
             centered
+            light
           />
           <div className="mt-12 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {serviceAreas.map((area) => (
               <div
                 key={area}
-                className="bg-white rounded-lg border border-gray-200 px-4 py-3 text-center font-medium text-gray-800 shadow-sm"
+                className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 px-4 py-3 text-center font-medium text-white shadow-sm"
               >
                 {area}
               </div>
@@ -262,8 +281,16 @@ export default function AboutPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-16 md:py-20 bg-brand-blue text-white">
-        <Container>
+      <section className="relative py-16 md:py-20 text-white overflow-hidden">
+        <Image
+          src="/images/gallery/shipping-delivery.jpg"
+          alt="Shipping and delivery operations"
+          fill
+          className="object-cover"
+          sizes="100vw"
+        />
+        <div className="absolute inset-0 bg-brand-blue/85" />
+        <Container className="relative z-10">
           <div className="text-center max-w-3xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold">
               Ready to Work With Us?

@@ -102,9 +102,12 @@ export function Footer() {
                 <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/5 shrink-0 mt-0.5">
                   <MapPin className="h-4 w-4 text-brand-orange" />
                 </div>
-                <span className="text-sm text-gray-400/80 leading-relaxed">
-                  {COMPANY.address.full}
-                </span>
+                <div className="text-sm text-gray-400/80 leading-relaxed">
+                  <p className="font-medium text-gray-300">HQ Office</p>
+                  <p>{COMPANY.hqAddress.full}</p>
+                  <p className="font-medium text-gray-300 mt-2">Trailer Yard</p>
+                  <p>{COMPANY.address.full}</p>
+                </div>
               </li>
               <li>
                 <a
