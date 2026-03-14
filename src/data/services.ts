@@ -72,9 +72,9 @@ export const services: Service[] = [
     title: 'Tanker Trailer Rental & Leasing',
     shortTitle: 'Tanker Trailers',
     description:
-      'SEEK Equipment provides tanker trailers for transporting liquids, chemicals, and petroleum products across Texas and beyond. Our tanker fleet meets DOT and FMCSA regulations for safe transport of hazardous and non-hazardous liquids.',
+      'SEEK Equipment provides aluminum tank trailers engineered for the safe and efficient transport of fuel, crude oil, produced water, and industrial fluids. Our DOT 407-compliant fleet features polished aluminum construction with capacities up to 8,000 gallons, offering superior corrosion resistance and optimal payload efficiency.',
     heroDescription:
-      'DOT-compliant tanker trailers for liquid transport including petroleum, chemicals, and water. Aluminum and stainless steel options with flexible rental and leasing terms.',
+      'DOT 407-compliant aluminum tank trailers for fuel, crude oil, and industrial liquid transport. Polished aluminum construction up to 8,000-gallon capacity with flexible rental and leasing terms.',
     features: [
       'Aluminum and stainless steel tank construction options',
       'Single and multi-compartment configurations available',
@@ -199,7 +199,7 @@ export const services: Service[] = [
     title: 'Sand Chassis Trailer Rental & Leasing',
     shortTitle: 'Sand Chassis',
     description:
-      'SEEK Equipment provides sand chassis trailers purpose-built for the oilfield industry. Our sand chassis are designed for hauling frac sand containers and sand boxes to and from well sites across the Permian Basin, Eagle Ford Shale, and beyond.',
+      'SEEK Equipment provides sand chassis trailers purpose-built for the oilfield industry. Our sand chassis are designed for hauling frac sand containers and sand boxes to and from well sites across any Basin or Shale across the country.',
     heroDescription:
       'Purpose-built sand chassis trailers for oilfield frac sand hauling. Designed for container and sand box transport with heavy-duty construction for Texas oil patch operations.',
     features: [
@@ -259,6 +259,68 @@ export const services: Service[] = [
       'Rent or lease sand chassis trailers for oilfield frac sand hauling. Heavy-duty construction, 22-25 ton capacity, Texas oil patch ready. Call SEEK Equipment at 1-210-802-0000.',
   },
   {
+    slug: 'sand-hopper',
+    title: 'Sand Hopper Trailer Rental & Leasing',
+    shortTitle: 'Sand Hoppers',
+    description:
+      'SEEK Equipment offers sand hopper trailers for efficient transport and discharge of dry bulk materials including frac sand, cement, and fly ash. Our sand hoppers enable rapid unloading at well sites and industrial facilities across any basin or shale in the country.',
+    heroDescription:
+      'Specialized sand hopper trailers for bulk sand and dry material transport with gravity discharge. Built for oilfield service with consistent performance across demanding terrain.',
+    features: [
+      'High-capacity hopper design for maximum material volume',
+      'Reinforced vessel construction for demanding oilfield conditions',
+      'Multiple discharge points for flexible unloading configurations',
+      'Heavy-duty frame and suspension for rough terrain operation',
+      'DOT compliant lighting and safety equipment',
+      'Anti-lock braking system (ABS)',
+      'Gravity discharge system for rapid unloading',
+      'Compatible with standard well site equipment',
+    ],
+    specs: {
+      'Hopper Design': 'High-capacity gravity discharge',
+      'Vessel Material': 'Reinforced steel construction',
+      'Discharge Points': 'Multiple configurable outlets',
+      'Max Payload': '50,000 lbs',
+      Axles: 'Tandem or tridem axle',
+      Suspension: 'Air ride',
+      Tires: '11R22.5 or 11R24.5',
+      'King Pin': '2" SAE king pin',
+      'Safety Equipment': 'DOT compliant, ABS brakes',
+      Application: 'Frac sand, cement, fly ash',
+    },
+    faqs: [
+      {
+        question: 'What is a sand hopper trailer used for?',
+        answer:
+          'Sand hopper trailers are specialized vessels designed for the efficient transport and discharge of dry bulk materials including frac sand, cement, and fly ash. They enable rapid gravity-based unloading at well sites and industrial facilities.',
+      },
+      {
+        question: 'How do sand hoppers unload material?',
+        answer:
+          'Sand hoppers use gravity discharge through multiple outlet points at the bottom of the vessel. This allows rapid unloading without the need for pneumatic or mechanical systems, reducing complexity and maintenance.',
+      },
+      {
+        question: 'Can sand hoppers haul materials other than frac sand?',
+        answer:
+          'Yes, sand hoppers are versatile dry bulk trailers. In addition to frac sand, they efficiently transport cement, fly ash, calcium carbonate, and other dry bulk materials used in oilfield and industrial applications.',
+      },
+      {
+        question: 'Where do you deliver sand hopper trailers?',
+        answer:
+          'SEEK Equipment delivers sand hopper trailers via power only units across the continental United States. We have a strong presence in the Permian Basin, Eagle Ford Shale, Bakken Formation, and other major oilfield regions.',
+      },
+      {
+        question: 'What are the rental terms for sand hopper trailers?',
+        answer:
+          'We offer flexible lease agreements tailored to your project requirements. Our team will structure terms that align with your operational timeline. Contact us at 1-210-802-0000 for a custom quote.',
+      },
+    ],
+    metaTitle:
+      'Sand Hopper Trailer Rental & Leasing | Dry Bulk Transport | SEEK Equipment',
+    metaDescription:
+      'Rent or lease sand hopper trailers for frac sand, cement, and dry bulk transport. High-capacity gravity discharge, nationwide delivery. Call SEEK Equipment at 1-210-802-0000.',
+  },
+  {
     slug: 'belly-dump',
     title: 'Belly Dump Trailer Rental & Leasing',
     shortTitle: 'Belly Dump Trailers',
@@ -275,6 +337,7 @@ export const services: Service[] = [
       'Half-round or bathtub cross-section options available',
       'Ideal for windrow placement on road construction projects',
       'Easy clean-out design minimizes material carryback',
+      'Suitable for hydraulic fracturing and oilfield proppant operations',
     ],
     specs: {
       Capacity: '24-40 cubic yards',

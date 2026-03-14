@@ -9,13 +9,13 @@ import { JsonLd } from '@/components/seo/JsonLd'
 import { COMPANY } from '@/lib/constants'
 
 export const metadata: Metadata = {
-  title: 'Trailer Rental & Leasing in Texas | SEEK Equipment',
+  title: 'Trailer Leasing & Rental in Texas | SEEK Equipment',
   description:
-    'SEEK Equipment offers 250+ trailers for rent and lease in Texas. DryVan, Tanker, Flatbed, Sand Chassis & Belly Dump trailers with flexible terms. Call 1-210-802-0000.',
+    'SEEK Equipment offers 250+ trailers for lease and rent in Texas. DryVan, Tanker, Flatbed, Sand Chassis, Sand Hopper & Belly Dump trailers with flexible terms. Call 1-210-802-0000.',
   openGraph: {
-    title: 'Trailer Rental & Leasing in Texas | SEEK Equipment',
+    title: 'Trailer Leasing & Rental in Texas | SEEK Equipment',
     description:
-      'SEEK Equipment offers 250+ trailers for rent and lease in Texas. DryVan, Tanker, Flatbed, Sand Chassis & Belly Dump trailers with flexible terms.',
+      'SEEK Equipment offers 250+ trailers for lease and rent in Texas. DryVan, Tanker, Flatbed, Sand Chassis, Sand Hopper & Belly Dump trailers with flexible terms.',
     url: COMPANY.url,
     siteName: COMPANY.name,
     type: 'website',
@@ -26,7 +26,7 @@ const homepageFaqs = [
   {
     question: 'What types of trailers does SEEK Equipment offer?',
     answer:
-      'SEEK Equipment offers five types of trailers for rent and lease: DryVan trailers for general freight, Tanker trailers for liquid transport, Flatbed trailers for oversized loads and construction materials, Sand Chassis trailers for oilfield frac sand hauling, and Belly Dump trailers for aggregate and construction material placement.',
+      'SEEK Equipment offers six types of trailers for lease and rent: DryVan trailers for general freight, Tanker trailers for liquid transport, Flatbed trailers for oversized loads and construction materials, Sand Chassis trailers for oilfield frac sand hauling, Sand Hopper trailers for dry bulk material transport, and Belly Dump trailers for aggregate and construction material placement.',
   },
   {
     question: 'How do I get a quote for trailer rental or leasing?',
@@ -36,17 +36,17 @@ const homepageFaqs = [
   {
     question: 'What areas does SEEK Equipment serve?',
     answer:
-      'SEEK Equipment is based in Von Ormy, TX (near San Antonio) and serves all of Texas including the Permian Basin, Eagle Ford Shale, Dallas-Fort Worth, Houston, Austin, and surrounding states. We deliver trailers directly to your job site or facility.',
+      'SEEK Equipment serves the continental United States, with a strong presence in the Permian Basin, Eagle Ford Shale, Bakken Formation, Anadarko Basin, DJ Basin, Powder River Basin, Marcellus Shale, and the San Antonio metropolitan area. We deliver via power only units to any location across the lower 48 states.',
   },
   {
     question: 'What are the leasing terms available?',
     answer:
-      'We offer flexible leasing terms including daily, weekly, monthly, 6-month, and 12-month lease agreements. Long-term leases come with discounted rates. Every trailer is DOT inspected and road-ready before delivery.',
+      'We offer flexible lease agreements tailored to your specific project requirements. Our team will work with you to structure terms that align with your operational timeline and business needs. Every trailer is DOT inspected and road-ready before delivery.',
   },
   {
     question: 'How large is the SEEK Equipment trailer fleet?',
     answer:
-      'Our fleet includes over 250 trailers across five categories: DryVan, Tanker, Flatbed, Sand Chassis, and Belly Dump trailers. All trailers are DOT inspected before each rental, GPS tracked, and meet federal safety standards.',
+      'Our fleet includes over 250 trailers across six categories: DryVan, Tanker, Flatbed, Sand Chassis, Sand Hopper, and Belly Dump trailers. All trailers are DOT inspected before each rental and meet federal safety standards.',
   },
 ]
 

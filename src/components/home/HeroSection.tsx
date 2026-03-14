@@ -104,8 +104,8 @@ export function HeroSection() {
 
           <p className="mt-4 text-gray-500 max-w-xl mx-auto leading-relaxed">
             250+ trailers ready for your business &mdash; DryVan, Tanker,
-            Flatbed, Sand Chassis &amp; Belly Dump. Flexible rental and leasing
-            terms across Texas, with cross-border service to Canada and Mexico.
+            Flatbed, Sand Chassis, Sand Hopper &amp; Belly Dump. Flexible
+            leasing terms with delivery across the continental United States.
           </p>
 
           <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">

@@ -144,6 +144,31 @@ const USE_CASES: Record<string, { heading: string; items: { title: string; descr
       },
     ],
   },
+  'sand-hopper': {
+    heading: 'When to Rent a Sand Hopper Trailer',
+    items: [
+      {
+        title: 'Frac Sand Delivery to Well Sites',
+        description:
+          'Sand hoppers are the workhorse of oilfield proppant logistics. Transport frac sand efficiently from transload facilities and sand mines directly to well sites with rapid gravity discharge for minimal downtime.',
+      },
+      {
+        title: 'Cement & Fly Ash Transport',
+        description:
+          'Move cement, fly ash, and other dry bulk materials for industrial and construction applications. The hopper design allows controlled discharge at processing facilities and job sites.',
+      },
+      {
+        title: 'Multi-Basin Oilfield Operations',
+        description:
+          'SEEK Equipment provides sand hoppers for operations across the Permian Basin, Eagle Ford Shale, Bakken Formation, Anadarko Basin, DJ Basin, Powder River Basin, Marcellus Shale, and more.',
+      },
+      {
+        title: 'Dry Bulk Material Logistics',
+        description:
+          'Support industrial material handling operations with efficient transport of dry bulk commodities. Sand hoppers handle a variety of granular and powdered materials with consistent discharge performance.',
+      },
+    ],
+  },
   'belly-dump': {
     heading: 'When to Rent a Belly Dump Trailer',
     items: [
@@ -176,6 +201,7 @@ const serviceImages: Record<string, string> = {
   tanker: '/images/trailers/tanker.jpg',
   flatbed: '/images/trailers/flatbed.jpg',
   'sand-chassis': '/images/trailers/sand-chassis.jpg',
+  'sand-hopper': '/images/trailers/sand-chassis.jpg',
   'belly-dump': '/images/trailers/belly-dump.jpg',
 }
 

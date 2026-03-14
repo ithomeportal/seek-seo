@@ -13,6 +13,7 @@ const trailerTypeOptions = [
   { value: 'tanker', label: 'Tanker' },
   { value: 'flatbed', label: 'Flatbed' },
   { value: 'sand-chassis', label: 'Sand Chassis' },
+  { value: 'sand-hopper', label: 'Sand Hopper' },
   { value: 'belly-dump', label: 'Belly Dump' },
   { value: 'other', label: 'Other' },
 ]

@@ -9,6 +9,7 @@ const serviceImages: Record<string, string> = {
   tanker: '/images/trailers/tanker.jpg',
   flatbed: '/images/trailers/flatbed-cinematic.png',
   'sand-chassis': '/images/trailers/sand-chassis.jpg',
+  'sand-hopper': '/images/trailers/sand-chassis.jpg',
   'belly-dump': '/images/trailers/belly-dump.jpg',
 }
 
@@ -18,11 +19,11 @@ export function ServiceCards() {
       <Container className="max-w-[90rem]">
         <SectionHeading
           title="Our Trailer Fleet"
-          subtitle="Five specialized trailer types for transportation, construction, oil & gas, and logistics."
+          subtitle="Six specialized trailer types for transportation, construction, oil & gas, and logistics."
           centered
         />
 
-        <div className="mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
+        <div className="mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {services.map((service) => (
             <Link
               key={service.slug}

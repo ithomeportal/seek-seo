@@ -14,7 +14,7 @@ import { JsonLd } from '@/components/seo/JsonLd'
 export const metadata: Metadata = {
   title: 'Trailer Rental & Leasing Services | SEEK Equipment',
   description:
-    'Explore SEEK Equipment\'s full fleet of rental trailers: DryVan, Tanker, Flatbed, Sand Chassis, and Belly Dump trailers. Flexible short-term and long-term leasing in Texas. Call 1-210-802-0000.',
+    'Explore SEEK Equipment\'s full fleet of rental trailers: DryVan, Tanker, Flatbed, Sand Chassis, Sand Hopper, and Belly Dump trailers. Flexible short-term and long-term leasing in Texas. Call 1-210-802-0000.',
   alternates: { canonical: '/services' },
 }
 
@@ -23,6 +23,7 @@ const SPEC_PREVIEWS: Record<string, string[]> = {
   tanker: ['Capacity', 'Material', 'DOT Rating'],
   flatbed: ['Length', 'Max Payload', 'Deck Height'],
   'sand-chassis': ['Gross Capacity', 'Sand Capacity', 'Box Configuration'],
+  'sand-hopper': ['Hopper Design', 'Max Payload', 'Application'],
   'belly-dump': ['Capacity', 'Max Payload', 'Gate Type'],
 }
 
@@ -31,6 +32,7 @@ const SERVICE_IMAGES: Record<string, string> = {
   tanker: '/images/trailers/tanker.jpg',
   flatbed: '/images/trailers/flatbed-cinematic.png',
   'sand-chassis': '/images/trailers/sand-chassis.jpg',
+  'sand-hopper': '/images/trailers/sand-chassis.jpg',
   'belly-dump': '/images/trailers/belly-dump.jpg',
 }
 
@@ -96,7 +98,7 @@ export default function ServicesPage() {
 
       <section className="py-16 md:py-24 bg-gray-50">
         <Container>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {services.map((service) => {
               const specKeys = SPEC_PREVIEWS[service.slug] ?? Object.keys(service.specs).slice(0, 3)
               return (

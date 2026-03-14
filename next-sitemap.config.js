@@ -22,8 +22,10 @@ module.exports = {
       priority = 0.9
     } else if (path.startsWith('/blog')) {
       priority = 0.8
-    } else if (path === '/contact' || path === '/quote') {
+    } else if (path === '/contact' || path === '/quote' || path === '/credit-application') {
       priority = 0.8
+    } else if (path === '/for-sale') {
+      priority = 0.7
     }
     return {
       loc: path,

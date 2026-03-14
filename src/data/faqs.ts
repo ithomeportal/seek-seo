@@ -24,7 +24,7 @@ export const faqCategories: FAQCategory[] = [
       {
         question: 'How quickly can I get a trailer delivered?',
         answer:
-          'In many cases, we can arrange delivery within 24 to 48 hours depending on trailer availability and your location. For customers within the San Antonio metro area and Eagle Ford region, same-day delivery may be available. Contact us for current availability.',
+          'Equipment availability depends on current fleet utilization as well as receiving complete and accurate customer information so that credit can be processed without delays. In many cases, we can arrange same-day or next-day availability for in-stock units once all documentation is in order. Contact us for current availability on specific equipment types.',
       },
       {
         question: 'Do you offer pickup from your yard?',
@@ -43,6 +43,11 @@ export const faqCategories: FAQCategory[] = [
     slug: 'pricing',
     faqs: [
       {
+        question: 'What payment methods do you accept?',
+        answer:
+          'We accept ACH transfers and wire transfers. We do not accept credit cards or company checks. Payment terms are established as part of the lease agreement based on credit evaluation.',
+      },
+      {
         question: 'How much does it cost to rent a trailer?',
         answer:
           'Trailer rental rates vary by type, duration, and market conditions. Generally, longer lease terms offer lower per-day rates. Contact SEEK Equipment at 1-210-802-0000 or email sales@seekequipment.com for a personalized quote based on your specific needs.',
@@ -60,7 +65,12 @@ export const faqCategories: FAQCategory[] = [
       {
         question: 'Are delivery fees included in the rental price?',
         answer:
-          'Delivery and pickup fees are quoted separately based on the distance from our Von Ormy, TX yard to your location. For customers who pick up and return trailers to our yard, no delivery fees apply. We provide transparent delivery pricing upfront with your rental quote.',
+          'Delivery and pickup fees are quoted separately. We offer delivery and pickup services via power only units across all states in the continental United States. Delivery and pickup costs are at the expense of the client and will be quoted as part of your lease agreement.',
+      },
+      {
+        question: 'Are there any additional fees I should be aware of?',
+        answer:
+          'Potential additional charges may include delivery and pickup fees, cleaning fees for equipment returned in unsatisfactory condition, charges for damage beyond normal wear and tear, and toll charges which are directly billed to the customer. All potential fees are outlined in the lease agreement.',
       },
     ],
   },
@@ -71,7 +81,7 @@ export const faqCategories: FAQCategory[] = [
       {
         question: 'What types of trailers does SEEK Equipment offer?',
         answer:
-          'We offer five main trailer types: DryVan trailers for general freight and storage, Tanker trailers for liquid and chemical transport, Flatbed trailers for oversized loads and construction materials, Sand Chassis for oilfield frac sand operations, and Belly Dump trailers for aggregate and construction material hauling.',
+          'Our fleet includes six trailer types: DryVan trailers for general freight and storage, Tanker trailers for liquid and chemical transport, Flatbed trailers for oversized loads and construction materials, Sand Chassis for oilfield frac sand operations, Sand Hoppers for dry bulk material transport and discharge, and Belly Dump trailers for aggregate and construction material hauling. Each equipment type is maintained to industry standards and inspected before every rental.',
       },
       {
         question: 'How do I choose the right trailer type for my needs?',
@@ -81,7 +91,7 @@ export const faqCategories: FAQCategory[] = [
       {
         question: 'Do you have specialized trailers for oilfield operations?',
         answer:
-          'Yes, we specialize in oilfield equipment including sand chassis trailers designed for hauling frac sand containers. Our sand chassis are built for the demanding conditions of well sites and lease roads throughout the Permian Basin, Eagle Ford Shale, and other Texas oilfield regions.',
+          'Yes, we specialize in oilfield equipment including sand chassis trailers for hauling frac sand containers and sand hopper trailers for dry bulk material transport. Our equipment is built for the demanding conditions of well sites and lease roads throughout the Permian Basin, Eagle Ford Shale, Bakken Formation, Anadarko Basin, DJ Basin, Powder River Basin, Marcellus Shale, and other major operating regions.',
       },
       {
         question: 'Can I rent multiple trailer types at once?',

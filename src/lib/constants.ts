@@ -21,7 +21,7 @@ export const COMPANY = {
   },
   url: 'https://seekequipment.com',
   description:
-    'Trailer rental and leasing company with 250+ trailers including DryVan, Tanker, Flatbed, Sand Chassis, and Belly Dump trailers in Texas.',
+    'Trailer rental and leasing company with 250+ trailers including DryVan, Tanker, Flatbed, Sand Chassis, Sand Hopper, and Belly Dump trailers in Texas.',
   fleetSize: 250,
 } as const
 
@@ -36,9 +36,11 @@ export const NAV_ITEMS = [
       { label: 'Tanker Trailers', href: '/services/tanker' },
       { label: 'Flatbed Trailers', href: '/services/flatbed' },
       { label: 'Sand Chassis', href: '/services/sand-chassis' },
+      { label: 'Sand Hoppers', href: '/services/sand-hopper' },
       { label: 'Belly Dump Trailers', href: '/services/belly-dump' },
     ],
   },
+  { label: 'For Sale', href: '/for-sale' },
   { label: 'Blog', href: '/blog' },
   { label: 'FAQ', href: '/faq' },
   { label: 'Contact', href: '/contact' },

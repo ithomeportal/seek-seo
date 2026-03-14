@@ -19,6 +19,7 @@ export const quoteSchema = z.object({
     'tanker',
     'flatbed',
     'sand-chassis',
+    'sand-hopper',
     'belly-dump',
     'other',
   ]),
@@ -40,6 +41,16 @@ export const newsletterSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
 })
 
+export const creditApplicationSchema = z.object({
+  name: z.string().min(2, 'Contact name must be at least 2 characters'),
+  email: z.string().email('Please enter a valid email address'),
+  phone: z.string().min(10, 'Please enter a valid phone number'),
+  company: z.string().min(1, 'Company name is required'),
+  message: z.string().optional(),
+  honeypot: z.string().max(0).optional(),
+})
+
 export type ContactFormData = z.infer<typeof contactSchema>
 export type QuoteFormData = z.infer<typeof quoteSchema>
+export type CreditApplicationFormData = z.infer<typeof creditApplicationSchema>
 export type NewsletterFormData = z.infer<typeof newsletterSchema>
