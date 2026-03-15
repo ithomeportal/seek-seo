@@ -1,12 +1,11 @@
 import type { Metadata } from 'next'
-import Image from 'next/image'
 import { MapPin, Phone, Mail, Clock } from 'lucide-react'
 import { Container } from '@/components/ui/Container'
 import { SectionHeading } from '@/components/ui/SectionHeading'
 import { Card } from '@/components/ui/Card'
 import { ContactForm } from '@/components/forms/ContactForm'
 import { MapBox } from '@/components/ui/MapBox'
-import { Breadcrumbs } from '@/components/layout/Breadcrumbs'
+import { PageHero } from '@/components/layout/PageHero'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { COMPANY } from '@/lib/constants'
 
@@ -63,30 +62,14 @@ export default function ContactPage() {
     <>
       <JsonLd data={localBusinessSchema} />
 
-      {/* Hero */}
-      <section className="relative text-white py-16 md:py-24 overflow-hidden">
-        <Image
-          src="/images/gallery/shipping-delivery.jpg"
-          alt="Shipping and delivery"
-          fill
-          className="object-cover"
-          sizes="100vw"
-          priority
-        />
-        <div className="absolute inset-0 bg-brand-blue/85" />
-        <Container className="relative z-10">
-          <Breadcrumbs
-            items={[
-              { label: 'Home', href: '/' },
-              { label: 'Contact' },
-            ]}
-          />
-          <h1 className="text-4xl md:text-5xl font-bold mt-4">Contact Us</h1>
-          <p className="text-xl text-blue-100 mt-4 max-w-3xl">
-            Get in touch with our team for trailer rental quotes, questions, or to schedule a facility visit.
-          </p>
-        </Container>
-      </section>
+      <PageHero
+        title="Contact Us"
+        description="Get in touch with our team for trailer rental quotes, questions, or to schedule a facility visit."
+        breadcrumbs={[
+          { label: 'Home', href: '/' },
+          { label: 'Contact' },
+        ]}
+      />
 
       {/* Form + Contact Info */}
       <section className="py-16 md:py-20">

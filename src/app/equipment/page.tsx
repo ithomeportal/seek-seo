@@ -8,14 +8,14 @@ import { SectionHeading } from '@/components/ui/SectionHeading'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { Breadcrumbs } from '@/components/layout/Breadcrumbs'
+import { PageHero } from '@/components/layout/PageHero'
 import { JsonLd } from '@/components/seo/JsonLd'
 
 export const metadata: Metadata = {
-  title: 'Trailer Rental & Leasing Services | SEEK Equipment',
+  title: 'Trailer Rental & Leasing Equipment | SEEK Equipment',
   description:
     'Explore SEEK Equipment\'s full fleet of rental trailers: DryVan, Tanker, Flatbed, Sand Chassis, Sand Hopper, and Belly Dump trailers. Flexible short-term and long-term leasing in Texas. Call 1-210-802-0000.',
-  alternates: { canonical: '/services' },
+  alternates: { canonical: '/equipment' },
 }
 
 const SPEC_PREVIEWS: Record<string, string[]> = {
@@ -36,7 +36,7 @@ const SERVICE_IMAGES: Record<string, string> = {
   'belly-dump': '/images/trailers/belly-dump.jpg',
 }
 
-export default function ServicesPage() {
+export default function EquipmentPage() {
   const serviceSchemaData = {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
@@ -50,7 +50,7 @@ export default function ServicesPage() {
         '@type': 'Service',
         name: service.title,
         description: service.description,
-        url: `${COMPANY.url}/services/${service.slug}`,
+        url: `${COMPANY.url}/equipment/${service.slug}`,
         provider: {
           '@type': 'LocalBusiness',
           name: COMPANY.name,
@@ -63,38 +63,14 @@ export default function ServicesPage() {
     <>
       <JsonLd data={serviceSchemaData} />
 
-      <section className="relative py-16 md:py-20 overflow-hidden">
-        <Image
-          src="/images/about/chassis-yard.jpg"
-          alt="SEEK Equipment trailer yard"
-          fill
-          className="object-cover"
-          sizes="100vw"
-          priority
-        />
-        <div className="absolute inset-0 bg-brand-blue/85" />
-        <Container className="relative z-10">
-          <Breadcrumbs
-            items={[
-              { label: 'Home', href: '/' },
-              { label: 'Services' },
-            ]}
-          />
-          <div className="mt-6 max-w-3xl">
-            <h1 className="text-3xl md:text-5xl font-bold text-white">
-              Our Trailer Rental &amp; Leasing Services
-            </h1>
-            <p className="mt-6 text-lg text-blue-100 leading-relaxed">
-              SEEK Equipment operates a fleet of {COMPANY.fleetSize}+ commercial trailers out of{' '}
-              {COMPANY.address.city}, {COMPANY.address.state}. Whether you need a dry van for
-              general freight, a tanker for liquid transport, a flatbed for heavy equipment, a
-              sand chassis for oilfield operations, or a belly dump for construction aggregate
-              &mdash; we have the right trailer with flexible rental and leasing terms to fit
-              your schedule and budget.
-            </p>
-          </div>
-        </Container>
-      </section>
+      <PageHero
+        title="Our Trailer Rental & Leasing Equipment"
+        description={`SEEK Equipment operates a fleet of ${COMPANY.fleetSize}+ commercial trailers out of ${COMPANY.address.city}, ${COMPANY.address.state}. Whether you need a dry van for general freight, a tanker for liquid transport, a flatbed for heavy equipment, a sand chassis for oilfield operations, or a belly dump for construction aggregate — we have the right trailer with flexible rental and leasing terms.`}
+        breadcrumbs={[
+          { label: 'Home', href: '/' },
+          { label: 'Equipment' },
+        ]}
+      />
 
       <section className="py-16 md:py-24 bg-gray-50">
         <Container>
@@ -119,7 +95,7 @@ export default function ServicesPage() {
                   <div className="p-6 md:p-8">
                     <h3 className="text-xl font-bold text-gray-900">
                       <Link
-                        href={`/services/${service.slug}`}
+                        href={`/equipment/${service.slug}`}
                         className="hover:text-brand-blue transition-colors"
                       >
                         {service.title}
@@ -141,7 +117,7 @@ export default function ServicesPage() {
 
                     <div className="mt-6">
                       <Link
-                        href={`/services/${service.slug}`}
+                        href={`/equipment/${service.slug}`}
                         className="inline-flex items-center gap-2 font-semibold text-brand-orange hover:text-brand-orange-dark transition-colors"
                       >
                         View Details
@@ -210,33 +186,24 @@ export default function ServicesPage() {
         </Container>
       </section>
 
-      <section className="relative py-16 md:py-20 overflow-hidden">
-        <Image
-          src="/images/gallery/distribution-center.jpg"
-          alt="Distribution center operations"
-          fill
-          className="object-cover"
-          sizes="100vw"
-        />
-        <div className="absolute inset-0 bg-brand-blue/85" />
-        <Container className="relative z-10">
+      <section className="py-16 md:py-20 bg-brand-blue">
+        <Container>
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl md:text-4xl font-bold text-white">
               Need Help Choosing the Right Trailer?
             </h2>
             <p className="mt-4 text-lg text-blue-100">
               Not sure which trailer type fits your operation? Our team can help match you with the
-              right equipment based on your cargo, route, and budget. Get a free, no-obligation
-              quote today.
+              right equipment based on your cargo, route, and budget.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/quote">
-                <Button variant="primary" size="lg">
+                <Button variant="white" size="lg">
                   Get a Free Quote
                 </Button>
               </Link>
               <a href={COMPANY.phoneHref}>
-                <Button variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-brand-blue">
+                <Button variant="outline" size="lg" className="border-white/30 text-white hover:bg-white hover:text-brand-blue border">
                   Call {COMPANY.phone}
                 </Button>
               </a>

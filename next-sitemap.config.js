@@ -18,7 +18,7 @@ module.exports = {
     if (path === '/') {
       priority = 1.0
       changefreq = 'daily'
-    } else if (path.startsWith('/services')) {
+    } else if (path.startsWith('/equipment')) {
       priority = 0.9
     } else if (path.startsWith('/blog')) {
       priority = 0.8

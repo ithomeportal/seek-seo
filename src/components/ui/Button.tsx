@@ -2,7 +2,7 @@ import { forwardRef } from 'react'
 import { cn } from '@/lib/utils'
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost'
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'white'
   size?: 'sm' | 'md' | 'lg'
   asChild?: boolean
 }
@@ -15,6 +15,8 @@ const variantStyles: Record<NonNullable<ButtonProps['variant']>, string> = {
   outline:
     'border-2 border-brand-blue text-brand-blue hover:bg-brand-blue hover:text-white hover:-translate-y-0.5 active:translate-y-0',
   ghost: 'text-brand-blue hover:bg-brand-blue/5',
+  white:
+    'bg-white text-brand-blue shadow-lg hover:bg-gray-50 hover:-translate-y-0.5 active:translate-y-0',
 }
 
 const sizeStyles: Record<NonNullable<ButtonProps['size']>, string> = {

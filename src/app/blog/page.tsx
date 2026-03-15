@@ -1,8 +1,7 @@
 import type { Metadata } from 'next'
-import Image from 'next/image'
 import { Container } from '@/components/ui/Container'
 import { SectionHeading } from '@/components/ui/SectionHeading'
-import { Breadcrumbs } from '@/components/layout/Breadcrumbs'
+import { PageHero } from '@/components/layout/PageHero'
 import { BlogCard } from '@/components/blog/BlogCard'
 import { blogPosts } from '@/data/blog-posts'
 import { COMPANY } from '@/lib/constants'
@@ -24,33 +23,14 @@ export const metadata: Metadata = {
 export default function BlogPage() {
   return (
     <>
-      {/* Hero */}
-      <section className="relative text-white py-16 md:py-24 overflow-hidden">
-        <Image
-          src="/images/about/seek-tanker.jpg"
-          alt="SEEK Equipment tanker trailer"
-          fill
-          className="object-cover"
-          sizes="100vw"
-          priority
-        />
-        <div className="absolute inset-0 bg-brand-blue/85" />
-        <Container className="relative z-10">
-          <Breadcrumbs
-            items={[
-              { label: 'Home', href: '/' },
-              { label: 'Blog' },
-            ]}
-          />
-          <h1 className="text-4xl md:text-5xl font-bold mt-4">
-            Blog &amp; Resources
-          </h1>
-          <p className="text-xl md:text-2xl text-blue-100 mt-4 max-w-3xl">
-            Industry insights, equipment guides, and compliance tips to help you
-            make smarter decisions about trailer rental and fleet management.
-          </p>
-        </Container>
-      </section>
+      <PageHero
+        title="Blog & Resources"
+        description="Industry insights, equipment guides, and compliance tips to help you make smarter decisions about trailer rental and fleet management."
+        breadcrumbs={[
+          { label: 'Home', href: '/' },
+          { label: 'Blog' },
+        ]}
+      />
 
       {/* Blog Grid */}
       <section className="py-16 md:py-20">

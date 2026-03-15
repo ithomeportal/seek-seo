@@ -27,21 +27,19 @@ export function ServiceCards() {
           {services.map((service) => (
             <Link
               key={service.slug}
-              href={`/services/${service.slug}`}
-              className="group block bg-white rounded-2xl overflow-hidden border border-gray-100/80 shadow-sm hover:shadow-lg hover:shadow-gray-200/50 hover:-translate-y-1 transition-all duration-300 ease-out"
+              href={`/equipment/${service.slug}`}
+              className="group block bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ease-out"
             >
-              {/* Image with overlay */}
-              <div className="relative h-56 lg:h-85 overflow-hidden">
+              {/* Image */}
+              <div className="relative aspect-[16/10] overflow-hidden">
                 <Image
                   src={serviceImages[service.slug] ?? '/images/trailers/dryvan.jpg'}
                   alt={service.shortTitle}
                   fill
-                  className="object-cover transition-transform duration-500 group-hover:scale-110"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 20vw"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-gray-900/60 via-gray-900/10 to-transparent" />
-
-                {/* Floating title on image */}
                 <div className="absolute bottom-0 left-0 right-0 p-5">
                   <h3 className="text-xl font-bold text-white tracking-tight">
                     {service.shortTitle}
@@ -54,7 +52,6 @@ export function ServiceCards() {
                 <p className="text-sm text-gray-500 leading-relaxed">
                   {service.description}
                 </p>
-
                 <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-orange group-hover:gap-2.5 transition-all duration-300">
                   Learn More
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

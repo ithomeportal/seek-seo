@@ -19,15 +19,12 @@
     }
   ],
   "redirects": [
+    { "source": "/services", "destination": "/equipment", "permanent": true },
+    { "source": "/services/:slug", "destination": "/equipment/:slug", "permanent": true },
     { "source": "/industry-news", "destination": "/blog", "permanent": true },
     { "source": "/industry-news/:slug*", "destination": "/blog", "permanent": true },
     { "source": "/contact-us", "destination": "/contact", "permanent": true },
     { "source": "/faqs", "destination": "/faq", "permanent": true },
-    { "source": "/services/dry-van", "destination": "/services/dryvan", "permanent": true },
-    { "source": "/services/construction", "destination": "/services/tanker", "permanent": true },
-    { "source": "/services/energy-plants", "destination": "/services/flatbed", "permanent": true },
-    { "source": "/services/ai-robotics", "destination": "/services/sand-chassis", "permanent": true },
-    { "source": "/services/belly-dump-trailers", "destination": "/services/belly-dump", "permanent": true },
     { "source": "/about-us", "destination": "/about", "permanent": true },
     { "source": "/sample-page", "destination": "/", "permanent": true },
     { "source": "/feed", "destination": "/blog", "permanent": true },

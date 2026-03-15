@@ -1,11 +1,10 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import { Container } from '@/components/ui/Container'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { Breadcrumbs } from '@/components/layout/Breadcrumbs'
+import { PageHero } from '@/components/layout/PageHero'
 import { BlogCard } from '@/components/blog/BlogCard'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { COMPANY } from '@/lib/constants'
@@ -113,37 +112,22 @@ export default async function BlogPostPage({ params }: PageProps) {
     <>
       <JsonLd data={articleSchema} />
 
-      {/* Hero */}
-      <section className="relative text-white py-16 md:py-24 overflow-hidden">
-        <Image
-          src="/images/gallery/trailers-loading.jpg"
-          alt="Trailers at loading dock"
-          fill
-          className="object-cover"
-          sizes="100vw"
-          priority
-        />
-        <div className="absolute inset-0 bg-brand-blue/85" />
-        <Container className="relative z-10">
-          <Breadcrumbs
-            items={[
-              { label: 'Home', href: '/' },
-              { label: 'Blog', href: '/blog' },
-              { label: post.title },
-            ]}
-          />
-          <h1 className="text-3xl md:text-5xl font-bold mt-4 max-w-4xl">
-            {post.title}
-          </h1>
-          <div className="mt-6 flex flex-wrap items-center gap-4">
-            <Badge variant="orange">{post.category}</Badge>
-            <span className="text-blue-100">{post.author}</span>
-            <time dateTime={post.date} className="text-blue-200">
-              {formatDate(post.date)}
-            </time>
-          </div>
-        </Container>
-      </section>
+      <PageHero
+        title={post.title}
+        breadcrumbs={[
+          { label: 'Home', href: '/' },
+          { label: 'Blog', href: '/blog' },
+          { label: post.title },
+        ]}
+      >
+        <div className="mt-6 flex flex-wrap items-center gap-4">
+          <Badge variant="orange">{post.category}</Badge>
+          <span className="text-blue-100">{post.author}</span>
+          <time dateTime={post.date} className="text-blue-200">
+            {formatDate(post.date)}
+          </time>
+        </div>
+      </PageHero>
 
       {/* Article Content */}
       <section className="py-16 md:py-20">
@@ -185,16 +169,8 @@ export default async function BlogPostPage({ params }: PageProps) {
       )}
 
       {/* CTA */}
-      <section className="relative py-16 md:py-20 text-white overflow-hidden">
-        <Image
-          src="/images/gallery/shipping-delivery.jpg"
-          alt="Shipping and delivery operations"
-          fill
-          className="object-cover"
-          sizes="100vw"
-        />
-        <div className="absolute inset-0 bg-brand-blue/85" />
-        <Container className="relative z-10">
+      <section className="py-16 md:py-20 text-white bg-brand-blue">
+        <Container>
           <div className="text-center max-w-3xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold">
               Need a Trailer Rental?

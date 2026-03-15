@@ -1,11 +1,10 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import Image from 'next/image'
 import { Container } from '@/components/ui/Container'
 import { SectionHeading } from '@/components/ui/SectionHeading'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Breadcrumbs } from '@/components/layout/Breadcrumbs'
+import { PageHero } from '@/components/layout/PageHero'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { COMPANY } from '@/lib/constants'
 
@@ -108,32 +107,14 @@ export default function AboutPage() {
     <>
       <JsonLd data={organizationSchema} />
 
-      {/* Hero */}
-      <section className="relative text-white py-16 md:py-24 overflow-hidden">
-        <Image
-          src="/images/about/seek-tanker.jpg"
-          alt="SEEK Equipment tanker trailer"
-          fill
-          className="object-cover"
-          sizes="100vw"
-          priority
-        />
-        <div className="absolute inset-0 bg-brand-blue/85" />
-        <Container className="relative z-10">
-          <Breadcrumbs
-            items={[
-              { label: 'Home', href: '/' },
-              { label: 'About' },
-            ]}
-          />
-          <h1 className="text-4xl md:text-5xl font-bold mt-4">
-            About SEEK Equipment
-          </h1>
-          <p className="text-xl md:text-2xl text-blue-100 mt-4 max-w-3xl">
-            Your trusted partner for trailer rental and leasing in Texas
-          </p>
-        </Container>
-      </section>
+      <PageHero
+        title="About SEEK Equipment"
+        description="Your trusted partner for trailer rental and leasing in Texas"
+        breadcrumbs={[
+          { label: 'Home', href: '/' },
+          { label: 'About' },
+        ]}
+      />
 
       {/* Our Story / Mission / Strategy 2030 — 3-column grid */}
       <section className="py-16 md:py-24">
@@ -229,16 +210,8 @@ export default function AboutPage() {
       </section>
 
       {/* Service Areas */}
-      <section className="relative py-16 md:py-20 overflow-hidden">
-        <Image
-          src="/images/gallery/trailers-loading.jpg"
-          alt="Trailers at loading dock"
-          fill
-          className="object-cover"
-          sizes="100vw"
-        />
-        <div className="absolute inset-0 bg-brand-blue/90" />
-        <Container className="relative z-10">
+      <section className="py-16 md:py-20 bg-brand-blue">
+        <Container>
           <SectionHeading
             title="Service Areas"
             subtitle="Serving key regions across Texas with reliable trailer rental and leasing"
@@ -281,16 +254,8 @@ export default function AboutPage() {
       </section>
 
       {/* CTA */}
-      <section className="relative py-16 md:py-20 text-white overflow-hidden">
-        <Image
-          src="/images/gallery/shipping-delivery.jpg"
-          alt="Shipping and delivery operations"
-          fill
-          className="object-cover"
-          sizes="100vw"
-        />
-        <div className="absolute inset-0 bg-brand-blue/85" />
-        <Container className="relative z-10">
+      <section className="py-16 md:py-20 bg-brand-blue text-white">
+        <Container>
           <div className="text-center max-w-3xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold">
               Ready to Work With Us?
@@ -301,12 +266,12 @@ export default function AboutPage() {
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/contact">
-                <Button variant="primary" size="lg">
+                <Button variant="white" size="lg">
                   Contact Us
                 </Button>
               </Link>
               <Link href="/quote">
-                <Button variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-brand-blue">
+                <Button variant="outline" size="lg" className="border-white/30 text-white hover:bg-white hover:text-brand-blue border">
                   Request a Quote
                 </Button>
               </Link>

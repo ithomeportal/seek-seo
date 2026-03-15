@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { CheckCircle2 } from 'lucide-react'
 import { quoteSchema, type QuoteFormData } from '@/lib/validators'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
@@ -103,6 +104,23 @@ export function QuoteForm() {
 
   const selectClasses =
     'w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 bg-white focus:border-brand-blue focus:ring-2 focus:ring-brand-blue focus:outline-none transition-colors'
+
+  if (status === 'success') {
+    return (
+      <div className="text-center py-16">
+        <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto" />
+        <h3 className="mt-6 text-2xl font-bold text-gray-900">Quote Requested!</h3>
+        <p className="mt-2 text-gray-600">Thank you! We will prepare your quote and get back to you within 24 hours.</p>
+        <button
+          type="button"
+          onClick={() => { setStatus('idle'); setServerMessage('') }}
+          className="mt-6 text-brand-blue font-semibold hover:text-brand-blue-dark transition-colors"
+        >
+          Send Another Request
+        </button>
+      </div>
+    )
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6" noValidate>
@@ -270,13 +288,8 @@ export function QuoteForm() {
         />
       </div>
 
-      {serverMessage && (
-        <div
-          className={cn(
-            'rounded-lg px-4 py-3 text-sm font-medium',
-            status === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
-          )}
-        >
+      {serverMessage && status === 'error' && (
+        <div className="rounded-lg px-4 py-3 text-sm font-medium bg-red-50 text-red-800">
           {serverMessage}
         </div>
       )}

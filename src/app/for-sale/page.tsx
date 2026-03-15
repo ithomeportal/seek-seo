@@ -1,10 +1,9 @@
 import type { Metadata } from 'next'
-import Image from 'next/image'
 import Link from 'next/link'
 import { Phone, Tag } from 'lucide-react'
 import { Container } from '@/components/ui/Container'
 import { Button } from '@/components/ui/Button'
-import { Breadcrumbs } from '@/components/layout/Breadcrumbs'
+import { PageHero } from '@/components/layout/PageHero'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { COMPANY } from '@/lib/constants'
 
@@ -41,34 +40,14 @@ export default function ForSalePage() {
     <>
       <JsonLd data={pageSchema} />
 
-      {/* Hero */}
-      <section className="relative text-white py-16 md:py-24 overflow-hidden">
-        <Image
-          src="/images/about/chassis-yard.jpg"
-          alt="SEEK Equipment trailer yard"
-          fill
-          className="object-cover"
-          sizes="100vw"
-          priority
-        />
-        <div className="absolute inset-0 bg-brand-blue/85" />
-        <Container className="relative z-10">
-          <Breadcrumbs
-            items={[
-              { label: 'Home', href: '/' },
-              { label: 'Equipment for Sale' },
-            ]}
-          />
-          <h1 className="text-4xl md:text-5xl font-bold mt-4">
-            Equipment for Sale
-          </h1>
-          <p className="text-xl text-blue-100 mt-4 max-w-3xl">
-            Select units from our fleet are available for purchase. Each unit has
-            been professionally maintained and inspected. Contact us for pricing
-            details and availability.
-          </p>
-        </Container>
-      </section>
+      <PageHero
+        title="Equipment for Sale"
+        description="Select units from our fleet are available for purchase. Each unit has been professionally maintained and inspected. Contact us for pricing details and availability."
+        breadcrumbs={[
+          { label: 'Home', href: '/' },
+          { label: 'Equipment for Sale' },
+        ]}
+      />
 
       {/* Content */}
       <section className="py-16 md:py-24">
@@ -100,16 +79,8 @@ export default function ForSalePage() {
       </section>
 
       {/* CTA */}
-      <section className="relative py-16 md:py-20 overflow-hidden">
-        <Image
-          src="/images/gallery/distribution-center.jpg"
-          alt="Distribution center"
-          fill
-          className="object-cover"
-          sizes="100vw"
-        />
-        <div className="absolute inset-0 bg-brand-blue/85" />
-        <Container className="relative z-10">
+      <section className="py-16 md:py-20 bg-brand-blue">
+        <Container>
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl md:text-4xl font-bold text-white">
               Looking to Lease Instead?
@@ -124,7 +95,7 @@ export default function ForSalePage() {
                   Get a Free Quote
                 </Button>
               </Link>
-              <Link href="/services">
+              <Link href="/equipment">
                 <Button
                   variant="outline"
                   size="lg"

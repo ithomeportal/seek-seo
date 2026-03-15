@@ -1,11 +1,10 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import Image from 'next/image'
 import { Container } from '@/components/ui/Container'
 import { SectionHeading } from '@/components/ui/SectionHeading'
 import { Accordion } from '@/components/ui/Accordion'
 import { Button } from '@/components/ui/Button'
-import { Breadcrumbs } from '@/components/layout/Breadcrumbs'
+import { PageHero } from '@/components/layout/PageHero'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { faqCategories, getAllFaqs } from '@/data/faqs'
 import { COMPANY } from '@/lib/constants'
@@ -44,32 +43,14 @@ export default function FaqPage() {
     <>
       <JsonLd data={faqPageSchema} />
 
-      {/* Hero */}
-      <section className="relative text-white py-16 md:py-24 overflow-hidden">
-        <Image
-          src="/images/gallery/distribution-center.jpg"
-          alt="Distribution center"
-          fill
-          className="object-cover"
-          sizes="100vw"
-          priority
-        />
-        <div className="absolute inset-0 bg-brand-blue/85" />
-        <Container className="relative z-10">
-          <Breadcrumbs
-            items={[
-              { label: 'Home', href: '/' },
-              { label: 'FAQ' },
-            ]}
-          />
-          <h1 className="text-4xl md:text-5xl font-bold mt-4">
-            Frequently Asked Questions
-          </h1>
-          <p className="text-xl text-blue-100 mt-4 max-w-3xl">
-            Everything you need to know about renting and leasing trailers from SEEK Equipment.
-          </p>
-        </Container>
-      </section>
+      <PageHero
+        title="Frequently Asked Questions"
+        description="Everything you need to know about renting and leasing trailers from SEEK Equipment."
+        breadcrumbs={[
+          { label: 'Home', href: '/' },
+          { label: 'FAQ' },
+        ]}
+      />
 
       {/* Intro */}
       <section className="py-16 md:py-20">

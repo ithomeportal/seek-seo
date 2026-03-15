@@ -5,17 +5,9 @@ import { COMPANY } from '@/lib/constants'
 
 export function CTABanner() {
   return (
-    <section className="py-24 bg-gradient-to-br from-brand-orange via-brand-orange to-[#d44a14]">
+    <section className="py-16 bg-brand-blue">
       <Container>
         <div className="text-center max-w-2xl mx-auto">
-          <div className="flex items-center justify-center gap-3 mb-6">
-            <div className="w-8 h-px bg-white/40" />
-            <p className="text-white/70 text-xs font-semibold tracking-[0.2em] uppercase">
-              Get Started Today
-            </p>
-            <div className="w-8 h-px bg-white/40" />
-          </div>
-
           <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
             Ready to Get Moving?
           </h2>
@@ -27,11 +19,7 @@ export function CTABanner() {
 
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link href="/quote">
-              <Button
-                variant="ghost"
-                size="lg"
-                className="bg-white !text-brand-orange font-bold shadow-xl shadow-black/10 hover:bg-gray-50 hover:shadow-2xl"
-              >
+              <Button variant="white" size="lg">
                 Request a Quote
               </Button>
             </Link>
@@ -39,7 +27,7 @@ export function CTABanner() {
               <Button
                 variant="outline"
                 size="lg"
-                className="border-white/30 text-white hover:bg-white hover:text-brand-orange border"
+                className="border-white/30 text-white hover:bg-white hover:text-brand-blue border"
               >
                 Call {COMPANY.phone}
               </Button>

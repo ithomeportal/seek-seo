@@ -97,7 +97,7 @@ export function LocalBusinessSchema() {
           itemOffered: {
             '@type': 'Service',
             name: 'Dry Van Trailer Rental & Leasing',
-            url: `${COMPANY.url}/services/dryvan`,
+            url: `${COMPANY.url}/equipment/dryvan`,
           },
         },
         {
@@ -105,7 +105,7 @@ export function LocalBusinessSchema() {
           itemOffered: {
             '@type': 'Service',
             name: 'Tanker Trailer Rental & Leasing',
-            url: `${COMPANY.url}/services/tanker`,
+            url: `${COMPANY.url}/equipment/tanker`,
           },
         },
         {
@@ -113,7 +113,7 @@ export function LocalBusinessSchema() {
           itemOffered: {
             '@type': 'Service',
             name: 'Flatbed Trailer Rental & Leasing',
-            url: `${COMPANY.url}/services/flatbed`,
+            url: `${COMPANY.url}/equipment/flatbed`,
           },
         },
         {
@@ -121,7 +121,7 @@ export function LocalBusinessSchema() {
           itemOffered: {
             '@type': 'Service',
             name: 'Sand Chassis Trailer Rental & Leasing',
-            url: `${COMPANY.url}/services/sand-chassis`,
+            url: `${COMPANY.url}/equipment/sand-chassis`,
           },
         },
         {
@@ -129,7 +129,7 @@ export function LocalBusinessSchema() {
           itemOffered: {
             '@type': 'Service',
             name: 'Belly Dump Trailer Rental & Leasing',
-            url: `${COMPANY.url}/services/belly-dump`,
+            url: `${COMPANY.url}/equipment/belly-dump`,
           },
         },
       ],

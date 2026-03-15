@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
+import { TopCTABar } from '@/components/home/TopCTABar'
 import { HeroSection } from '@/components/home/HeroSection'
-import { ServiceCards } from '@/components/home/ServiceCards'
 import { ValuePropositions } from '@/components/home/ValuePropositions'
+import { ServiceCards } from '@/components/home/ServiceCards'
 import { CargoSection } from '@/components/home/CargoSection'
-import { FleetStats } from '@/components/home/FleetStats'
 import { CTABanner } from '@/components/home/CTABanner'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { COMPANY } from '@/lib/constants'
@@ -67,11 +67,11 @@ export default function HomePage() {
   return (
     <>
       <JsonLd data={faqJsonLd} />
+      <TopCTABar />
       <HeroSection />
-      <ServiceCards />
       <ValuePropositions />
+      <ServiceCards />
       <CargoSection />
-      <FleetStats />
       <CTABanner />
     </>
   )

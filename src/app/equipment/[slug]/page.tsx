@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { SpecTable } from '@/components/ui/SpecTable'
 import { Accordion } from '@/components/ui/Accordion'
-import { Breadcrumbs } from '@/components/layout/Breadcrumbs'
+import { PageHero } from '@/components/layout/PageHero'
 import { JsonLd } from '@/components/seo/JsonLd'
 
 interface PageProps {
@@ -31,12 +31,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: service.metaTitle,
     description: service.metaDescription,
     alternates: {
-      canonical: `${COMPANY.url}/services/${slug}`,
+      canonical: `${COMPANY.url}/equipment/${slug}`,
     },
     openGraph: {
       title: service.metaTitle,
       description: service.metaDescription,
-      url: `${COMPANY.url}/services/${slug}`,
+      url: `${COMPANY.url}/equipment/${slug}`,
       siteName: COMPANY.name,
       type: 'website',
     },
@@ -233,7 +233,7 @@ export default async function ServicePage({ params }: PageProps) {
     '@type': 'Service',
     name: service.title,
     description: service.description,
-    url: `${COMPANY.url}/services/${slug}`,
+    url: `${COMPANY.url}/equipment/${slug}`,
     provider: {
       '@type': 'LocalBusiness',
       name: COMPANY.name,
@@ -272,51 +272,32 @@ export default async function ServicePage({ params }: PageProps) {
       <JsonLd data={faqSchema} />
 
       {/* Hero Section */}
-      <section className="relative py-16 md:py-20 overflow-hidden">
-        <Image
-          src={serviceImages[slug] ?? '/images/trailers/dryvan.jpg'}
-          alt={service.shortTitle}
-          fill
-          className="object-cover"
-          priority
-          sizes="100vw"
-        />
-        <div className="absolute inset-0 bg-brand-blue/80" />
-        <Container className="relative z-10">
-          <Breadcrumbs
-            items={[
-              { label: 'Home', href: '/' },
-              { label: 'Services', href: '/services' },
-              { label: service.shortTitle },
-            ]}
-          />
-          <div className="mt-6 max-w-3xl">
-            <Badge variant="orange">Rental &amp; Leasing</Badge>
-            <h1 className="mt-4 text-3xl md:text-5xl font-bold text-white leading-tight">
-              {service.title}
-            </h1>
-            <p className="mt-6 text-lg text-blue-100 leading-relaxed">
-              {service.heroDescription}
-            </p>
-            <div className="mt-8 flex flex-col sm:flex-row gap-4">
-              <Link href="/quote">
-                <Button variant="primary" size="lg">
-                  Get a Free Quote
-                </Button>
-              </Link>
-              <a href={COMPANY.phoneHref}>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="border-white text-white hover:bg-white hover:text-brand-blue"
-                >
-                  Call {COMPANY.phone}
-                </Button>
-              </a>
-            </div>
-          </div>
-        </Container>
-      </section>
+      <PageHero
+        title={service.title}
+        description={service.heroDescription}
+        breadcrumbs={[
+          { label: 'Home', href: '/' },
+          { label: 'Equipment', href: '/equipment' },
+          { label: service.shortTitle },
+        ]}
+      >
+        <div className="mt-8 flex flex-col sm:flex-row gap-4">
+          <Link href="/quote">
+            <Button variant="white" size="lg">
+              Get a Free Quote
+            </Button>
+          </Link>
+          <a href={COMPANY.phoneHref}>
+            <Button
+              variant="outline"
+              size="lg"
+              className="border-white/30 text-white hover:bg-white hover:text-brand-blue border"
+            >
+              Call {COMPANY.phone}
+            </Button>
+          </a>
+        </div>
+      </PageHero>
 
       {/* Features Section */}
       <section className="py-16 md:py-24 bg-white">
@@ -411,7 +392,7 @@ export default async function ServicePage({ params }: PageProps) {
             subtitle="SEEK Equipment offers a full fleet of commercial trailers for every hauling need."
             centered
           />
-          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
             {relatedServices.map((related) => (
               <Card key={related.slug} hover>
                 <div className="relative h-32 overflow-hidden">
@@ -426,7 +407,7 @@ export default async function ServicePage({ params }: PageProps) {
                 <div className="p-5">
                   <h3 className="font-bold text-gray-900 mb-2">
                     <Link
-                      href={`/services/${related.slug}`}
+                      href={`/equipment/${related.slug}`}
                       className="hover:text-brand-blue transition-colors"
                     >
                       {related.shortTitle}
@@ -436,7 +417,7 @@ export default async function ServicePage({ params }: PageProps) {
                     {related.heroDescription}
                   </p>
                   <Link
-                    href={`/services/${related.slug}`}
+                    href={`/equipment/${related.slug}`}
                     className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-brand-orange hover:text-brand-orange-dark transition-colors"
                   >
                     Learn more
@@ -452,16 +433,8 @@ export default async function ServicePage({ params }: PageProps) {
       </section>
 
       {/* CTA Section */}
-      <section className="relative py-16 md:py-20 overflow-hidden">
-        <Image
-          src="/images/gallery/distribution-center.jpg"
-          alt="Distribution center operations"
-          fill
-          className="object-cover"
-          sizes="100vw"
-        />
-        <div className="absolute inset-0 bg-brand-blue/85" />
-        <Container className="relative z-10">
+      <section className="py-16 md:py-20 bg-brand-blue">
+        <Container>
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl md:text-4xl font-bold text-white">
               Ready to Rent a {service.shortTitle.replace(' Trailers', '').replace(' Trailer', '')} Trailer?
