@@ -1,17 +1,47 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Lock, AlertCircle } from 'lucide-react'
+import { Lock, AlertCircle, Loader2 } from 'lucide-react'
 
 export default function AdminLoginPage() {
+  const router = useRouter()
   const [code, setCode] = useState('')
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setError('Management portal is coming soon.')
+    if (!code.trim()) {
+      setError('Please enter an access code.')
+      return
+    }
+
+    setSubmitting(true)
+    setError('')
+
+    try {
+      const res = await fetch('/api/admin/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      })
+
+      const json = await res.json()
+
+      if (json.valid) {
+        sessionStorage.setItem('seek_admin_code', code)
+        router.push('/admin/dashboard')
+      } else {
+        setError('Invalid access code. Please try again.')
+      }
+    } catch {
+      setError('Unable to verify. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -61,14 +91,17 @@ export default function AdminLoginPage() {
               placeholder="Enter access code"
               className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-center text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue"
               autoFocus
+              disabled={submitting}
             />
           </div>
 
           <button
             type="submit"
-            className="w-full bg-brand-blue hover:bg-brand-blue-dark text-white font-semibold py-3 rounded-lg transition-colors text-base"
+            disabled={submitting}
+            className="w-full bg-brand-blue hover:bg-brand-blue-dark text-white font-semibold py-3 rounded-lg transition-colors text-base disabled:opacity-60 flex items-center justify-center gap-2"
           >
-            Access Portal
+            {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+            {submitting ? 'Verifying...' : 'Access Portal'}
           </button>
 
           <p className="text-center text-xs text-gray-500 mt-4">
