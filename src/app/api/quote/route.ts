@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { quoteSchema } from '@/lib/validators'
+import { query } from '@/lib/db'
 
 export async function POST(request: Request) {
   try {
@@ -11,10 +12,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true }) // silently ignore spam
     }
 
+    // Save to database
+    await query(
+      `INSERT INTO contact_submissions (name, email, phone, company, message, type, trailer_type, quantity, duration, start_date)
+       VALUES ($1, $2, $3, $4, $5, 'quote', $6, $7, $8, $9)`,
+      [
+        data.name,
+        data.email,
+        data.phone,
+        data.company,
+        data.details ?? null,
+        data.trailerType,
+        data.quantity,
+        data.duration,
+        data.startDate ?? null,
+      ]
+    )
+
     // TODO: Integrate with email service (Resend)
-    // For now, log and return success
-    // eslint-disable-next-line no-console
-    console.log('Quote form submission:', data)
 
     return NextResponse.json({
       success: true,

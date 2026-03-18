@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { contactSchema } from '@/lib/validators'
+import { query } from '@/lib/db'
 
 export async function POST(request: Request) {
   try {
@@ -11,10 +12,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true }) // silently ignore spam
     }
 
+    // Save to database
+    await query(
+      `INSERT INTO contact_submissions (name, email, phone, company, message, type)
+       VALUES ($1, $2, $3, $4, $5, 'contact')`,
+      [data.name, data.email, data.phone ?? null, data.company ?? null, data.message]
+    )
+
     // TODO: Integrate with email service (Resend)
-    // For now, log and return success
-    // eslint-disable-next-line no-console
-    console.log('Contact form submission:', data)
 
     return NextResponse.json({
       success: true,

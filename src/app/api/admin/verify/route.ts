@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { verifyAdminCode } from '@/data/demo-data'
+import { query } from '@/lib/db'
 
 export async function POST(request: Request) {
   try {
@@ -10,9 +10,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ valid: false }, { status: 400 })
     }
 
-    const valid = verifyAdminCode(code)
-    return NextResponse.json({ valid })
+    const result = await query(
+      'SELECT id FROM admin_access_codes WHERE code = $1 AND is_active = true',
+      [code]
+    )
+    return NextResponse.json({ valid: result.rows.length > 0 })
   } catch {
-    return NextResponse.json({ valid: false }, { status: 400 })
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }
