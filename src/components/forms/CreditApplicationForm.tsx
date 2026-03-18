@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, Send } from 'lucide-react'
 import {
   creditApplicationSchema,
   type CreditApplicationFormData,
@@ -248,7 +248,14 @@ export function CreditApplicationForm() {
         size="lg"
         disabled={status === 'submitting'}
       >
-        {status === 'submitting' ? 'Submitting...' : 'Submit Application'}
+        {status === 'submitting' ? (
+          'Submitting...'
+        ) : (
+          <>
+            <Send className="w-4 h-4 mr-2" />
+            Submit Application
+          </>
+        )}
       </Button>
     </form>
   )

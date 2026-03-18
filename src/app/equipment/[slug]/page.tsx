@@ -1,6 +1,7 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
+import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react'
 import { notFound } from 'next/navigation'
 import { getServiceBySlug, getAllServiceSlugs, services } from '@/data/services'
 import { COMPANY } from '@/lib/constants'
@@ -8,10 +9,8 @@ import { Container } from '@/components/ui/Container'
 import { SectionHeading } from '@/components/ui/SectionHeading'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
 import { SpecTable } from '@/components/ui/SpecTable'
 import { Accordion } from '@/components/ui/Accordion'
-import { PageHero } from '@/components/layout/PageHero'
 import { JsonLd } from '@/components/seo/JsonLd'
 
 interface PageProps {
@@ -197,26 +196,21 @@ const USE_CASES: Record<string, { heading: string; items: { title: string; descr
 }
 
 const serviceImages: Record<string, string> = {
-  dryvan: '/images/trailers/dryvan.jpg',
-  tanker: '/images/trailers/tanker.jpg',
-  flatbed: '/images/trailers/flatbed.jpg',
-  'sand-chassis': '/images/trailers/sand-chassis.jpg',
-  'sand-hopper': '/images/trailers/sand-chassis.jpg',
-  'belly-dump': '/images/trailers/belly-dump.jpg',
+  dryvan: '/images/trailers/dry-van-stock.jpg',
+  tanker: '/images/trailers/tank-trailer-wellsite.png',
+  flatbed: '/images/trailers/flatbed-stock.jpg',
+  'sand-chassis': '/images/trailers/sand-chassis-stock.jpg',
+  'sand-hopper': '/images/trailers/sand-hopper-wellsite.png',
+  'belly-dump': '/images/trailers/belly-dump-seek.png',
 }
 
-function CheckIcon() {
-  return (
-    <svg
-      className="w-5 h-5 text-brand-orange flex-shrink-0 mt-0.5"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2.5}
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-    </svg>
-  )
+const APPLICATIONS: Record<string, string[]> = {
+  dryvan: ['General Freight', 'Retail Distribution', 'E-Commerce', 'Temporary Storage', 'Consumer Goods'],
+  tanker: ['Petroleum Transport', 'Chemical Hauling', 'Oilfield Water', 'Food-Grade Liquids', 'Fuel Distribution'],
+  flatbed: ['Construction Materials', 'Heavy Equipment', 'Oilfield Tubulars', 'Oversized Loads', 'Steel & Lumber'],
+  'sand-chassis': ['Hydraulic Fracturing', 'Proppant Transport', 'ISO Containers', 'Sand Logistics', 'Oilfield Operations'],
+  'sand-hopper': ['Frac Sand Delivery', 'Cement Transport', 'Fly Ash Hauling', 'Dry Bulk Materials', 'Oilfield Proppant'],
+  'belly-dump': ['Road Construction', 'Site Development', 'Aggregate Hauling', 'Earthwork', 'Pipeline Construction'],
 }
 
 export default async function ServicePage({ params }: PageProps) {
@@ -226,6 +220,7 @@ export default async function ServicePage({ params }: PageProps) {
   if (!service) notFound()
 
   const useCases = USE_CASES[slug]
+  const applications = APPLICATIONS[slug] ?? []
   const relatedServices = services.filter((s) => s.slug !== slug)
 
   const serviceSchema = {
@@ -271,55 +266,110 @@ export default async function ServicePage({ params }: PageProps) {
       <JsonLd data={serviceSchema} />
       <JsonLd data={faqSchema} />
 
-      {/* Hero Section */}
-      <PageHero
-        title={service.title}
-        description={service.heroDescription}
-        breadcrumbs={[
-          { label: 'Home', href: '/' },
-          { label: 'Equipment', href: '/equipment' },
-          { label: service.shortTitle },
-        ]}
-      >
-        <div className="mt-8 flex flex-col sm:flex-row gap-4">
-          <Link href="/quote">
-            <Button variant="white" size="lg">
-              Get a Free Quote
-            </Button>
-          </Link>
-          <a href={COMPANY.phoneHref}>
-            <Button
-              variant="outline"
-              size="lg"
-              className="border-white/30 text-white hover:bg-white hover:text-brand-blue border"
+      {/* Hero Section - gradient with faded background image */}
+      <section className="relative bg-gradient-to-br from-brand-blue to-brand-blue/90 text-white py-16 overflow-hidden">
+        <div
+          className="absolute inset-0 opacity-10 bg-cover bg-center"
+          style={{ backgroundImage: `url(${serviceImages[slug] ?? '/images/trailers/dry-van-stock.jpg'})` }}
+        />
+        <div className="relative z-10">
+          <Container>
+            <Link
+              href="/equipment"
+              className="inline-flex items-center gap-2 text-blue-200 hover:text-white transition-colors text-sm mb-6"
             >
-              Call {COMPANY.phone}
-            </Button>
-          </a>
+              <ArrowLeft className="w-4 h-4" />
+              Back to Equipment
+            </Link>
+            <div className="max-w-3xl">
+              <h1 className="text-4xl md:text-5xl font-bold">{service.title}</h1>
+              <p className="text-xl text-blue-100 mt-4">{service.heroDescription}</p>
+            </div>
+          </Container>
         </div>
-      </PageHero>
+      </section>
 
-      {/* Features Section */}
+      {/* Main Content - 2-column layout */}
       <section className="py-16 md:py-24 bg-white">
         <Container>
-          <div className="max-w-4xl">
-            <SectionHeading
-              title={`${service.shortTitle} Features`}
-              subtitle={`Every ${service.shortTitle.toLowerCase()} trailer in our fleet is DOT inspected, GPS tracked, and comes equipped with the features you need.`}
-            />
-            <ul className="mt-10 grid gap-4 sm:grid-cols-2">
-              {service.features.map((feature) => (
-                <li key={feature} className="flex items-start gap-3">
-                  <CheckIcon />
-                  <span className="text-gray-700">{feature}</span>
-                </li>
-              ))}
-            </ul>
+          <div className="grid gap-12 lg:grid-cols-2">
+            {/* LEFT - Equipment Image */}
+            <div className="relative aspect-[4/3] overflow-hidden rounded-xl shadow-lg">
+              <Image
+                src={serviceImages[slug] ?? '/images/trailers/dry-van-stock.jpg'}
+                alt={service.shortTitle}
+                fill
+                className="object-cover"
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                priority
+              />
+            </div>
+
+            {/* RIGHT - Details */}
+            <div className="flex flex-col">
+              {/* Overview */}
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Overview</h2>
+                <p className="mt-4 text-gray-600 leading-relaxed">{service.description}</p>
+              </div>
+
+              {/* Key Features */}
+              <div className="mt-8">
+                <h3 className="text-lg font-bold text-gray-900">Key Features</h3>
+                <ul className="mt-4 space-y-3">
+                  {service.features.map((feature) => (
+                    <li key={feature} className="flex items-start gap-3">
+                      <CheckCircle2 className="w-5 h-5 text-brand-blue flex-shrink-0 mt-0.5" />
+                      <span className="text-gray-700">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Applications */}
+              {applications.length > 0 && (
+                <div className="mt-8">
+                  <h3 className="text-lg font-bold text-gray-900">Applications</h3>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {applications.map((app) => (
+                      <span
+                        key={app}
+                        className="px-3 py-1.5 bg-brand-blue/10 text-brand-blue rounded-full text-sm font-medium"
+                      >
+                        {app}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* CTA Box */}
+              <div className="mt-8 bg-gray-100 rounded-xl p-6">
+                <h3 className="text-lg font-bold text-gray-900">
+                  Interested in renting or leasing?
+                </h3>
+                <p className="mt-2 text-gray-600 text-sm">
+                  Get a no-obligation quote or call us directly for availability and pricing.
+                </p>
+                <div className="mt-4 flex flex-col sm:flex-row gap-3">
+                  <Link href="/quote">
+                    <Button variant="primary" size="lg">
+                      Get a Free Quote
+                    </Button>
+                  </Link>
+                  <a href={COMPANY.phoneHref}>
+                    <Button variant="secondary" size="lg">
+                      Call {COMPANY.phone}
+                    </Button>
+                  </a>
+                </div>
+              </div>
+            </div>
           </div>
         </Container>
       </section>
 
-      {/* Specifications Section */}
+      {/* Technical Specifications */}
       <section className="py-16 md:py-24 bg-gray-50">
         <Container>
           <div className="max-w-3xl">
@@ -384,89 +434,41 @@ export default async function ServicePage({ params }: PageProps) {
         </Container>
       </section>
 
-      {/* Related Services */}
+      {/* Other Equipment */}
       <section className="py-16 md:py-24 bg-white">
         <Container>
           <SectionHeading
-            title="Explore Our Other Trailer Types"
-            subtitle="SEEK Equipment offers a full fleet of commercial trailers for every hauling need."
+            title="Other Equipment"
+            subtitle="Explore our full fleet of commercial trailers."
             centered
           />
-          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="mt-12 grid gap-6 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
             {relatedServices.map((related) => (
-              <Card key={related.slug} hover>
+              <Link
+                key={related.slug}
+                href={`/equipment/${related.slug}`}
+                className="group bg-white rounded-xl border overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300"
+              >
                 <div className="relative h-32 overflow-hidden">
                   <Image
-                    src={serviceImages[related.slug] ?? '/images/trailers/dryvan.jpg'}
+                    src={serviceImages[related.slug] ?? '/images/trailers/dry-van-stock.jpg'}
                     alt={related.shortTitle}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                   />
                 </div>
-                <div className="p-5">
-                  <h3 className="font-bold text-gray-900 mb-2">
-                    <Link
-                      href={`/equipment/${related.slug}`}
-                      className="hover:text-brand-blue transition-colors"
-                    >
-                      {related.shortTitle}
-                    </Link>
+                <div className="p-4">
+                  <h3 className="font-bold text-gray-900 text-sm group-hover:text-brand-blue transition-colors">
+                    {related.shortTitle}
                   </h3>
-                  <p className="text-sm text-gray-600 line-clamp-2">
-                    {related.heroDescription}
-                  </p>
-                  <Link
-                    href={`/equipment/${related.slug}`}
-                    className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-brand-orange hover:text-brand-orange-dark transition-colors"
-                  >
-                    Learn more
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </Link>
+                  <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-brand-orange group-hover:text-brand-orange-dark transition-colors">
+                    View Details
+                    <ArrowRight className="w-3 h-3" />
+                  </span>
                 </div>
-              </Card>
-            ))}
-          </div>
-        </Container>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-16 md:py-20 bg-brand-blue">
-        <Container>
-          <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-3xl md:text-4xl font-bold text-white">
-              Ready to Rent a {service.shortTitle.replace(' Trailers', '').replace(' Trailer', '')} Trailer?
-            </h2>
-            <p className="mt-4 text-lg text-blue-100">
-              Get a no-obligation quote from SEEK Equipment. We offer competitive rates, flexible
-              terms, and delivery throughout Texas. Our team is ready to match you with the right
-              trailer for your operation.
-            </p>
-            <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/quote">
-                <Button variant="primary" size="lg">
-                  Request a Quote
-                </Button>
               </Link>
-              <a href={`mailto:${COMPANY.email}`}>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="border-white text-white hover:bg-white hover:text-brand-blue"
-                >
-                  Email {COMPANY.email}
-                </Button>
-              </a>
-            </div>
-            <p className="mt-6 text-blue-200 text-sm">
-              Or call us directly at{' '}
-              <a href={COMPANY.phoneHref} className="text-white font-semibold hover:underline">
-                {COMPANY.phone}
-              </a>
-              {' '}&mdash; available Monday through Friday, 8 AM to 5 PM CST.
-            </p>
+            ))}
           </div>
         </Container>
       </section>

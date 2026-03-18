@@ -9,14 +9,15 @@ import { cn } from '@/lib/utils'
 type FormErrors = Partial<Record<keyof QuoteFormData, string>>
 
 const trailerTypeOptions = [
-  { value: '', label: 'Select trailer type' },
-  { value: 'dryvan', label: 'Dry Van' },
-  { value: 'tanker', label: 'Tanker' },
-  { value: 'flatbed', label: 'Flatbed' },
+  { value: '', label: 'Select equipment type' },
   { value: 'sand-chassis', label: 'Sand Chassis' },
-  { value: 'sand-hopper', label: 'Sand Hopper' },
-  { value: 'belly-dump', label: 'Belly Dump' },
-  { value: 'other', label: 'Other' },
+  { value: 'belly-dump', label: 'Belly Dumps' },
+  { value: 'sand-hopper', label: 'Sand Hoppers' },
+  { value: 'dryvan', label: 'Dry Vans' },
+  { value: 'flatbed', label: 'Flat Beds' },
+  { value: 'tanker', label: 'Tanks' },
+  { value: 'multiple', label: 'Multiple Types' },
+  { value: 'not-sure', label: 'Not Sure - Need Consultation' },
 ]
 
 const durationOptions = [
@@ -203,7 +204,7 @@ export function QuoteForm() {
 
         <div>
           <label htmlFor="quote-trailerType" className="block text-sm font-medium text-gray-700 mb-1">
-            Trailer Type <span className="text-red-500">*</span>
+            Equipment Type <span className="text-red-500">*</span>
           </label>
           <select
             id="quote-trailerType"

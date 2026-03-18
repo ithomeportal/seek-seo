@@ -85,7 +85,7 @@ export default function RootLayout({
       >
         <LocalBusinessSchema />
         <Header />
-        <main className="min-h-screen pt-[104px] md:pt-[112px]">
+        <main className="min-h-screen">
           {children}
         </main>
         <Footer />

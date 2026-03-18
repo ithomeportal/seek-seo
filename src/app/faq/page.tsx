@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Container } from '@/components/ui/Container'
-import { SectionHeading } from '@/components/ui/SectionHeading'
 import { Accordion } from '@/components/ui/Accordion'
 import { Button } from '@/components/ui/Button'
 import { PageHero } from '@/components/layout/PageHero'
@@ -45,36 +44,23 @@ export default function FaqPage() {
 
       <PageHero
         title="Frequently Asked Questions"
-        description="Everything you need to know about renting and leasing trailers from SEEK Equipment."
+        description="Find answers to common questions about our rental services, equipment, and policies. For additional inquiries, please contact our team directly."
         breadcrumbs={[
           { label: 'Home', href: '/' },
           { label: 'FAQ' },
         ]}
       />
 
-      {/* Intro */}
+      {/* FAQ Categories */}
       <section className="py-16 md:py-20">
         <Container>
-          <p className="text-lg text-gray-700 max-w-4xl">
-            Below you will find answers to the most common questions our customers ask
-            about our trailer rental process, pricing, available trailer types,
-            maintenance policies, and compliance requirements. If you do not see the
-            answer you are looking for, please{' '}
-            <Link
-              href="/contact"
-              className="text-brand-blue hover:text-brand-blue-dark font-medium transition-colors"
-            >
-              contact us
-            </Link>{' '}
-            directly.
-          </p>
-
-          {/* FAQ Categories */}
-          <div className="mt-12 space-y-16">
+          <div className="max-w-4xl mx-auto space-y-12">
             {faqCategories.map((category) => (
               <div key={category.slug} id={category.slug}>
-                <SectionHeading title={category.category} />
-                <div className="mt-6">
+                <h2 className="text-2xl font-bold text-gray-900 pb-3 border-b-2 border-brand-blue/20">
+                  {category.category}
+                </h2>
+                <div className="mt-4 bg-white rounded-xl border border-gray-200">
                   <Accordion items={category.faqs} />
                 </div>
               </div>
@@ -91,15 +77,20 @@ export default function FaqPage() {
               Still Have Questions?
             </h2>
             <p className="mt-4 text-lg text-gray-600">
-              Our team is happy to help. Get in touch and we will get back to you
-              within 2 business hours.
+              Our team is ready to assist you with any additional questions about
+              our equipment and services.
             </p>
-            <div className="mt-8">
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/contact">
                 <Button variant="primary" size="lg">
                   Contact Us
                 </Button>
               </Link>
+              <a href={COMPANY.phoneHref}>
+                <Button variant="secondary" size="lg">
+                  {COMPANY.phone}
+                </Button>
+              </a>
             </div>
           </div>
         </Container>

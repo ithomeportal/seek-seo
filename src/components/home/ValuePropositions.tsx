@@ -1,52 +1,50 @@
 import { Shield, Clock, Truck } from 'lucide-react'
 import { Container } from '@/components/ui/Container'
-import { SectionHeading } from '@/components/ui/SectionHeading'
 
 const valueProps = [
   {
     icon: Shield,
-    title: 'DOT Inspected Fleet',
+    title: 'Reliable Fleet',
     description:
-      'Every trailer is DOT-inspected and road-ready before delivery. GPS tracking on every unit for real-time visibility.',
+      'Well-maintained equipment inspected before every lease',
   },
   {
     icon: Clock,
-    title: 'Flexible Leasing Terms',
+    title: 'Flexible Terms',
     description:
-      'Daily, weekly, monthly, or long-term lease options tailored to your project timeline and budget. No rigid contracts.',
+      'Customizable lease agreements tailored to your project scope and timeline',
   },
   {
     icon: Truck,
-    title: 'Nationwide Delivery',
+    title: 'Delivery Available',
     description:
-      'Power only units deliver across the continental United States. From San Antonio to the Permian Basin and beyond.',
+      'We deliver and pick up across Texas',
   },
 ]
 
 export function ValuePropositions() {
   return (
-    <section className="py-24 bg-white">
+    <section className="py-12 bg-gray-50 border-y border-gray-100">
       <Container>
-        <SectionHeading
-          title="Why Choose SEEK Equipment"
-          subtitle="On the move solutions for your business"
-          centered
-        />
-
-        <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {valueProps.map((prop) => {
             const Icon = prop.icon
             return (
-              <div key={prop.title} className="text-center">
-                <div className="w-10 h-10 rounded-lg bg-brand-blue/10 flex items-center justify-center mx-auto">
-                  <Icon className="w-5 h-5 text-brand-blue" />
+              <div
+                key={prop.title}
+                className="flex items-start gap-4 bg-white rounded-xl p-5 shadow-sm border border-gray-100"
+              >
+                <div className="w-12 h-12 rounded-lg bg-brand-blue/10 flex items-center justify-center flex-shrink-0">
+                  <Icon className="w-6 h-6 text-brand-blue" />
                 </div>
-                <h3 className="mt-4 text-base font-bold text-gray-900 tracking-tight">
-                  {prop.title}
-                </h3>
-                <p className="mt-2 text-sm text-gray-500 leading-relaxed">
-                  {prop.description}
-                </p>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900 tracking-tight">
+                    {prop.title}
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500 leading-relaxed">
+                    {prop.description}
+                  </p>
+                </div>
               </div>
             )
           })}

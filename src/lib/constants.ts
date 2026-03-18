@@ -27,23 +27,15 @@ export const COMPANY = {
 
 export const NAV_ITEMS = [
   { label: 'Home', href: '/' },
-  { label: 'About', href: '/about' },
-  {
-    label: 'Equipment',
-    href: '/equipment',
-    children: [
-      { label: 'DryVan Trailers', href: '/equipment/dryvan' },
-      { label: 'Tanker Trailers', href: '/equipment/tanker' },
-      { label: 'Flatbed Trailers', href: '/equipment/flatbed' },
-      { label: 'Sand Chassis', href: '/equipment/sand-chassis' },
-      { label: 'Sand Hoppers', href: '/equipment/sand-hopper' },
-      { label: 'Belly Dump Trailers', href: '/equipment/belly-dump' },
-    ],
-  },
+  { label: 'Equipment', href: '/equipment' },
   { label: 'For Sale', href: '/for-sale' },
-  { label: 'Blog', href: '/blog' },
   { label: 'FAQ', href: '/faq' },
   { label: 'Contact', href: '/contact' },
+] as const
+
+export const PORTAL_LINKS = [
+  { label: 'Client Portal', href: '/client-portal', icon: 'User' },
+  { label: 'Management', href: '/admin', icon: 'Settings' },
 ] as const
 
 export const BRAND = {

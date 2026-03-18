@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { Phone, Tag } from 'lucide-react'
 import { Container } from '@/components/ui/Container'
 import { Button } from '@/components/ui/Button'
@@ -49,62 +48,22 @@ export default function ForSalePage() {
         ]}
       />
 
-      {/* Content */}
-      <section className="py-16 md:py-24">
+      <section className="py-16">
         <Container>
-          <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm">
+          <div className="text-center py-16 bg-white rounded-xl border">
             <Tag className="h-16 w-16 text-gray-300 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-gray-900 mb-2">
               No Equipment Currently Listed
             </h2>
             <p className="text-gray-600 mb-6 max-w-md mx-auto">
-              We periodically list select units from our fleet for sale. Contact
-              us to inquire about upcoming availability or to be notified when
-              new listings are posted.
+              We periodically list select units from our fleet for sale.
+              Contact us to inquire about upcoming availability.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a href={COMPANY.phoneHref}>
-                <Button variant="primary" size="lg">
-                  <Phone className="mr-2 h-4 w-4" /> Call {COMPANY.phone}
-                </Button>
-              </a>
-              <Link href="/contact">
-                <Button variant="outline" size="lg">
-                  Contact Us
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </Container>
-      </section>
-
-      {/* CTA */}
-      <section className="py-16 md:py-20 bg-brand-blue">
-        <Container>
-          <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-3xl md:text-4xl font-bold text-white">
-              Looking to Lease Instead?
-            </h2>
-            <p className="mt-4 text-lg text-blue-100">
-              SEEK Equipment offers flexible leasing on our entire fleet of 250+
-              trailers. Get a no-obligation quote today.
-            </p>
-            <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/quote">
-                <Button variant="primary" size="lg">
-                  Get a Free Quote
-                </Button>
-              </Link>
-              <Link href="/equipment">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="border-white text-white hover:bg-white hover:text-brand-blue"
-                >
-                  View Our Fleet
-                </Button>
-              </Link>
-            </div>
+            <a href={COMPANY.phoneHref}>
+              <Button variant="primary" size="lg">
+                <Phone className="mr-2 h-4 w-4" /> Call {COMPANY.phone}
+              </Button>
+            </a>
           </div>
         </Container>
       </section>

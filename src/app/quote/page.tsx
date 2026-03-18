@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { Container } from '@/components/ui/Container'
-import { SectionHeading } from '@/components/ui/SectionHeading'
 import { QuoteForm } from '@/components/forms/QuoteForm'
 import { PageHero } from '@/components/layout/PageHero'
 import { JsonLd } from '@/components/seo/JsonLd'
@@ -45,39 +44,33 @@ export default function QuotePage() {
       <JsonLd data={serviceSchema} />
 
       <PageHero
-        title="Request a Free Quote"
-        description="Fill out the form below and our team will get back to you within 2 business hours with a customized rental or leasing quote."
+        title="Get a Quote"
+        description="Tell us about your equipment needs and our team will provide a competitive quote tailored to your requirements."
         breadcrumbs={[
           { label: 'Home', href: '/' },
-          { label: 'Request a Quote' },
+          { label: 'Get a Quote' },
         ]}
       />
 
-      {/* Form */}
-      <section className="py-16 md:py-20">
+      {/* Form Section */}
+      <section className="bg-background py-16">
         <Container>
           <div className="max-w-2xl mx-auto">
-            <SectionHeading title="Tell Us What You Need" centered />
-            <div className="mt-8">
+            <div className="bg-white rounded-xl border p-8">
+              <h2 className="text-xl font-bold text-gray-900 mb-6">
+                Request a Quote
+              </h2>
               <QuoteForm />
+              <p className="mt-6 text-center text-sm text-gray-500">
+                Or call us directly at{' '}
+                <a
+                  href={COMPANY.phoneHref}
+                  className="text-brand-blue hover:text-brand-blue-dark font-semibold transition-colors"
+                >
+                  {COMPANY.phone}
+                </a>
+              </p>
             </div>
-          </div>
-        </Container>
-      </section>
-
-      {/* Bottom CTA */}
-      <section className="py-12 bg-gray-50">
-        <Container>
-          <div className="text-center">
-            <p className="text-lg text-gray-700">
-              Prefer to call? Reach us at{' '}
-              <a
-                href={COMPANY.phoneHref}
-                className="text-brand-blue hover:text-brand-blue-dark font-bold transition-colors"
-              >
-                {COMPANY.phone}
-              </a>
-            </p>
           </div>
         </Container>
       </section>

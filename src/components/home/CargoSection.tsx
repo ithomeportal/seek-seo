@@ -1,62 +1,81 @@
+import Link from 'next/link'
 import Image from 'next/image'
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, ArrowRight, Phone } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 import { Container } from '@/components/ui/Container'
+import { COMPANY } from '@/lib/constants'
 
 const benefits = [
-  '250+ DOT-inspected trailers ready to deploy',
-  'GPS tracking on every unit for real-time visibility',
-  'Flexible daily, weekly, monthly, and long-term leases',
-  'Power only delivery across the continental United States',
-  'Dedicated account managers with industry expertise',
-  'Fast turnaround — most quotes within 2 hours',
+  'Comprehensive fleet of specialized trailers',
+  'Competitive rental and lease rates',
+  'Dedicated account management',
+  'Industry-leading maintenance standards',
 ]
 
 export function CargoSection() {
   return (
-    <section className="py-24 bg-white overflow-hidden">
+    <section className="py-20 bg-white overflow-hidden">
       <Container>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           {/* Text content */}
           <div>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-px bg-brand-orange" />
-              <p className="text-brand-orange font-semibold text-xs tracking-[0.2em] uppercase">
-                Why choose SEEK
-              </p>
-            </div>
-
-            <h2 className="mt-4 text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight leading-tight">
-              Keep Your Cargo
-              <br />
-              <span className="text-brand-blue">Moving</span>
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 tracking-tight leading-tight">
+              Why Choose SEEK Equipment?
             </h2>
+
+            <p className="mt-4 text-gray-500 leading-relaxed">
+              With years of experience serving the energy, construction, and
+              transportation industries, SEEK Equipment has built a reputation
+              for reliability, quality equipment, and outstanding customer
+              service.
+            </p>
 
             <ul className="mt-8 space-y-4">
               {benefits.map((benefit) => (
                 <li key={benefit} className="flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-brand-orange flex-shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-5 h-5 text-brand-blue flex-shrink-0 mt-0.5" />
                   <span className="text-gray-700">{benefit}</span>
                 </li>
               ))}
             </ul>
+
+            <div className="mt-8">
+              <Link href="/contact">
+                <Button variant="primary" size="lg">
+                  Contact Us Today
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+              </Link>
+            </div>
           </div>
 
-          {/* Image with floating overlay */}
+          {/* Image with floating phone box */}
           <div className="relative">
-            <div className="relative h-80 rounded-2xl overflow-hidden shadow-xl">
+            <div className="relative rounded-2xl overflow-hidden shadow-xl">
               <Image
-                src="/images/gallery/trailers-loading.jpg"
-                alt="American flatbed trailer on highway with mountains"
-                fill
-                className="object-cover"
+                src="/images/trailers/flatbed-stock.jpg"
+                alt="SEEK Equipment flatbed trailer"
+                width={800}
+                height={533}
+                className="object-cover w-full"
                 sizes="(max-width: 1024px) 100vw, 50vw"
               />
             </div>
 
-            {/* Floating overlay box */}
-            <div className="absolute -bottom-6 -right-6 bg-brand-blue text-white rounded-xl p-6 shadow-lg max-w-[200px]">
-              <p className="text-3xl font-extrabold">250+</p>
-              <p className="text-sm text-white/80 mt-1">Trailers Ready to Deploy</p>
+            {/* Floating phone box */}
+            <div className="absolute -bottom-6 -right-6 bg-brand-blue text-white rounded-xl p-6 shadow-lg">
+              <Link
+                href={COMPANY.phoneHref}
+                className="flex items-center gap-3"
+              >
+                <Phone className="w-6 h-6" />
+                <div>
+                  <p className="text-lg font-bold">{COMPANY.phone}</p>
+                  <p className="text-sm text-white/80">
+                    Call for immediate assistance
+                  </p>
+                </div>
+              </Link>
             </div>
           </div>
         </div>
