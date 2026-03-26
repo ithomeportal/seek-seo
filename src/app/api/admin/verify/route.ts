@@ -15,7 +15,8 @@ export async function POST(request: Request) {
       [code]
     )
     return NextResponse.json({ valid: result.rows.length > 0 })
-  } catch {
+  } catch (error) {
+    console.error('Admin verify error:', error instanceof Error ? error.message : error)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }
