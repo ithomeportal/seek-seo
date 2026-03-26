@@ -4,12 +4,12 @@ export const COMPANY = {
   phoneHref: 'tel:+12108020000',
   email: 'info@seekequipment.com',
   address: {
-    street: '12330 Interstate 35 Access Rd',
+    street: '15620 Senior Rd',
     city: 'Von Ormy',
     state: 'TX',
     zip: '78073',
     country: 'US',
-    full: '12330 Interstate 35 Access Rd, Von Ormy, TX 78073',
+    full: '15620 Senior Rd, Von Ormy, TX 78073',
   },
   hqAddress: {
     street: '16414 San Pedro Ave, Ste 335',
