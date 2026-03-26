@@ -151,7 +151,7 @@ export default function AboutPage() {
             </div>
 
             {/* Mission */}
-            <div className="relative p-8 rounded-2xl bg-brand-blue text-white shadow-sm">
+            <div className="relative p-8 rounded-2xl bg-brand-orange text-white shadow-sm">
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
                   <svg className="w-5 h-5 text-brand-orange" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -210,7 +210,7 @@ export default function AboutPage() {
       </section>
 
       {/* Service Areas */}
-      <section className="py-16 md:py-20 bg-brand-blue">
+      <section className="py-16 md:py-20 bg-brand-orange">
         <Container>
           <SectionHeading
             title="Service Areas"
@@ -254,13 +254,13 @@ export default function AboutPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-16 md:py-20 bg-brand-blue text-white">
+      <section className="py-16 md:py-20 bg-brand-orange text-white">
         <Container>
           <div className="text-center max-w-3xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold">
               Ready to Work With Us?
             </h2>
-            <p className="mt-4 text-xl text-blue-100">
+            <p className="mt-4 text-xl text-orange-100">
               Get in touch to discuss your trailer rental and leasing needs.
               Our team is ready to help.
             </p>

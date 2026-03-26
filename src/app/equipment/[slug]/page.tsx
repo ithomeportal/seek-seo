@@ -267,7 +267,7 @@ export default async function ServicePage({ params }: PageProps) {
       <JsonLd data={faqSchema} />
 
       {/* Hero Section - gradient with faded background image */}
-      <section className="relative bg-gradient-to-br from-brand-blue to-brand-blue/90 text-white py-16 overflow-hidden">
+      <section className="relative bg-gradient-to-br from-brand-orange to-brand-orange/90 text-white py-16 overflow-hidden">
         <div
           className="absolute inset-0 opacity-10 bg-cover bg-center"
           style={{ backgroundImage: `url(${serviceImages[slug] ?? '/images/trailers/dry-van-stock.jpg'})` }}
@@ -276,14 +276,14 @@ export default async function ServicePage({ params }: PageProps) {
           <Container>
             <Link
               href="/equipment"
-              className="inline-flex items-center gap-2 text-blue-200 hover:text-white transition-colors text-sm mb-6"
+              className="inline-flex items-center gap-2 text-orange-200 hover:text-white transition-colors text-sm mb-6"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to Equipment
             </Link>
             <div className="max-w-3xl">
               <h1 className="text-4xl md:text-5xl font-bold">{service.title}</h1>
-              <p className="text-xl text-blue-100 mt-4">{service.heroDescription}</p>
+              <p className="text-xl text-orange-100 mt-4">{service.heroDescription}</p>
             </div>
           </Container>
         </div>

@@ -97,7 +97,7 @@ export function FleetStats() {
         className="object-cover"
         sizes="100vw"
       />
-      <div className="absolute inset-0 bg-brand-blue/90" />
+      <div className="absolute inset-0 bg-brand-orange/90" />
 
       <Container className="relative z-10">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 lg:divide-x lg:divide-white/10">

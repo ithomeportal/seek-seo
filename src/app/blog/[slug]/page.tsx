@@ -122,8 +122,8 @@ export default async function BlogPostPage({ params }: PageProps) {
       >
         <div className="mt-6 flex flex-wrap items-center gap-4">
           <Badge variant="orange">{post.category}</Badge>
-          <span className="text-blue-100">{post.author}</span>
-          <time dateTime={post.date} className="text-blue-200">
+          <span className="text-orange-100">{post.author}</span>
+          <time dateTime={post.date} className="text-orange-200">
             {formatDate(post.date)}
           </time>
         </div>
@@ -169,13 +169,13 @@ export default async function BlogPostPage({ params }: PageProps) {
       )}
 
       {/* CTA */}
-      <section className="py-16 md:py-20 text-white bg-brand-blue">
+      <section className="py-16 md:py-20 text-white bg-brand-orange">
         <Container>
           <div className="text-center max-w-3xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold">
               Need a Trailer Rental?
             </h2>
-            <p className="mt-4 text-xl text-blue-100">
+            <p className="mt-4 text-xl text-orange-100">
               SEEK Equipment offers flexible rental and leasing options for
               DryVan, Flatbed, Tanker, Sand Chassis, and Belly Dump trailers.
               Get a free quote today.

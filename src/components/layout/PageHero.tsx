@@ -22,7 +22,7 @@ export function PageHero({
   children,
 }: PageHeroProps) {
   return (
-    <section className="bg-gradient-to-br from-brand-blue to-brand-blue/90 text-white py-16">
+    <section className="bg-gradient-to-br from-brand-orange to-brand-orange/90 text-white py-16">
       <Container>
         <Breadcrumbs items={breadcrumbs} />
         <div className="mt-4 max-w-3xl">
@@ -35,7 +35,7 @@ export function PageHero({
             <h1 className="text-4xl md:text-5xl font-bold">{title}</h1>
           )}
           {description && (
-            <p className="text-xl text-blue-100 mt-4">{description}</p>
+            <p className="text-xl text-orange-100 mt-4">{description}</p>
           )}
           {children}
         </div>
