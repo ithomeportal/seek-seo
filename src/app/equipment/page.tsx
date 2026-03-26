@@ -24,6 +24,9 @@ const SERVICE_IMAGES: Record<string, string> = {
   'belly-dump': '/images/trailers/belly-dump-seek.png',
 }
 
+// MANUS design order
+const DISPLAY_ORDER = ['sand-chassis', 'belly-dump', 'sand-hopper', 'dryvan', 'flatbed', 'tanker']
+
 export default function EquipmentPage() {
   const serviceSchemaData = {
     '@context': 'https://schema.org',
@@ -63,7 +66,7 @@ export default function EquipmentPage() {
       <section className="bg-background py-16">
         <Container>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {services.map((service) => (
+            {[...services].sort((a, b) => DISPLAY_ORDER.indexOf(a.slug) - DISPLAY_ORDER.indexOf(b.slug)).map((service) => (
               <Link
                 key={service.slug}
                 href={`/equipment/${service.slug}`}
