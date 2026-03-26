@@ -154,7 +154,7 @@ function formatDate(iso: string): string {
 }
 
 function statusLabel(s: string): string {
-  return s
+  return (s ?? '')
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
@@ -191,8 +191,8 @@ export default function AdminDashboardPage() {
 
   // ------ Auth check ------
   useEffect(() => {
-    const code = sessionStorage.getItem('seek_admin_code')
-    if (!code) {
+    const auth = sessionStorage.getItem('seek_admin_auth')
+    if (!auth) {
       router.push('/admin')
       return
     }
@@ -261,7 +261,7 @@ export default function AdminDashboardPage() {
 
   // ------ Logout ------
   function handleLogout() {
-    sessionStorage.removeItem('seek_admin_code')
+    sessionStorage.removeItem('seek_admin_auth')
     router.push('/admin')
   }
 
