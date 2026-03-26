@@ -2,32 +2,19 @@
 
 import { useState } from 'react'
 import { CheckCircle2 } from 'lucide-react'
-import { quoteSchema, type QuoteFormData } from '@/lib/validators'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
-
-type FormErrors = Partial<Record<keyof QuoteFormData, string>>
 
 const trailerTypeOptions = [
   { value: '', label: 'Select equipment type' },
   { value: 'sand-chassis', label: 'Sand Chassis' },
-  { value: 'belly-dump', label: 'Belly Dumps' },
-  { value: 'sand-hopper', label: 'Sand Hoppers' },
-  { value: 'dryvan', label: 'Dry Vans' },
-  { value: 'flatbed', label: 'Flat Beds' },
-  { value: 'tanker', label: 'Tanks' },
+  { value: 'belly-dumps', label: 'Belly Dumps' },
+  { value: 'sand-hoppers', label: 'Sand Hoppers' },
+  { value: 'dry-vans', label: 'Dry Vans' },
+  { value: 'flatbeds', label: 'Flat Beds' },
+  { value: 'tanks', label: 'Tanks' },
   { value: 'multiple', label: 'Multiple Types' },
   { value: 'not-sure', label: 'Not Sure - Need Consultation' },
-]
-
-const durationOptions = [
-  { value: '', label: 'Select duration' },
-  { value: 'daily', label: 'Daily' },
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'monthly', label: 'Monthly' },
-  { value: '6-month', label: '6 Month' },
-  { value: '12-month', label: '12 Month' },
-  { value: 'custom', label: 'Custom' },
 ]
 
 const initialFormData = {
@@ -35,13 +22,12 @@ const initialFormData = {
   email: '',
   phone: '',
   company: '',
-  trailerType: '' as QuoteFormData['trailerType'],
-  quantity: 1,
-  duration: '' as QuoteFormData['duration'],
-  startDate: '',
+  trailerType: '',
   details: '',
   honeypot: '',
 }
+
+type FormErrors = Partial<Record<string, string>>
 
 export function QuoteForm() {
   const [formData, setFormData] = useState(initialFormData)
@@ -53,9 +39,8 @@ export function QuoteForm() {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) {
     const { name, value } = e.target
-    const parsed = name === 'quantity' ? Number(value) : value
-    setFormData((prev) => ({ ...prev, [name]: parsed }))
-    if (errors[name as keyof FormErrors]) {
+    setFormData((prev) => ({ ...prev, [name]: value }))
+    if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: undefined }))
     }
   }
@@ -65,15 +50,13 @@ export function QuoteForm() {
     setErrors({})
     setServerMessage('')
 
-    const result = quoteSchema.safeParse(formData)
-    if (!result.success) {
-      const fieldErrors: FormErrors = {}
-      for (const issue of result.error.issues) {
-        const field = issue.path[0] as keyof FormErrors
-        if (!fieldErrors[field]) {
-          fieldErrors[field] = issue.message
-        }
-      }
+    const fieldErrors: FormErrors = {}
+    if (!formData.name.trim()) fieldErrors.name = 'Name is required'
+    if (!formData.email.trim()) fieldErrors.email = 'Email is required'
+    if (!formData.details.trim()) fieldErrors.details = 'Project details are required'
+    if (formData.honeypot) return
+
+    if (Object.keys(fieldErrors).length > 0) {
       setErrors(fieldErrors)
       return
     }
@@ -84,7 +67,7 @@ export function QuoteForm() {
       const response = await fetch('/api/quote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(result.data),
+        body: JSON.stringify(formData),
       })
 
       if (!response.ok) {
@@ -140,7 +123,7 @@ export function QuoteForm() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div>
           <label htmlFor="quote-name" className="block text-sm font-medium text-gray-700 mb-1">
-            Name <span className="text-red-500">*</span>
+            Full Name <span className="text-red-500">*</span>
           </label>
           <input
             id="quote-name"
@@ -156,7 +139,7 @@ export function QuoteForm() {
 
         <div>
           <label htmlFor="quote-email" className="block text-sm font-medium text-gray-700 mb-1">
-            Email <span className="text-red-500">*</span>
+            Email Address <span className="text-red-500">*</span>
           </label>
           <input
             id="quote-email"
@@ -172,7 +155,7 @@ export function QuoteForm() {
 
         <div>
           <label htmlFor="quote-phone" className="block text-sm font-medium text-gray-700 mb-1">
-            Phone <span className="text-red-500">*</span>
+            Phone Number
           </label>
           <input
             id="quote-phone"
@@ -180,15 +163,14 @@ export function QuoteForm() {
             name="phone"
             value={formData.phone}
             onChange={handleChange}
-            className={cn(inputClasses, errors.phone && 'border-red-500 focus:ring-red-500')}
+            className={inputClasses}
             placeholder="(555) 123-4567"
           />
-          {errors.phone && <p className="mt-1 text-sm text-red-500">{errors.phone}</p>}
         </div>
 
         <div>
           <label htmlFor="quote-company" className="block text-sm font-medium text-gray-700 mb-1">
-            Company <span className="text-red-500">*</span>
+            Company
           </label>
           <input
             id="quote-company"
@@ -196,87 +178,34 @@ export function QuoteForm() {
             name="company"
             value={formData.company}
             onChange={handleChange}
-            className={cn(inputClasses, errors.company && 'border-red-500 focus:ring-red-500')}
-            placeholder="Your company"
-          />
-          {errors.company && <p className="mt-1 text-sm text-red-500">{errors.company}</p>}
-        </div>
-
-        <div>
-          <label htmlFor="quote-trailerType" className="block text-sm font-medium text-gray-700 mb-1">
-            Equipment Type <span className="text-red-500">*</span>
-          </label>
-          <select
-            id="quote-trailerType"
-            name="trailerType"
-            value={formData.trailerType}
-            onChange={handleChange}
-            className={cn(selectClasses, errors.trailerType && 'border-red-500 focus:ring-red-500')}
-          >
-            {trailerTypeOptions.map((opt) => (
-              <option key={opt.value} value={opt.value} disabled={opt.value === ''}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          {errors.trailerType && <p className="mt-1 text-sm text-red-500">{errors.trailerType}</p>}
-        </div>
-
-        <div>
-          <label htmlFor="quote-quantity" className="block text-sm font-medium text-gray-700 mb-1">
-            Quantity <span className="text-red-500">*</span>
-          </label>
-          <input
-            id="quote-quantity"
-            type="number"
-            name="quantity"
-            min={1}
-            max={100}
-            value={formData.quantity}
-            onChange={handleChange}
-            className={cn(inputClasses, errors.quantity && 'border-red-500 focus:ring-red-500')}
-          />
-          {errors.quantity && <p className="mt-1 text-sm text-red-500">{errors.quantity}</p>}
-        </div>
-
-        <div>
-          <label htmlFor="quote-duration" className="block text-sm font-medium text-gray-700 mb-1">
-            Duration <span className="text-red-500">*</span>
-          </label>
-          <select
-            id="quote-duration"
-            name="duration"
-            value={formData.duration}
-            onChange={handleChange}
-            className={cn(selectClasses, errors.duration && 'border-red-500 focus:ring-red-500')}
-          >
-            {durationOptions.map((opt) => (
-              <option key={opt.value} value={opt.value} disabled={opt.value === ''}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          {errors.duration && <p className="mt-1 text-sm text-red-500">{errors.duration}</p>}
-        </div>
-
-        <div>
-          <label htmlFor="quote-startDate" className="block text-sm font-medium text-gray-700 mb-1">
-            Start Date
-          </label>
-          <input
-            id="quote-startDate"
-            type="date"
-            name="startDate"
-            value={formData.startDate}
-            onChange={handleChange}
             className={inputClasses}
+            placeholder="Your company"
           />
         </div>
       </div>
 
       <div>
+        <label htmlFor="quote-trailerType" className="block text-sm font-medium text-gray-700 mb-1">
+          Equipment Type
+        </label>
+        <select
+          id="quote-trailerType"
+          name="trailerType"
+          value={formData.trailerType}
+          onChange={handleChange}
+          className={selectClasses}
+        >
+          {trailerTypeOptions.map((opt) => (
+            <option key={opt.value} value={opt.value} disabled={opt.value === ''}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
         <label htmlFor="quote-details" className="block text-sm font-medium text-gray-700 mb-1">
-          Additional Details
+          Project Details <span className="text-red-500">*</span>
         </label>
         <textarea
           id="quote-details"
@@ -284,9 +213,10 @@ export function QuoteForm() {
           rows={4}
           value={formData.details}
           onChange={handleChange}
-          className={inputClasses}
-          placeholder="Any specific requirements or questions?"
+          className={cn(inputClasses, errors.details && 'border-red-500 focus:ring-red-500')}
+          placeholder="Tell us about your project requirements"
         />
+        {errors.details && <p className="mt-1 text-sm text-red-500">{errors.details}</p>}
       </div>
 
       {serverMessage && status === 'error' && (
@@ -296,8 +226,15 @@ export function QuoteForm() {
       )}
 
       <Button type="submit" variant="primary" size="lg" disabled={status === 'submitting'}>
-        {status === 'submitting' ? 'Submitting...' : 'Request a Quote'}
+        {status === 'submitting' ? 'Submitting...' : 'Submit Quote Request'}
       </Button>
+
+      <p className="text-center text-sm text-gray-500">
+        Or call us directly at{' '}
+        <a href="tel:+12108020000" className="text-brand-blue font-semibold hover:text-brand-blue-dark">
+          1-210-802-0000
+        </a>
+      </p>
     </form>
   )
 }

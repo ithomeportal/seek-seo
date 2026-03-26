@@ -9,12 +9,12 @@ import { COMPANY } from '@/lib/constants'
 export const metadata: Metadata = {
   title: 'Contact SEEK Equipment | Trailer Rental Quotes | Von Ormy TX',
   description:
-    'Contact SEEK Equipment for trailer rental and leasing quotes. Located in Von Ormy, TX near San Antonio. Call 1-210-802-0000 or email sales@seekequipment.com.',
+    'Contact SEEK Equipment for trailer rental and leasing quotes. Located in Von Ormy, TX near San Antonio. Call 1-210-802-0000 or email info@seekequipment.com.',
   alternates: { canonical: '/contact' },
   openGraph: {
     title: 'Contact SEEK Equipment | Trailer Rental Quotes | Von Ormy TX',
     description:
-      'Contact SEEK Equipment for trailer rental and leasing quotes. Located in Von Ormy, TX near San Antonio. Call 1-210-802-0000 or email sales@seekequipment.com.',
+      'Contact SEEK Equipment for trailer rental and leasing quotes. Located in Von Ormy, TX near San Antonio. Call 1-210-802-0000 or email info@seekequipment.com.',
     url: `${COMPANY.url}/contact`,
     type: 'website',
   },

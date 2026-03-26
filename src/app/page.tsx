@@ -31,7 +31,7 @@ const homepageFaqs = [
   {
     question: 'How do I get a quote for trailer rental or leasing?',
     answer:
-      'You can request a free quote by visiting our quote page, calling us at 1-210-802-0000, or emailing sales@seekequipment.com. Let us know the trailer type, rental duration, and delivery location, and we will provide a competitive quote within one business day.',
+      'You can request a free quote by visiting our quote page, calling us at 1-210-802-0000, or emailing info@seekequipment.com. Let us know the trailer type, rental duration, and delivery location, and we will provide a competitive quote within one business day.',
   },
   {
     question: 'What areas does SEEK Equipment serve?',

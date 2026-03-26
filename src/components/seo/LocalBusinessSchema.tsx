@@ -96,30 +96,6 @@ export function LocalBusinessSchema() {
           '@type': 'Offer',
           itemOffered: {
             '@type': 'Service',
-            name: 'Dry Van Trailer Rental & Leasing',
-            url: `${COMPANY.url}/equipment/dryvan`,
-          },
-        },
-        {
-          '@type': 'Offer',
-          itemOffered: {
-            '@type': 'Service',
-            name: 'Tanker Trailer Rental & Leasing',
-            url: `${COMPANY.url}/equipment/tanker`,
-          },
-        },
-        {
-          '@type': 'Offer',
-          itemOffered: {
-            '@type': 'Service',
-            name: 'Flatbed Trailer Rental & Leasing',
-            url: `${COMPANY.url}/equipment/flatbed`,
-          },
-        },
-        {
-          '@type': 'Offer',
-          itemOffered: {
-            '@type': 'Service',
             name: 'Sand Chassis Trailer Rental & Leasing',
             url: `${COMPANY.url}/equipment/sand-chassis`,
           },
@@ -128,8 +104,40 @@ export function LocalBusinessSchema() {
           '@type': 'Offer',
           itemOffered: {
             '@type': 'Service',
-            name: 'Belly Dump Trailer Rental & Leasing',
-            url: `${COMPANY.url}/equipment/belly-dump`,
+            name: 'Belly Dumps Trailer Rental & Leasing',
+            url: `${COMPANY.url}/equipment/belly-dumps`,
+          },
+        },
+        {
+          '@type': 'Offer',
+          itemOffered: {
+            '@type': 'Service',
+            name: 'Sand Hoppers Trailer Rental & Leasing',
+            url: `${COMPANY.url}/equipment/sand-hoppers`,
+          },
+        },
+        {
+          '@type': 'Offer',
+          itemOffered: {
+            '@type': 'Service',
+            name: 'Dry Vans Trailer Rental & Leasing',
+            url: `${COMPANY.url}/equipment/dry-vans`,
+          },
+        },
+        {
+          '@type': 'Offer',
+          itemOffered: {
+            '@type': 'Service',
+            name: 'Flat Beds Trailer Rental & Leasing',
+            url: `${COMPANY.url}/equipment/flatbeds`,
+          },
+        },
+        {
+          '@type': 'Offer',
+          itemOffered: {
+            '@type': 'Service',
+            name: 'Tanks Trailer Rental & Leasing',
+            url: `${COMPANY.url}/equipment/tanks`,
           },
         },
       ],

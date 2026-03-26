@@ -2,7 +2,7 @@ export const COMPANY = {
   name: 'SEEK Equipment',
   phone: '1-210-802-0000',
   phoneHref: 'tel:+12108020000',
-  email: 'sales@seekequipment.com',
+  email: 'info@seekequipment.com',
   address: {
     street: '12330 Interstate 35 Access Rd',
     city: 'Von Ormy',

@@ -5,11 +5,11 @@ import { COMPANY } from '@/lib/constants'
 
 const equipmentLinks = [
   { label: 'Sand Chassis', href: '/equipment/sand-chassis' },
-  { label: 'Belly Dumps', href: '/equipment/belly-dump' },
-  { label: 'Sand Hoppers', href: '/equipment/sand-hopper' },
-  { label: 'Dry Vans', href: '/equipment/dryvan' },
-  { label: 'Flat Beds', href: '/equipment/flatbed' },
-  { label: 'Tanks', href: '/equipment/tanker' },
+  { label: 'Belly Dumps', href: '/equipment/belly-dumps' },
+  { label: 'Sand Hoppers', href: '/equipment/sand-hoppers' },
+  { label: 'Dry Vans', href: '/equipment/dry-vans' },
+  { label: 'Flat Beds', href: '/equipment/flatbeds' },
+  { label: 'Tanks', href: '/equipment/tanks' },
 ]
 
 const quickLinks = [

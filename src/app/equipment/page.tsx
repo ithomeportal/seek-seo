@@ -16,16 +16,16 @@ export const metadata: Metadata = {
 }
 
 const SERVICE_IMAGES: Record<string, string> = {
-  dryvan: '/images/trailers/dry-van-stock.jpg',
-  tanker: '/images/trailers/tank-trailer-wellsite.png',
-  flatbed: '/images/trailers/flatbed-stock.jpg',
   'sand-chassis': '/images/trailers/sand-chassis-stock.jpg',
-  'sand-hopper': '/images/trailers/sand-hopper-wellsite.png',
-  'belly-dump': '/images/trailers/belly-dump-seek.png',
+  'belly-dumps': '/images/trailers/belly-dump-seek.png',
+  'sand-hoppers': '/images/trailers/sand-hopper-wellsite.png',
+  'dry-vans': '/images/trailers/dry-van-stock.jpg',
+  flatbeds: '/images/trailers/flatbed-stock.jpg',
+  tanks: '/images/trailers/tank-trailer-wellsite.png',
 }
 
 // MANUS design order
-const DISPLAY_ORDER = ['sand-chassis', 'belly-dump', 'sand-hopper', 'dryvan', 'flatbed', 'tanker']
+const DISPLAY_ORDER = ['sand-chassis', 'belly-dumps', 'sand-hoppers', 'dry-vans', 'flatbeds', 'tanks']
 
 export default function EquipmentPage() {
   const serviceSchemaData = {

@@ -12,35 +12,35 @@ const equipment = [
       'Purpose-built chassis designed for transporting frac sand containers to and from well sites.',
   },
   {
-    slug: 'belly-dump',
+    slug: 'belly-dumps',
     title: 'Belly Dumps',
     image: '/images/trailers/belly-dump-seek.png',
     description:
       'High-capacity bottom-discharge trailers for efficient bulk material transport and unloading.',
   },
   {
-    slug: 'sand-hopper',
+    slug: 'sand-hoppers',
     title: 'Sand Hoppers',
     image: '/images/trailers/sand-hopper-wellsite.png',
     description:
       'Specialized trailers for bulk sand and dry material transport with gravity discharge.',
   },
   {
-    slug: 'dryvan',
+    slug: 'dry-vans',
     title: 'Dry Vans',
     image: '/images/trailers/dry-van-stock.jpg',
     description:
       'Enclosed trailers providing secure, weather-protected transport for a wide range of cargo.',
   },
   {
-    slug: 'flatbed',
+    slug: 'flatbeds',
     title: 'Flat Beds',
     image: '/images/trailers/flatbed-stock.jpg',
     description:
       'Open-deck trailers for oversized, heavy, and irregularly shaped cargo requiring crane or forklift loading.',
   },
   {
-    slug: 'tanker',
+    slug: 'tanks',
     title: 'Tanks',
     image: '/images/trailers/tank-trailer-wellsite.png',
     description:

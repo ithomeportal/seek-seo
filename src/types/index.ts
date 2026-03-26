@@ -5,23 +5,10 @@ export interface Service {
   description: string
   heroDescription: string
   features: string[]
-  specs: Record<string, string>
-  faqs: { question: string; answer: string }[]
-  metaTitle: string
-  metaDescription: string
+  applications: string[]
+  overview: string
 }
 
-export interface BlogPost {
-  slug: string
-  title: string
-  excerpt: string
-  content: string
-  author: string
-  date: string
-  category: string
-  image?: string
-  tags: string[]
-}
 
 export interface NavItem {
   label: string
