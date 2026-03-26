@@ -136,7 +136,7 @@ export function Footer() {
       {/* Bottom bar */}
       <div className="border-t border-white/10">
         <div className="mx-auto max-w-7xl px-4 py-5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-white/30">
-          <p>&copy; {new Date().getFullYear()} {COMPANY.name}. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} SEEK Equipment Rentals. All rights reserved.</p>
           <Link
             href="/admin"
             className="hover:text-white/50 transition-colors duration-200"

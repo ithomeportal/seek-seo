@@ -24,10 +24,12 @@ export function CargoSection() {
             </h2>
 
             <p className="mt-4 text-gray-500 leading-relaxed">
-              With years of experience serving the energy, construction, and
-              transportation industries, SEEK Equipment has built a reputation
-              for reliability, quality equipment, and outstanding customer
-              service.
+              With years of experience in the trailer rental and leasing
+              industry, SEEK Equipment Rentals has built a reputation for
+              reliability, professionalism, and customer-focused service. Our
+              commitment to maintaining a high-quality fleet ensures that every
+              unit we provide meets the rigorous standards demanded by our
+              clients.
             </p>
 
             <ul className="mt-8 space-y-4">
@@ -63,7 +65,7 @@ export function CargoSection() {
             </div>
 
             {/* Floating phone box */}
-            <div className="absolute -bottom-6 -right-6 bg-brand-blue text-white rounded-xl p-6 shadow-lg">
+            <div className="absolute -bottom-6 -right-6 bg-brand-orange text-white rounded-xl p-6 shadow-lg">
               <Link
                 href={COMPANY.phoneHref}
                 className="flex items-center gap-3"

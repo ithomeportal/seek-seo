@@ -57,8 +57,8 @@ export function ServiceCards() {
             Our Equipment
           </h2>
           <p className="mt-4 text-gray-500 max-w-2xl mx-auto">
-            Six specialized trailer types for transportation, construction, oil
-            &amp; gas, and logistics.
+            We offer a comprehensive range of trailers to meet the demands of
+            energy, construction, and commercial transportation operations.
           </p>
         </div>
 

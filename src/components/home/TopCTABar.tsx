@@ -3,7 +3,7 @@ import { FileText, ClipboardList } from 'lucide-react'
 
 export function TopCTABar() {
   return (
-    <section className="bg-brand-blue py-3">
+    <section className="bg-brand-orange py-3">
       <div className="mx-auto max-w-7xl px-4 flex items-center justify-center gap-4">
         <Link
           href="/credit-application"

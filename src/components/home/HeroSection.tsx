@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowRight, Phone } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Container } from '@/components/ui/Container'
@@ -7,6 +8,16 @@ import { COMPANY } from '@/lib/constants'
 export function HeroSection() {
   return (
     <section className="relative bg-gray-50 overflow-hidden py-20 lg:py-28">
+      {/* Background image */}
+      <Image
+        src="/images/hero/hero-bg.jpg"
+        alt=""
+        fill
+        className="object-cover opacity-15"
+        priority
+        aria-hidden="true"
+      />
+
       {/* Centered V-shapes */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 pointer-events-none select-none" aria-hidden="true">
         {/* Outer V-shape */}
