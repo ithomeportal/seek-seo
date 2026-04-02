@@ -141,7 +141,8 @@ export function GPSTrackingMap() {
   const [skybitzStatus, setSkybitzStatus] = useState<SkyBitzStatus | null>(
     null
   )
-  const [mapStyle, setMapStyle] = useState<'light' | 'satellite'>('satellite')
+  const [mapStyle, setMapStyle] = useState<'light' | 'satellite'>('light')
+  const [mapReady, setMapReady] = useState(false)
   const [selectedUnit, setSelectedUnit] = useState<GPSUnit | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
@@ -207,21 +208,17 @@ export function GPSTrackingMap() {
         ? 'mapbox://styles/mapbox/satellite-streets-v12'
         : 'mapbox://styles/mapbox/streets-v12'
 
-    // Disable telemetry to avoid ad-blocker conflicts (ERR_BLOCKED_BY_CLIENT)
-    ;(mapboxgl as unknown as { config: { EVENTS_URL: string } }).config = {
-      EVENTS_URL: '',
-    }
-
     const map = new mapboxgl.Map({
       container: mapContainer.current,
       style: styleUrl,
       center: [-98.5, 30.0], // San Antonio / Von Ormy area
       zoom: 7,
-      collectResourceTiming: false,
     })
 
     map.addControl(new mapboxgl.NavigationControl(), 'top-right')
     map.addControl(new mapboxgl.FullscreenControl(), 'top-right')
+
+    map.on('load', () => setMapReady(true))
 
     mapRef.current = map
 
@@ -231,6 +228,7 @@ export function GPSTrackingMap() {
       map.remove()
       mapRef.current = null
       initialFitDone.current = false
+      setMapReady(false)
     }
   }, [mapStyle])
 
@@ -270,7 +268,7 @@ export function GPSTrackingMap() {
   // ------ Update markers when filtered units change ------
   useEffect(() => {
     const map = mapRef.current
-    if (!map) return
+    if (!map || !mapReady) return
 
     markersRef.current.forEach((m) => m.remove())
     markersRef.current = []
@@ -329,7 +327,7 @@ export function GPSTrackingMap() {
       // Don't zoom out too far — cap at zoom 7 so SA area is clearly visible
       map.fitBounds(bounds, { padding: 60, maxZoom: 8 })
     }
-  }, [filteredUnits])
+  }, [filteredUnits, mapReady])
 
   if (loading) {
     return (
