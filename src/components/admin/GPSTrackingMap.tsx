@@ -141,7 +141,7 @@ export function GPSTrackingMap() {
   const [skybitzStatus, setSkybitzStatus] = useState<SkyBitzStatus | null>(
     null
   )
-  const [mapStyle, setMapStyle] = useState<'light' | 'satellite'>('light')
+  const [mapStyle, setMapStyle] = useState<'light' | 'satellite'>('satellite')
   const [selectedUnit, setSelectedUnit] = useState<GPSUnit | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
