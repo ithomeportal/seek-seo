@@ -35,17 +35,34 @@ import { GPSTrackingMap } from '@/components/admin/GPSTrackingMap'
 // Types (matching demo-data.ts shapes)
 // ---------------------------------------------------------------------------
 
+interface FleetTypeBreakdown {
+  type: string
+  total: number
+  rented: number
+}
+
+interface TopCustomer {
+  name: string
+  units: number
+  revenue: number
+  deposits: number
+  percentOfFleet: number
+}
+
 interface FleetStats {
   total: number
-  byStatus: Record<string, number>
-  byType: Record<string, number>
-  totalMonthlyRevenue: number
+  available: number
+  rented: number
+  damaged: number
+  maintenance: number
+  forSale: number
+  expectedMonthlyRevenue: number
   utilizationRate: number
-  availableCount: number
-  rentedCount: number
-  damagedCount: number
-  forSaleCount: number
-  maintenanceCount: number
+  totalDepositsHeld: number
+  totalPendingDeposits: number
+  activeCustomers: number
+  byType: FleetTypeBreakdown[]
+  topCustomers: TopCustomer[]
 }
 
 interface FleetUnit {
@@ -56,10 +73,16 @@ interface FleetUnit {
   make: string | null
   model: string | null
   vin: string | null
+  purchasingCost: string | null
+  tireType: string | null
   status: string
   rentedTo: string | null
   rentedToContact: string | null
   rentalRate: string | null
+  depositTotal: string | null
+  pendingDeposit: string | null
+  rentStartDate: string | null
+  rentDueDay: string | null
   skybitzDeviceId: string | null
   lastLatitude: string | null
   lastLongitude: string | null
@@ -283,6 +306,31 @@ function DashboardContent() {
     notes: '',
   })
 
+  // Edit Unit modal
+  const [editUnit, setEditUnit] = useState<FleetUnit | null>(null)
+  const [editUnitLoading, setEditUnitLoading] = useState(false)
+  const [editUnitForm, setEditUnitForm] = useState({
+    unitNumber: '',
+    trailerType: 'sand_chassis',
+    year: '',
+    make: '',
+    model: '',
+    vin: '',
+    purchasingCost: '',
+    tireType: '',
+    status: 'available',
+    rentedTo: '',
+    rentedToContact: '',
+    rentalRate: '',
+    depositTotal: '',
+    pendingDeposit: '',
+    rentStartDate: '',
+    rentDueDay: '',
+    skybitzDeviceId: '',
+    imageUrl: '',
+    notes: '',
+  })
+
   // Loading / error
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -442,6 +490,90 @@ function DashboardContent() {
     }
   }
 
+  // ------ Edit Unit helpers ------
+  function openEditUnit(unit: FleetUnit) {
+    setEditUnitForm({
+      unitNumber: unit.unitNumber,
+      trailerType: unit.trailerType,
+      year: unit.year?.toString() ?? '',
+      make: unit.make ?? '',
+      model: unit.model ?? '',
+      vin: unit.vin ?? '',
+      purchasingCost: unit.purchasingCost ?? '',
+      tireType: unit.tireType ?? '',
+      status: unit.status,
+      rentedTo: unit.rentedTo ?? '',
+      rentedToContact: unit.rentedToContact ?? '',
+      rentalRate: unit.rentalRate ?? '',
+      depositTotal: unit.depositTotal ?? '',
+      pendingDeposit: unit.pendingDeposit ?? '',
+      rentStartDate: unit.rentStartDate
+        ? unit.rentStartDate.split('T')[0]
+        : '',
+      rentDueDay: unit.rentDueDay ?? '',
+      skybitzDeviceId: unit.skybitzDeviceId ?? '',
+      imageUrl: unit.imageUrl ?? '',
+      notes: unit.notes ?? '',
+    })
+    setEditUnit(unit)
+  }
+
+  async function handleEditUnit() {
+    if (!editUnit) return
+    setEditUnitLoading(true)
+    setError('')
+    try {
+      const payload: Record<string, unknown> = {
+        unitNumber: editUnitForm.unitNumber.trim(),
+        trailerType: editUnitForm.trailerType,
+        year: editUnitForm.year ? parseInt(editUnitForm.year, 10) : null,
+        make: editUnitForm.make.trim() || null,
+        model: editUnitForm.model.trim() || null,
+        vin: editUnitForm.vin.trim() || null,
+        purchasingCost: editUnitForm.purchasingCost
+          ? parseFloat(editUnitForm.purchasingCost)
+          : null,
+        tireType: editUnitForm.tireType.trim() || null,
+        status: editUnitForm.status,
+        rentedTo: editUnitForm.rentedTo.trim() || null,
+        rentedToContact: editUnitForm.rentedToContact.trim() || null,
+        rentalRate: editUnitForm.rentalRate
+          ? parseFloat(editUnitForm.rentalRate)
+          : null,
+        depositTotal: editUnitForm.depositTotal
+          ? parseFloat(editUnitForm.depositTotal)
+          : null,
+        pendingDeposit: editUnitForm.pendingDeposit
+          ? parseFloat(editUnitForm.pendingDeposit)
+          : null,
+        rentStartDate: editUnitForm.rentStartDate || null,
+        rentDueDay: editUnitForm.rentDueDay.trim() || null,
+        skybitzDeviceId: editUnitForm.skybitzDeviceId.trim() || null,
+        imageUrl: editUnitForm.imageUrl.trim() || null,
+        notes: editUnitForm.notes.trim() || null,
+      }
+
+      const res = await fetch(`/api/admin/fleet/${editUnit.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const json = await res.json()
+
+      if (!json.success) {
+        setError(json.error ?? 'Failed to update unit')
+        return
+      }
+
+      setEditUnit(null)
+      await fetchData('fleet')
+    } catch {
+      setError('Failed to update unit. Please try again.')
+    } finally {
+      setEditUnitLoading(false)
+    }
+  }
+
   // ------ Guard ------
   if (!authenticated) {
     return (
@@ -471,7 +603,8 @@ function DashboardContent() {
         </div>
       )
     }
-    const cards = [
+
+    const fleetCards = [
       {
         label: 'Total Fleet',
         value: stats.total,
@@ -479,35 +612,36 @@ function DashboardContent() {
       },
       {
         label: 'Available',
-        value: stats.availableCount,
+        value: stats.available,
         color: 'bg-green-50 text-green-700 border-green-200',
       },
       {
         label: 'Rented',
-        value: stats.rentedCount,
+        value: stats.rented,
         color: 'bg-blue-50 text-blue-700 border-blue-200',
       },
       {
         label: 'Damaged',
-        value: stats.damagedCount,
+        value: stats.damaged,
         color: 'bg-red-50 text-red-700 border-red-200',
       },
       {
         label: 'Maintenance',
-        value: stats.maintenanceCount,
+        value: stats.maintenance,
         color: 'bg-yellow-50 text-yellow-700 border-yellow-200',
       },
       {
         label: 'For Sale',
-        value: stats.forSaleCount,
+        value: stats.forSale,
         color: 'bg-purple-50 text-purple-700 border-purple-200',
       },
     ]
 
     return (
       <div className="space-y-6">
+        {/* Fleet Status Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {cards.map((c) => (
+          {fleetCards.map((c) => (
             <div key={c.label} className={`rounded-xl border p-5 ${c.color}`}>
               <p className="text-sm font-medium opacity-80">{c.label}</p>
               <p className="text-3xl font-bold mt-1">{c.value}</p>
@@ -515,17 +649,146 @@ function DashboardContent() {
           ))}
         </div>
 
-        <div className="rounded-xl border bg-gradient-to-r from-brand-blue to-brand-blue/90 text-white p-8">
-          <p className="text-sm font-medium opacity-80">
-            Expected Monthly Revenue
-          </p>
-          <p className="text-4xl font-bold mt-2">
-            {formatCurrency(stats.totalMonthlyRevenue)}
-          </p>
-          <p className="text-sm opacity-70 mt-1">
-            Based on {stats.rentedCount} rented units (
-            {stats.utilizationRate}% utilization)
-          </p>
+        {/* Revenue + Financial KPIs */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="rounded-xl border bg-gradient-to-br from-brand-blue to-brand-blue/90 text-white p-6 lg:col-span-2">
+            <p className="text-sm font-medium opacity-80">
+              Expected Monthly Revenue
+            </p>
+            <p className="text-4xl font-bold mt-2">
+              {formatCurrency(stats.expectedMonthlyRevenue)}
+            </p>
+            <p className="text-sm opacity-70 mt-1">
+              Based on {stats.rented} rented units ({stats.utilizationRate}%
+              utilization)
+            </p>
+          </div>
+          <div className="rounded-xl border bg-white p-6">
+            <p className="text-sm font-medium text-gray-500">Deposits Held</p>
+            <p className="text-3xl font-bold text-gray-900 mt-2">
+              {formatCurrency(stats.totalDepositsHeld)}
+            </p>
+            {stats.totalPendingDeposits > 0 && (
+              <p className="text-sm text-orange-600 mt-1">
+                {formatCurrency(stats.totalPendingDeposits)} pending
+              </p>
+            )}
+          </div>
+          <div className="rounded-xl border bg-white p-6">
+            <p className="text-sm font-medium text-gray-500">
+              Active Customers
+            </p>
+            <p className="text-3xl font-bold text-gray-900 mt-2">
+              {stats.activeCustomers}
+            </p>
+            <p className="text-sm text-gray-400 mt-1">
+              Currently renting units
+            </p>
+          </div>
+        </div>
+
+        {/* Fleet by Type + Top Customers */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Fleet Breakdown by Type */}
+          <div className="rounded-xl border bg-white overflow-hidden">
+            <div className="px-6 py-4 border-b bg-gray-50">
+              <h3 className="font-semibold text-gray-900">Fleet by Type</h3>
+            </div>
+            <div className="p-6 space-y-4">
+              {stats.byType.map((t) => {
+                const utilization =
+                  t.total > 0
+                    ? Math.round((t.rented / t.total) * 100)
+                    : 0
+                return (
+                  <div key={t.type}>
+                    <div className="flex items-center justify-between text-sm mb-1.5">
+                      <span className="font-medium text-gray-900">
+                        {TRAILER_TYPE_LABELS[t.type] ?? statusLabel(t.type)}
+                      </span>
+                      <span className="text-gray-500">
+                        {t.rented}/{t.total} rented ({utilization}%)
+                      </span>
+                    </div>
+                    <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-brand-blue rounded-full transition-all"
+                        style={{ width: `${utilization}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+              {stats.byType.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-4">
+                  No fleet data yet.
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Top Customers */}
+          <div className="rounded-xl border bg-white overflow-hidden">
+            <div className="px-6 py-4 border-b bg-gray-50">
+              <h3 className="font-semibold text-gray-900">
+                Top Customers by Units
+              </h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-medium text-gray-500">
+                      Customer
+                    </th>
+                    <th className="px-4 py-3 text-right font-medium text-gray-500">
+                      Units
+                    </th>
+                    <th className="px-4 py-3 text-right font-medium text-gray-500">
+                      % Fleet
+                    </th>
+                    <th className="px-4 py-3 text-right font-medium text-gray-500">
+                      Revenue/Mo
+                    </th>
+                    <th className="px-4 py-3 text-right font-medium text-gray-500">
+                      Deposits
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {stats.topCustomers.map((c) => (
+                    <tr key={c.name} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 font-medium text-gray-900">
+                        {c.name}
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-600">
+                        {c.units}
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-600">
+                        {c.percentOfFleet}%
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-600">
+                        {formatCurrency(c.revenue)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-600">
+                        {formatCurrency(c.deposits)}
+                      </td>
+                    </tr>
+                  ))}
+                  {stats.topCustomers.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={5}
+                        className="px-4 py-8 text-center text-gray-400"
+                      >
+                        No active rentals yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -843,6 +1106,365 @@ function DashboardContent() {
           </div>
         )}
 
+        {/* Edit Unit Modal */}
+        {editUnit && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between px-6 py-4 border-b">
+                <h3 className="text-lg font-bold text-gray-900">
+                  Edit Unit: {editUnit.unitNumber}
+                </h3>
+                <button
+                  onClick={() => setEditUnit(null)}
+                  className="p-1 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="px-6 py-5 space-y-4">
+                {/* Row 1: Unit Number + Trailer Type */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelClass}>
+                      Unit Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={editUnitForm.unitNumber}
+                      onChange={(e) =>
+                        setEditUnitForm({
+                          ...editUnitForm,
+                          unitNumber: e.target.value,
+                        })
+                      }
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Trailer Type</label>
+                    <select
+                      value={editUnitForm.trailerType}
+                      onChange={(e) =>
+                        setEditUnitForm({
+                          ...editUnitForm,
+                          trailerType: e.target.value,
+                        })
+                      }
+                      className={inputClass}
+                    >
+                      {Object.entries(TRAILER_TYPE_LABELS).map(
+                        ([key, label]) => (
+                          <option key={key} value={key}>
+                            {label}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Row 2: Year + Make + Model */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className={labelClass}>Year</label>
+                    <input
+                      type="number"
+                      value={editUnitForm.year}
+                      onChange={(e) =>
+                        setEditUnitForm({
+                          ...editUnitForm,
+                          year: e.target.value,
+                        })
+                      }
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Make</label>
+                    <input
+                      type="text"
+                      value={editUnitForm.make}
+                      onChange={(e) =>
+                        setEditUnitForm({
+                          ...editUnitForm,
+                          make: e.target.value,
+                        })
+                      }
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Model</label>
+                    <input
+                      type="text"
+                      value={editUnitForm.model}
+                      onChange={(e) =>
+                        setEditUnitForm({
+                          ...editUnitForm,
+                          model: e.target.value,
+                        })
+                      }
+                      className={inputClass}
+                    />
+                  </div>
+                </div>
+
+                {/* Row 3: VIN + Status */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelClass}>VIN</label>
+                    <input
+                      type="text"
+                      value={editUnitForm.vin}
+                      onChange={(e) =>
+                        setEditUnitForm({
+                          ...editUnitForm,
+                          vin: e.target.value,
+                        })
+                      }
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Status</label>
+                    <select
+                      value={editUnitForm.status}
+                      onChange={(e) =>
+                        setEditUnitForm({
+                          ...editUnitForm,
+                          status: e.target.value,
+                        })
+                      }
+                      className={inputClass}
+                    >
+                      <option value="available">Available</option>
+                      <option value="rented">Rented</option>
+                      <option value="damaged">Damaged</option>
+                      <option value="for_sale">For Sale</option>
+                      <option value="maintenance">Maintenance</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Rental Section */}
+                <div className="border-t pt-4">
+                  <p className="text-sm font-semibold text-gray-700 mb-3">
+                    Rental Details
+                  </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={labelClass}>Rented To</label>
+                      <input
+                        type="text"
+                        value={editUnitForm.rentedTo}
+                        onChange={(e) =>
+                          setEditUnitForm({
+                            ...editUnitForm,
+                            rentedTo: e.target.value,
+                          })
+                        }
+                        className={inputClass}
+                        placeholder="Customer name"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Contact</label>
+                      <input
+                        type="text"
+                        value={editUnitForm.rentedToContact}
+                        onChange={(e) =>
+                          setEditUnitForm({
+                            ...editUnitForm,
+                            rentedToContact: e.target.value,
+                          })
+                        }
+                        className={inputClass}
+                        placeholder="Contact person"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4 mt-4">
+                    <div>
+                      <label className={labelClass}>Rental Rate ($/mo)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editUnitForm.rentalRate}
+                        onChange={(e) =>
+                          setEditUnitForm({
+                            ...editUnitForm,
+                            rentalRate: e.target.value,
+                          })
+                        }
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Deposit Total ($)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editUnitForm.depositTotal}
+                        onChange={(e) =>
+                          setEditUnitForm({
+                            ...editUnitForm,
+                            depositTotal: e.target.value,
+                          })
+                        }
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Pending Deposit ($)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editUnitForm.pendingDeposit}
+                        onChange={(e) =>
+                          setEditUnitForm({
+                            ...editUnitForm,
+                            pendingDeposit: e.target.value,
+                          })
+                        }
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div>
+                      <label className={labelClass}>Rent Start Date</label>
+                      <input
+                        type="date"
+                        value={editUnitForm.rentStartDate}
+                        onChange={(e) =>
+                          setEditUnitForm({
+                            ...editUnitForm,
+                            rentStartDate: e.target.value,
+                          })
+                        }
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Due Day</label>
+                      <input
+                        type="text"
+                        value={editUnitForm.rentDueDay}
+                        onChange={(e) =>
+                          setEditUnitForm({
+                            ...editUnitForm,
+                            rentDueDay: e.target.value,
+                          })
+                        }
+                        className={inputClass}
+                        placeholder="e.g. 1st, 15th"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional fields */}
+                <div className="border-t pt-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={labelClass}>
+                        Purchasing Cost ($)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editUnitForm.purchasingCost}
+                        onChange={(e) =>
+                          setEditUnitForm({
+                            ...editUnitForm,
+                            purchasingCost: e.target.value,
+                          })
+                        }
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Tire Type</label>
+                      <input
+                        type="text"
+                        value={editUnitForm.tireType}
+                        onChange={(e) =>
+                          setEditUnitForm({
+                            ...editUnitForm,
+                            tireType: e.target.value,
+                          })
+                        }
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div>
+                      <label className={labelClass}>SkyBitz Device ID</label>
+                      <input
+                        type="text"
+                        value={editUnitForm.skybitzDeviceId}
+                        onChange={(e) =>
+                          setEditUnitForm({
+                            ...editUnitForm,
+                            skybitzDeviceId: e.target.value,
+                          })
+                        }
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Image URL</label>
+                      <input
+                        type="text"
+                        value={editUnitForm.imageUrl}
+                        onChange={(e) =>
+                          setEditUnitForm({
+                            ...editUnitForm,
+                            imageUrl: e.target.value,
+                          })
+                        }
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <label className={labelClass}>Notes</label>
+                    <textarea
+                      value={editUnitForm.notes}
+                      onChange={(e) =>
+                        setEditUnitForm({
+                          ...editUnitForm,
+                          notes: e.target.value,
+                        })
+                      }
+                      className={inputClass}
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t bg-gray-50 rounded-b-xl">
+                <button
+                  onClick={() => setEditUnit(null)}
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleEditUnit}
+                  disabled={
+                    editUnitLoading || editUnitForm.unitNumber.trim() === ''
+                  }
+                  className="px-5 py-2 rounded-lg bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange/90 transition-colors disabled:opacity-50"
+                >
+                  {editUnitLoading ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Table */}
         <div className="overflow-x-auto rounded-xl border bg-white">
           <table className="min-w-full divide-y divide-gray-200 text-sm">
@@ -868,6 +1490,12 @@ function DashboardContent() {
                 </th>
                 <th className="px-4 py-3 text-right font-medium text-gray-500">
                   Rate
+                </th>
+                <th className="px-4 py-3 text-right font-medium text-gray-500">
+                  Deposit
+                </th>
+                <th className="px-4 py-3 text-center font-medium text-gray-500">
+                  Actions
                 </th>
               </tr>
             </thead>
@@ -905,12 +1533,25 @@ function DashboardContent() {
                       ? formatCurrency(parseFloat(unit.rentalRate)) + '/mo'
                       : '—'}
                   </td>
+                  <td className="px-4 py-3 text-right text-gray-600">
+                    {unit.depositTotal
+                      ? formatCurrency(parseFloat(unit.depositTotal))
+                      : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <button
+                      onClick={() => openEditUnit(unit)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-brand-blue hover:bg-brand-blue/10 transition-colors"
+                    >
+                      Edit
+                    </button>
+                  </td>
                 </tr>
               ))}
               {filteredFleet.length === 0 && (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={9}
                     className="px-4 py-12 text-center text-gray-400"
                   >
                     No units match your filters.
