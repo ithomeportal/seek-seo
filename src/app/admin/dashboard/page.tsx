@@ -18,8 +18,8 @@ import {
   Search,
   AlertTriangle,
   Loader2,
-  MapPinOff,
 } from 'lucide-react'
+import { GPSTrackingMap } from '@/components/admin/GPSTrackingMap'
 
 // ---------------------------------------------------------------------------
 // Types (matching demo-data.ts shapes)
@@ -236,14 +236,9 @@ export default function AdminDashboardPage() {
             if (json.success) setConcentration(json.data)
             break
           }
-          case 'gps': {
-            if (fleet.length === 0) {
-              const res = await fetch('/api/admin/fleet')
-              const json = await res.json()
-              if (json.success) setFleet(json.data)
-            }
+          case 'gps':
+            // GPS tab manages its own data via GPSTrackingMap
             break
-          }
         }
       } catch {
         setError('Failed to load data. Please try again.')
@@ -279,10 +274,6 @@ export default function AdminDashboardPage() {
       fleetStatusFilter === 'all' || unit.status === fleetStatusFilter
     return matchesSearch && matchesType && matchesStatus
   })
-
-  const gpsUnits = fleet.filter(
-    (u) => u.lastLatitude !== null && u.lastLongitude !== null
-  )
 
   // ------ Guard ------
   if (!authenticated) {
@@ -500,82 +491,7 @@ export default function AdminDashboardPage() {
   }
 
   function renderGPS() {
-    return (
-      <div className="space-y-6">
-        <div className="rounded-xl border bg-white p-8 text-center">
-          <MapPinOff className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            GPS Tracking Integration Coming Soon
-          </h3>
-          <p className="text-gray-500 max-w-md mx-auto">
-            Connect your Skybitz devices to see real-time fleet locations.
-          </p>
-        </div>
-
-        {gpsUnits.length > 0 && (
-          <div className="rounded-xl border bg-white overflow-hidden">
-            <div className="px-6 py-4 border-b bg-gray-50">
-              <h3 className="font-semibold text-gray-900">
-                Units with Last Known Position ({gpsUnits.length})
-              </h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500">
-                      Unit #
-                    </th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500">
-                      Type
-                    </th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500">
-                      Rented To
-                    </th>
-                    <th className="px-4 py-3 text-right font-medium text-gray-500">
-                      Latitude
-                    </th>
-                    <th className="px-4 py-3 text-right font-medium text-gray-500">
-                      Longitude
-                    </th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500">
-                      Last Update
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {gpsUnits.map((unit) => (
-                    <tr key={unit.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium text-gray-900">
-                        {unit.unitNumber}
-                      </td>
-                      <td className="px-4 py-3">
-                        {renderBadge(
-                          unit.trailerType,
-                          'bg-gray-100 text-gray-700'
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {unit.rentedTo ?? '—'}
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono text-xs text-gray-600">
-                        {unit.lastLatitude ?? '—'}
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono text-xs text-gray-600">
-                        {unit.lastLongitude ?? '—'}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">
-                        {formatDate(unit.updatedAt)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </div>
-    )
+    return <GPSTrackingMap />
   }
 
   function renderInquiries() {
