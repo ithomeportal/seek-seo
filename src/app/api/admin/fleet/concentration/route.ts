@@ -12,23 +12,22 @@ export async function GET() {
     )
 
     const totalsResult = await query(
-      `SELECT COUNT(*)::int AS total_units, COALESCE(SUM(rental_rate), 0)::float AS total_revenue
-       FROM fleet_units
-       WHERE status = 'rented' AND rented_to IS NOT NULL`
+      `SELECT COUNT(*)::int AS total_fleet FROM fleet_units`
     )
 
-    const totalUnits = Number(totalsResult.rows[0]?.total_units ?? 0)
-    const totalRevenue = Number(totalsResult.rows[0]?.total_revenue ?? 0)
+    const totalFleet = Number(totalsResult.rows[0]?.total_fleet ?? 0)
 
-    const concentration = concentrationResult.rows.map((row: Record<string, unknown>) => ({
-      customer: row.rented_to,
-      units: Number(row.units),
-      unitPercentage: totalUnits > 0 ? Math.round((Number(row.units) / totalUnits) * 100 * 10) / 10 : 0,
-      revenue: Number(row.revenue),
-      revenuePercentage: totalRevenue > 0 ? Math.round((Number(row.revenue) / totalRevenue) * 100 * 10) / 10 : 0,
+    const data = concentrationResult.rows.map((row: Record<string, unknown>) => ({
+      customer: row.rented_to as string,
+      unitCount: Number(row.units),
+      percentOfFleet:
+        totalFleet > 0
+          ? Math.round((Number(row.units) / totalFleet) * 1000) / 10
+          : 0,
+      monthlyRevenue: Number(row.revenue),
     }))
 
-    return NextResponse.json({ success: true, data: concentration })
+    return NextResponse.json({ success: true, data })
   } catch {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
