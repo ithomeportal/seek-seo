@@ -12,6 +12,8 @@ import {
   Map as MapIcon,
   Loader2,
   Truck,
+  Filter,
+  X,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -31,9 +33,9 @@ interface GPSUnit {
 }
 
 interface SkyBitzStatus {
-  tokenValid: boolean
-  apiConfigured: boolean
+  configured: boolean
   provider: string
+  authMode: string
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -84,6 +86,9 @@ export function GPSTrackingMap() {
   )
   const [mapStyle, setMapStyle] = useState<'light' | 'satellite'>('light')
   const [selectedUnit, setSelectedUnit] = useState<GPSUnit | null>(null)
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [typeFilter, setTypeFilter] = useState<string>('all')
+  const [customerFilter, setCustomerFilter] = useState<string>('all')
 
   // ------ Fetch positions from DB ------
   const fetchPositions = useCallback(async () => {
@@ -164,7 +169,35 @@ export function GPSTrackingMap() {
     }
   }, [mapStyle])
 
-  // ------ Update markers when units change ------
+  // ------ Derived data ------
+  const allGpsUnits = units.filter(
+    (u) => u.latitude !== null && u.longitude !== null
+  )
+  const trackedCount = units.filter((u) => u.skybitzDeviceId !== null).length
+
+  const filteredUnits = allGpsUnits.filter((u) => {
+    if (statusFilter !== 'all' && u.status !== statusFilter) return false
+    if (typeFilter !== 'all' && u.trailerType !== typeFilter) return false
+    if (customerFilter !== 'all') {
+      if (customerFilter === '__available__') {
+        if (u.rentedTo) return false
+      } else if (u.rentedTo !== customerFilter) {
+        return false
+      }
+    }
+    return true
+  })
+
+  const uniqueStatuses = [...new Set(allGpsUnits.map((u) => u.status))].sort()
+  const uniqueTypes = [...new Set(allGpsUnits.map((u) => u.trailerType))].sort()
+  const uniqueCustomers = [
+    ...new Set(allGpsUnits.filter((u) => u.rentedTo).map((u) => u.rentedTo!)),
+  ].sort()
+
+  const hasActiveFilters =
+    statusFilter !== 'all' || typeFilter !== 'all' || customerFilter !== 'all'
+
+  // ------ Update markers when filtered units change ------
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
@@ -176,16 +209,11 @@ export function GPSTrackingMap() {
     const bounds = new mapboxgl.LngLatBounds()
     let hasPoints = false
 
-    const gpsUnits = units.filter(
-      (u) => u.latitude !== null && u.longitude !== null
-    )
-
-    for (const unit of gpsUnits) {
+    for (const unit of filteredUnits) {
       if (unit.latitude === null || unit.longitude === null) continue
 
       const markerColor = STATUS_COLORS[unit.status] ?? '#6b7280'
 
-      // Custom marker element (like uber-kohler style)
       const el = document.createElement('div')
       el.style.cssText =
         'position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;'
@@ -199,7 +227,6 @@ export function GPSTrackingMap() {
 
       el.addEventListener('click', () => setSelectedUnit(unit))
 
-      // Popup content
       const popup = new mapboxgl.Popup({ offset: 30, closeButton: true })
         .setHTML(`
         <div style="font-family:system-ui;min-width:180px;">
@@ -226,17 +253,11 @@ export function GPSTrackingMap() {
       hasPoints = true
     }
 
-    // Auto-fit to show all markers
     if (hasPoints) {
       map.fitBounds(bounds, { padding: 60, maxZoom: 10 })
     }
-  }, [units])
-
-  // ------ Derived data ------
-  const gpsUnits = units.filter(
-    (u) => u.latitude !== null && u.longitude !== null
-  )
-  const trackedCount = units.filter((u) => u.skybitzDeviceId !== null).length
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredUnits.length, statusFilter, typeFilter, customerFilter, units])
 
   if (loading) {
     return (
@@ -263,7 +284,7 @@ export function GPSTrackingMap() {
             GPS Located
           </div>
           <div className="text-2xl font-bold text-gray-900">
-            {gpsUnits.length}
+            {allGpsUnits.length}
           </div>
         </div>
         <div className="rounded-xl border bg-white p-4">
@@ -277,7 +298,7 @@ export function GPSTrackingMap() {
         </div>
         <div className="rounded-xl border bg-white p-4">
           <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-            {skybitzStatus?.tokenValid ? (
+            {skybitzStatus?.configured ? (
               <Wifi className="h-4 w-4 text-green-500" />
             ) : (
               <WifiOff className="h-4 w-4 text-gray-400" />
@@ -285,17 +306,80 @@ export function GPSTrackingMap() {
             SkyBitz Status
           </div>
           <div className="text-sm font-semibold">
-            {skybitzStatus?.tokenValid ? (
-              <span className="text-green-600">Connected</span>
+            {skybitzStatus?.configured ? (
+              <span className="text-green-600">Connected — {skybitzStatus.authMode}</span>
             ) : (
               <span className="text-gray-400">Not configured</span>
             )}
           </div>
-          {skybitzStatus?.tokenValid && !skybitzStatus.apiConfigured && (
-            <div className="text-xs text-amber-600 mt-1">
-              API URL pending from SkyBitz
-            </div>
+        </div>
+      </div>
+
+      {/* Filter bar */}
+      <div className="rounded-xl border bg-white p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+            <Filter className="h-4 w-4" />
+            Filters
+          </div>
+
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/30 focus:border-brand-blue"
+          >
+            <option value="all">All Statuses</option>
+            {uniqueStatuses.map((s) => (
+              <option key={s} value={s}>
+                {statusLabel(s)} ({allGpsUnits.filter((u) => u.status === s).length})
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/30 focus:border-brand-blue"
+          >
+            <option value="all">All Types</option>
+            {uniqueTypes.map((t) => (
+              <option key={t} value={t}>
+                {TRAILER_LABELS[t] ?? t} ({allGpsUnits.filter((u) => u.trailerType === t).length})
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={customerFilter}
+            onChange={(e) => setCustomerFilter(e.target.value)}
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/30 focus:border-brand-blue"
+          >
+            <option value="all">All Customers</option>
+            <option value="__available__">— Not Rented (Available) —</option>
+            {uniqueCustomers.map((c) => (
+              <option key={c} value={c}>
+                {c} ({allGpsUnits.filter((u) => u.rentedTo === c).length})
+              </option>
+            ))}
+          </select>
+
+          {hasActiveFilters && (
+            <button
+              onClick={() => {
+                setStatusFilter('all')
+                setTypeFilter('all')
+                setCustomerFilter('all')
+              }}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+              Clear
+            </button>
           )}
+
+          <div className="ml-auto text-sm text-gray-500">
+            Showing {filteredUnits.length} of {allGpsUnits.length} units
+          </div>
         </div>
       </div>
 
@@ -341,15 +425,15 @@ export function GPSTrackingMap() {
       </div>
 
       {/* Unit list below map */}
-      {gpsUnits.length > 0 && (
+      {filteredUnits.length > 0 && (
         <div className="rounded-xl border bg-white overflow-hidden">
           <div className="px-6 py-4 border-b bg-gray-50 flex items-center justify-between">
             <h3 className="font-semibold text-gray-900">
-              Tracked Units ({gpsUnits.length})
+              {hasActiveFilters ? `Filtered Units (${filteredUnits.length})` : `Tracked Units (${filteredUnits.length})`}
             </h3>
             <div className="flex gap-3 text-xs">
               {Object.entries(STATUS_COLORS).map(([status, color]) => {
-                const count = gpsUnits.filter(
+                const count = filteredUnits.filter(
                   (u) => u.status === status
                 ).length
                 if (count === 0) return null
@@ -398,7 +482,7 @@ export function GPSTrackingMap() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {gpsUnits.map((unit) => (
+                {filteredUnits.map((unit) => (
                   <tr
                     key={unit.id}
                     className={`hover:bg-gray-50 cursor-pointer transition-colors ${
