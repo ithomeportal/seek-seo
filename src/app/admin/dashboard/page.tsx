@@ -699,7 +699,7 @@ function DashboardContent() {
     })
   }
 
-  function SortHeader({ label, sortId, align }: { label: string; sortId: string; align?: 'left' | 'right' | 'center' }) {
+  function renderSortHeader(label: string, sortId: string, align?: 'left' | 'right' | 'center') {
     const isActive = sortKey === sortId
     return (
       <th
@@ -713,7 +713,7 @@ function DashboardContent() {
           {isActive && (
             <span className="text-brand-orange">{sortDir === 'asc' ? '\u25B2' : '\u25BC'}</span>
           )}
-          {!isActive && <span className="text-gray-300">\u25B4</span>}
+          {!isActive && <span className="text-gray-300">{'\u25B4'}</span>}
         </span>
       </th>
     )
@@ -1518,14 +1518,14 @@ function DashboardContent() {
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b bg-gray-50">
-                <SortHeader label="Unit #" sortId="unitNumber" />
-                <SortHeader label="Type" sortId="trailerType" />
-                <SortHeader label="Year/Make/Model" sortId="year" />
-                <SortHeader label="VIN" sortId="vin" />
-                <SortHeader label="Status" sortId="status" />
-                <SortHeader label="Rented To" sortId="rentedTo" />
-                <SortHeader label="Rate" sortId="rentalRate" align="right" />
-                <SortHeader label="Deposit" sortId="depositTotal" align="right" />
+                {renderSortHeader("Unit #", "unitNumber")}
+                {renderSortHeader("Type", "trailerType")}
+                {renderSortHeader("Year/Make/Model", "year")}
+                {renderSortHeader("VIN", "vin")}
+                {renderSortHeader("Status", "status")}
+                {renderSortHeader("Rented To", "rentedTo")}
+                {renderSortHeader("Rate", "rentalRate", "right")}
+                {renderSortHeader("Deposit", "depositTotal", "right")}
                 <th className="px-2.5 py-2 w-12"></th>
               </tr>
             </thead>
@@ -1625,13 +1625,13 @@ function DashboardContent() {
         <table className="min-w-full text-sm">
           <thead>
             <tr className="border-b bg-gray-50">
-              <SortHeader label="Name" sortId="inqName" />
-              <SortHeader label="Email" sortId="inqEmail" />
-              <SortHeader label="Company" sortId="inqCompany" />
-              <SortHeader label="Message" sortId="inqMessage" />
-              <SortHeader label="Type" sortId="inqType" />
-              <SortHeader label="Status" sortId="inqStatus" />
-              <SortHeader label="Date" sortId="inqDate" />
+              {renderSortHeader("Name", "inqName")}
+              {renderSortHeader("Email", "inqEmail")}
+              {renderSortHeader("Company", "inqCompany")}
+              {renderSortHeader("Message", "inqMessage")}
+              {renderSortHeader("Type", "inqType")}
+              {renderSortHeader("Status", "inqStatus")}
+              {renderSortHeader("Date", "inqDate")}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -2016,13 +2016,13 @@ function DashboardContent() {
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b bg-gray-50">
-                <SortHeader label="Invoice #" sortId="docNumber" />
-                <SortHeader label="Customer" sortId="invCustomer" />
-                <SortHeader label="Date" sortId="txnDate" />
-                <SortHeader label="Due Date" sortId="dueDate" />
-                <SortHeader label="Amount" sortId="totalAmt" align="right" />
-                <SortHeader label="Balance" sortId="invBalance" align="right" />
-                <SortHeader label="Status" sortId="invStatus" />
+                {renderSortHeader("Invoice #", "docNumber")}
+                {renderSortHeader("Customer", "invCustomer")}
+                {renderSortHeader("Date", "txnDate")}
+                {renderSortHeader("Due Date", "dueDate")}
+                {renderSortHeader("Amount", "totalAmt", "right")}
+                {renderSortHeader("Balance", "invBalance", "right")}
+                {renderSortHeader("Status", "invStatus")}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -2137,10 +2137,10 @@ function DashboardContent() {
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b bg-gray-50">
-                <SortHeader label="Customer" sortId="payCustomer" />
-                <SortHeader label="Date" sortId="payDate" />
-                <SortHeader label="Amount" sortId="payAmt" align="right" />
-                <SortHeader label="Method" sortId="payMethod" />
+                {renderSortHeader("Customer", "payCustomer")}
+                {renderSortHeader("Date", "payDate")}
+                {renderSortHeader("Amount", "payAmt", "right")}
+                {renderSortHeader("Method", "payMethod")}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -2189,11 +2189,11 @@ function DashboardContent() {
         <table className="min-w-full text-sm">
           <thead>
             <tr className="border-b bg-gray-50/50">
-              <SortHeader label="Customer" sortId="concCustomer" />
-              <SortHeader label="Units" sortId="concUnits" align="right" />
-              <SortHeader label="% Fleet" sortId="concFleet" align="right" />
-              <SortHeader label="Revenue/Mo" sortId="concRevenue" align="right" />
-              <SortHeader label="% Revenue" sortId="concRevPct" align="right" />
+              {renderSortHeader("Customer", "concCustomer")}
+              {renderSortHeader("Units", "concUnits", "right")}
+              {renderSortHeader("% Fleet", "concFleet", "right")}
+              {renderSortHeader("Revenue/Mo", "concRevenue", "right")}
+              {renderSortHeader("% Revenue", "concRevPct", "right")}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
