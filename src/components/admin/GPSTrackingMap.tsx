@@ -204,7 +204,7 @@ export function GPSTrackingMap() {
     const styleUrl =
       mapStyle === 'satellite'
         ? 'mapbox://styles/mapbox/satellite-streets-v12'
-        : 'mapbox://styles/mapbox/light-v11'
+        : 'mapbox://styles/mapbox/streets-v12'
 
     const map = new mapboxgl.Map({
       container: mapContainer.current,
