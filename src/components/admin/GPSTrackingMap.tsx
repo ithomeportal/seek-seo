@@ -141,7 +141,7 @@ export function GPSTrackingMap() {
   const [skybitzStatus, setSkybitzStatus] = useState<SkyBitzStatus | null>(
     null
   )
-  const [mapStyle, setMapStyle] = useState<'light' | 'satellite'>('light')
+  const [mapStyle, setMapStyle] = useState<'light' | 'satellite'>('satellite')
   const [mapReady, setMapReady] = useState(false)
   const [selectedUnit, setSelectedUnit] = useState<GPSUnit | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -208,7 +208,7 @@ export function GPSTrackingMap() {
     const styleUrl =
       mapStyle === 'satellite'
         ? 'mapbox://styles/mapbox/satellite-streets-v12'
-        : 'mapbox://styles/mapbox/streets-v12'
+        : 'mapbox://styles/mapbox/navigation-day-v1'
 
     // Wait for the browser to paint the container so it has a real size
     let cancelled = false
