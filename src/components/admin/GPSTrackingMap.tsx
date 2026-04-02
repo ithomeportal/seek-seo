@@ -132,6 +132,7 @@ export function GPSTrackingMap() {
   const mapContainer = useRef<HTMLDivElement>(null)
   const mapRef = useRef<mapboxgl.Map | null>(null)
   const markersRef = useRef<mapboxgl.Marker[]>([])
+  const initialFitDone = useRef(false)
 
   const [units, setUnits] = useState<GPSUnit[]>([])
   const [loading, setLoading] = useState(true)
@@ -208,8 +209,8 @@ export function GPSTrackingMap() {
     const map = new mapboxgl.Map({
       container: mapContainer.current,
       style: styleUrl,
-      center: [-98.0, 30.5], // Texas centered — slightly north so SA isn't at bottom edge
-      zoom: 6,
+      center: [-98.5, 30.0], // San Antonio / Von Ormy area
+      zoom: 7,
     })
 
     map.addControl(new mapboxgl.NavigationControl(), 'top-right')
@@ -222,6 +223,7 @@ export function GPSTrackingMap() {
       markersRef.current = []
       map.remove()
       mapRef.current = null
+      initialFitDone.current = false
     }
   }, [mapStyle])
 
@@ -313,8 +315,11 @@ export function GPSTrackingMap() {
       hasPoints = true
     }
 
-    if (hasPoints) {
-      map.fitBounds(bounds, { padding: 60, maxZoom: 10 })
+    // Only auto-fit on first load — after that, keep user's zoom/pan
+    if (hasPoints && !initialFitDone.current) {
+      initialFitDone.current = true
+      // Don't zoom out too far — cap at zoom 7 so SA area is clearly visible
+      map.fitBounds(bounds, { padding: 60, maxZoom: 8 })
     }
   }, [filteredUnits])
 
