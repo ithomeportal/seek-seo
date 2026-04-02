@@ -37,6 +37,8 @@ function getConfig() {
       process.env.SKYBITZ_TOKEN_URL ??
       'https://prodssoidp.skybitz.com/oauth2/token',
     apiUrl: process.env.SKYBITZ_API_URL ?? '',
+    xmlUsername: process.env.SKYBITZ_XML_USERNAME ?? '',
+    xmlPassword: process.env.SKYBITZ_XML_PASSWORD ?? '',
   }
 }
 
@@ -76,9 +78,28 @@ export async function getAccessToken(): Promise<string | null> {
  * Returns null if the API URL is not configured yet.
  */
 export async function fetchPositions(): Promise<SkyBitzPosition[] | null> {
-  const { apiUrl } = getConfig()
+  const { apiUrl, xmlUsername, xmlPassword } = getConfig()
   if (!apiUrl) return null
 
+  // Use XML username/password auth (required by SkyBitz legacy API)
+  if (xmlUsername && xmlPassword) {
+    const params = new URLSearchParams({
+      version: '2.67',
+      customer: xmlUsername,
+      password: xmlPassword,
+      assetid: 'ALL',
+      sortby: '1',
+    })
+    const res = await fetch(`${apiUrl}/QueryPositions?${params}`)
+    if (!res.ok) return null
+    const text = await res.text()
+    // Check for SkyBitz error codes
+    const errMatch = text.match(/<error>(\d+)<\/error>/)
+    if (errMatch && errMatch[1] !== '0') return null
+    return parsePositionsXml(text)
+  }
+
+  // Fallback: OAuth2 bearer token
   const token = await getAccessToken()
   if (!token) return null
 
