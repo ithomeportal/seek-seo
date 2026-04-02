@@ -304,6 +304,8 @@ function DashboardContent() {
   const setActiveTab = useCallback(
     (tab: TabKey) => {
       setActiveTabState(tab)
+      setSortKey('')
+      setSortDir('asc')
       router.replace(`/admin/dashboard?tab=${tab}`, { scroll: false })
     },
     [router]
@@ -407,9 +409,17 @@ function DashboardContent() {
             break
           }
           case 'fleet': {
-            const res = await fetch('/api/admin/fleet')
-            const json = await res.json()
-            if (json.success) setFleet(json.data)
+            const [fleetRes, custRes] = await Promise.all([
+              fetch('/api/admin/fleet'),
+              fetch('/api/admin/customers'),
+            ])
+            const fleetJson = await fleetRes.json()
+            if (fleetJson.success) setFleet(fleetJson.data)
+            const custJson = await custRes.json()
+            if (custJson.success) {
+              setCustomers(custJson.data.customers)
+              setCustomerSummary(custJson.data.summary)
+            }
             break
           }
           case 'customers': {
@@ -659,10 +669,60 @@ function DashboardContent() {
     )
   }
 
+  // ------ Sort state ------
+  const [sortKey, setSortKey] = useState<string>('')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  function handleSort(key: string) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
+  }
+
+  function genericSort<T>(rows: T[], getVal: (row: T) => string | number | null | undefined): T[] {
+    if (!sortKey) return rows
+    return [...rows].sort((a, b) => {
+      const va = getVal(a)
+      const vb = getVal(b)
+      if (va == null && vb == null) return 0
+      if (va == null) return 1
+      if (vb == null) return -1
+      if (typeof va === 'number' && typeof vb === 'number') {
+        return sortDir === 'asc' ? va - vb : vb - va
+      }
+      const sa = String(va).toLowerCase()
+      const sb = String(vb).toLowerCase()
+      return sortDir === 'asc' ? sa.localeCompare(sb) : sb.localeCompare(sa)
+    })
+  }
+
+  function SortHeader({ label, sortId, align }: { label: string; sortId: string; align?: 'left' | 'right' | 'center' }) {
+    const isActive = sortKey === sortId
+    return (
+      <th
+        className={`px-2.5 py-2 font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 transition-colors ${
+          align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left'
+        }`}
+        onClick={() => handleSort(sortId)}
+      >
+        <span className="inline-flex items-center gap-1">
+          {label}
+          {isActive && (
+            <span className="text-brand-orange">{sortDir === 'asc' ? '\u25B2' : '\u25BC'}</span>
+          )}
+          {!isActive && <span className="text-gray-300">\u25B4</span>}
+        </span>
+      </th>
+    )
+  }
+
   // ------ Render helpers ------
   function renderBadge(text: string, colorClass: string) {
     return (
-      <span className={`inline-flex items-center rounded px-1.5 py-px text-[10px] font-medium ${colorClass}`}>
+      <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${colorClass}`}>
         {statusLabel(text)}
       </span>
     )
@@ -693,14 +753,14 @@ function DashboardContent() {
         <div className="grid grid-cols-6 lg:grid-cols-10 gap-2">
           {fleetCards.map((c) => (
             <div key={c.label} className={`rounded-lg p-3 ${c.color}`}>
-              <p className="text-[10px] font-medium uppercase opacity-70 leading-tight">{c.label}</p>
-              <p className="text-2xl font-bold">{c.value}</p>
+              <p className="text-xs font-semibold uppercase opacity-70 leading-tight">{c.label}</p>
+              <p className="text-3xl font-bold">{c.value}</p>
             </div>
           ))}
           <div className="col-span-6 lg:col-span-4 rounded-lg bg-brand-orange text-white p-3 flex items-center justify-between gap-4">
             <div>
-              <p className="text-[10px] font-medium uppercase opacity-80">Monthly Revenue</p>
-              <p className="text-2xl font-bold">{formatCurrency(stats.expectedMonthlyRevenue)}</p>
+              <p className="text-xs font-medium uppercase opacity-80">Monthly Revenue</p>
+              <p className="text-3xl font-bold">{formatCurrency(stats.expectedMonthlyRevenue)}</p>
             </div>
             <div className="text-right text-xs opacity-80 hidden sm:block">
               <p>{stats.utilizationRate}% utilization</p>
@@ -713,7 +773,7 @@ function DashboardContent() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
           {/* Deposits */}
           <div className="rounded-lg border bg-white p-3">
-            <h3 className="text-[10px] font-bold uppercase text-gray-400 tracking-wider mb-2">Deposits</h3>
+            <h3 className="text-xs font-bold uppercase text-gray-400 tracking-wider mb-2">Deposits</h3>
             <div className="flex items-baseline gap-4">
               <div>
                 <p className="text-xs text-gray-500">Held</p>
@@ -728,7 +788,7 @@ function DashboardContent() {
             </div>
             {/* Fleet by Type */}
             <div className="mt-3 pt-3 border-t space-y-2">
-              <h3 className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Fleet by Type</h3>
+              <h3 className="text-xs font-bold uppercase text-gray-400 tracking-wider">Fleet by Type</h3>
               {stats.byType.map((t) => {
                 const util = t.total > 0 ? Math.round((t.rented / t.total) * 100) : 0
                 return (
@@ -751,9 +811,9 @@ function DashboardContent() {
           {/* Top Customers — spans 2 cols */}
           <div className="lg:col-span-2 rounded-lg border bg-white overflow-hidden">
             <div className="px-3 py-2 border-b bg-gray-50">
-              <h3 className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Top Customers</h3>
+              <h3 className="text-xs font-bold uppercase text-gray-400 tracking-wider">Top Customers</h3>
             </div>
-            <table className="min-w-full text-xs">
+            <table className="min-w-full text-sm">
               <thead>
                 <tr className="border-b bg-gray-50/50">
                   <th className="px-3 py-1.5 text-left font-medium text-gray-500">Customer</th>
@@ -786,8 +846,8 @@ function DashboardContent() {
 
   function renderFleetMaster() {
     const inputClass =
-      'w-full rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand-orange/50 focus:border-brand-orange'
-    const labelClass = 'block text-[11px] font-medium text-gray-600 mb-0.5'
+      'w-full rounded border border-gray-300 bg-white px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange/50 focus:border-brand-orange'
+    const labelClass = 'block text-xs font-semibold text-gray-600 mb-0.5'
 
     return (
       <div className="space-y-2">
@@ -800,7 +860,7 @@ function DashboardContent() {
               placeholder="Search unit, VIN, or customer..."
               value={fleetSearch}
               onChange={(e) => setFleetSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 rounded border border-gray-300 bg-white focus:outline-none focus:ring-1 focus:ring-brand-blue/50 text-xs"
+              className="w-full pl-8 pr-3 py-1.5 rounded border border-gray-300 bg-white focus:outline-none focus:ring-1 focus:ring-brand-blue/50 text-sm"
             />
           </div>
           <select
@@ -834,7 +894,7 @@ function DashboardContent() {
           </button>
         </div>
 
-        <p className="text-[11px] text-gray-400">
+        <p className="text-xs text-gray-400">
           {filteredFleet.length} units
         </p>
 
@@ -1455,22 +1515,34 @@ function DashboardContent() {
 
         {/* Table */}
         <div className="overflow-x-auto rounded-lg border bg-white">
-          <table className="min-w-full text-xs">
+          <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b bg-gray-50">
-                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Unit #</th>
-                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Type</th>
-                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Year/Make/Model</th>
-                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">VIN</th>
-                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Status</th>
-                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Rented To</th>
-                <th className="px-2.5 py-1.5 text-right font-medium text-gray-500">Rate</th>
-                <th className="px-2.5 py-1.5 text-right font-medium text-gray-500">Deposit</th>
-                <th className="px-2.5 py-1.5 w-12"></th>
+                <SortHeader label="Unit #" sortId="unitNumber" />
+                <SortHeader label="Type" sortId="trailerType" />
+                <SortHeader label="Year/Make/Model" sortId="year" />
+                <SortHeader label="VIN" sortId="vin" />
+                <SortHeader label="Status" sortId="status" />
+                <SortHeader label="Rented To" sortId="rentedTo" />
+                <SortHeader label="Rate" sortId="rentalRate" align="right" />
+                <SortHeader label="Deposit" sortId="depositTotal" align="right" />
+                <th className="px-2.5 py-2 w-12"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filteredFleet.map((unit) => (
+              {genericSort(filteredFleet, (u) => {
+                switch (sortKey) {
+                  case 'unitNumber': return u.unitNumber
+                  case 'trailerType': return u.trailerType
+                  case 'year': return u.year
+                  case 'vin': return u.vin
+                  case 'status': return u.status
+                  case 'rentedTo': return u.rentedTo
+                  case 'rentalRate': return u.rentalRate ? parseFloat(u.rentalRate) : null
+                  case 'depositTotal': return u.depositTotal ? parseFloat(u.depositTotal) : null
+                  default: return null
+                }
+              }).map((unit) => (
                 <tr key={unit.id} className="hover:bg-blue-50/40">
                   <td className="px-2.5 py-1.5 font-semibold text-gray-900 whitespace-nowrap">{unit.unitNumber}</td>
                   <td className="px-2.5 py-1.5">
@@ -1479,11 +1551,36 @@ function DashboardContent() {
                   <td className="px-2.5 py-1.5 text-gray-600">
                     {[unit.year, unit.make, unit.model].filter(Boolean).join(' ') || '—'}
                   </td>
-                  <td className="px-2.5 py-1.5 text-gray-400 font-mono text-[10px]">{unit.vin ?? '—'}</td>
+                  <td className="px-2.5 py-1.5 text-gray-400 font-mono text-xs">{unit.vin ?? '—'}</td>
                   <td className="px-2.5 py-1.5">
                     {renderBadge(unit.status, STATUS_COLORS[unit.status] ?? 'bg-gray-100 text-gray-800')}
                   </td>
-                  <td className="px-2.5 py-1.5 text-gray-700 font-medium">{unit.rentedTo ?? '—'}</td>
+                  <td className="px-2.5 py-1.5">
+                    {unit.rentedTo ? (() => {
+                      const cust = customers.find(
+                        (c) =>
+                          c.alias?.toLowerCase() === unit.rentedTo?.toLowerCase() ||
+                          c.companyName.toLowerCase() === unit.rentedTo?.toLowerCase() ||
+                          c.qbDisplayName?.toLowerCase() === unit.rentedTo?.toLowerCase() ||
+                          c.companyName.toLowerCase().includes(unit.rentedTo?.toLowerCase() ?? '') ||
+                          (unit.rentedTo?.toLowerCase() ?? '').includes(c.companyName.toLowerCase().split(' ')[0])
+                      )
+                      const displayName = cust?.qbDisplayName ?? cust?.companyName ?? unit.rentedTo
+                      const alias = cust?.alias && cust.alias !== displayName ? cust.alias : null
+                      return (
+                        <button
+                          onClick={() => {
+                            setActiveTab('customers')
+                            if (cust) setTimeout(() => setExpandedCustomer(cust.id), 200)
+                          }}
+                          className="text-left text-brand-blue hover:underline font-medium"
+                        >
+                          {displayName}
+                          {alias && <span className="text-gray-400 font-normal ml-1">({alias})</span>}
+                        </button>
+                      )
+                    })() : <span className="text-gray-400">—</span>}
+                  </td>
                   <td className="px-2.5 py-1.5 text-right text-gray-600 tabular-nums">
                     {unit.rentalRate ? formatCurrency(parseFloat(unit.rentalRate)) : '—'}
                   </td>
@@ -1493,7 +1590,7 @@ function DashboardContent() {
                   <td className="px-2.5 py-1.5 text-center">
                     <button
                       onClick={() => openEditUnit(unit)}
-                      className="px-2 py-0.5 rounded text-[10px] font-medium text-brand-blue hover:bg-brand-blue/10 transition-colors"
+                      className="px-2 py-0.5 rounded text-xs font-medium text-brand-blue hover:bg-brand-blue/10 transition-colors"
                     >
                       Edit
                     </button>
@@ -1525,20 +1622,30 @@ function DashboardContent() {
 
     return (
       <div className="overflow-x-auto rounded-lg border bg-white">
-        <table className="min-w-full text-xs">
+        <table className="min-w-full text-sm">
           <thead>
             <tr className="border-b bg-gray-50">
-              <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Name</th>
-              <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Email</th>
-              <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Company</th>
-              <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Message</th>
-              <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Type</th>
-              <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Status</th>
-              <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Date</th>
+              <SortHeader label="Name" sortId="inqName" />
+              <SortHeader label="Email" sortId="inqEmail" />
+              <SortHeader label="Company" sortId="inqCompany" />
+              <SortHeader label="Message" sortId="inqMessage" />
+              <SortHeader label="Type" sortId="inqType" />
+              <SortHeader label="Status" sortId="inqStatus" />
+              <SortHeader label="Date" sortId="inqDate" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {inquiries.map((inq) => (
+            {genericSort(inquiries, (inq) => {
+              switch (sortKey) {
+                case 'inqName': return inq.name
+                case 'inqEmail': return inq.email
+                case 'inqCompany': return inq.company
+                case 'inqType': return inq.type
+                case 'inqStatus': return inq.status
+                case 'inqDate': return inq.createdAt
+                default: return null
+              }
+            }).map((inq) => (
               <tr key={inq.id} className="hover:bg-blue-50/40">
                 <td className="px-2.5 py-1.5 font-medium text-gray-900 whitespace-nowrap">{inq.name}</td>
                 <td className="px-2.5 py-1.5 text-gray-600 whitespace-nowrap">{inq.email}</td>
@@ -1546,7 +1653,7 @@ function DashboardContent() {
                 <td className="px-2.5 py-1.5 text-gray-500 max-w-[200px] truncate">{inq.message}</td>
                 <td className="px-2.5 py-1.5">{renderBadge(inq.type, INQUIRY_TYPE_COLORS[inq.type] ?? 'bg-gray-100 text-gray-800')}</td>
                 <td className="px-2.5 py-1.5">{renderBadge(inq.status, INQUIRY_STATUS_COLORS[inq.status] ?? 'bg-gray-100 text-gray-800')}</td>
-                <td className="px-2.5 py-1.5 text-gray-400 whitespace-nowrap text-[10px]">{formatDate(inq.createdAt)}</td>
+                <td className="px-2.5 py-1.5 text-gray-400 whitespace-nowrap text-xs">{formatDate(inq.createdAt)}</td>
               </tr>
             ))}
             {inquiries.length === 0 && (
@@ -1575,10 +1682,10 @@ function DashboardContent() {
               <div className="flex items-start justify-between mb-1.5">
                 <h3 className="font-semibold text-gray-900 text-xs leading-tight">{item.title}</h3>
                 {item.isSold === 1 && (
-                  <span className="shrink-0 ml-1 rounded px-1.5 py-px text-[10px] font-medium bg-red-100 text-red-800">Sold</span>
+                  <span className="shrink-0 ml-1 rounded px-1.5 py-px text-xs font-medium bg-red-100 text-red-800">Sold</span>
                 )}
               </div>
-              <div className="space-y-0.5 text-[11px] text-gray-500">
+              <div className="space-y-0.5 text-xs text-gray-500">
                 <p>{TRAILER_TYPE_LABELS[item.trailerType] ?? item.trailerType} &middot; {[item.year, item.make, item.model].filter(Boolean).join(' ')}</p>
                 {item.condition && <p>Condition: {statusLabel(item.condition)}</p>}
               </div>
@@ -1587,7 +1694,7 @@ function DashboardContent() {
                   {item.price ? formatCurrency(parseFloat(item.price)) : 'Contact us'}
                 </span>
                 {item.isSold === 0 && (
-                  <span className="rounded px-1.5 py-px text-[10px] font-medium bg-green-100 text-green-800">Available</span>
+                  <span className="rounded px-1.5 py-px text-xs font-medium bg-green-100 text-green-800">Available</span>
                 )}
               </div>
             </div>
@@ -1637,7 +1744,7 @@ function DashboardContent() {
         <div className="flex flex-wrap items-center gap-2">
           {summaryCards.map((c) => (
             <div key={c.label} className={`rounded-lg px-3 py-2 ${c.color}`}>
-              <p className="text-[10px] font-medium uppercase opacity-70">{c.label}</p>
+              <p className="text-xs font-semibold uppercase opacity-70">{c.label}</p>
               <p className="text-lg font-bold leading-tight">{c.value}</p>
             </div>
           ))}
@@ -1652,7 +1759,7 @@ function DashboardContent() {
               placeholder="Search company, contact, or email..."
               value={customerSearch}
               onChange={(e) => setCustomerSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 rounded border border-gray-300 bg-white focus:outline-none focus:ring-1 focus:ring-brand-blue/50 text-xs"
+              className="w-full pl-8 pr-3 py-1.5 rounded border border-gray-300 bg-white focus:outline-none focus:ring-1 focus:ring-brand-blue/50 text-sm"
             />
           </div>
           <select
@@ -1666,7 +1773,7 @@ function DashboardContent() {
           </select>
         </div>
 
-        <p className="text-[11px] text-gray-400">{filtered.length} customers</p>
+        <p className="text-xs text-gray-400">{filtered.length} customers</p>
 
         {/* Customer list */}
         <div className="space-y-1">
@@ -1687,11 +1794,11 @@ function DashboardContent() {
                       <Building2 className="h-3.5 w-3.5 text-brand-blue" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-gray-900 truncate">
+                      <p className="text-sm font-semibold text-gray-900 truncate">
                         {customer.qbDisplayName ?? customer.companyName}
                         {customer.alias && <span className="text-gray-400 font-normal ml-1">({customer.alias})</span>}
                       </p>
-                      <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                      <div className="flex items-center gap-2 text-xs text-gray-400">
                         {customer.contactName && <span>{customer.contactName}</span>}
                         {customer.phone && (
                           <span className="flex items-center gap-0.5"><Phone className="h-2.5 w-2.5" />{customer.phone}</span>
@@ -1705,33 +1812,33 @@ function DashboardContent() {
                   <div className="flex items-center gap-3 shrink-0">
                     {customer.qbBalance !== null && customer.qbBalance > 0 && (
                       <div className="text-right hidden sm:block">
-                        <p className="text-[10px] text-gray-400">AR Balance</p>
+                        <p className="text-xs text-gray-400">AR Balance</p>
                         <p className="text-xs font-bold text-red-600">{formatCurrency(customer.qbBalance)}</p>
                       </div>
                     )}
                     {customer.unitsRented > 0 && (
                       <div className="text-right hidden sm:block">
                         <p className="text-xs font-bold text-gray-900">{customer.unitsRented} unit{customer.unitsRented !== 1 ? 's' : ''}</p>
-                        <p className="text-[10px] text-gray-400">{formatCurrency(customer.totalMonthlyRent)}/mo</p>
+                        <p className="text-xs text-gray-400">{formatCurrency(customer.totalMonthlyRent)}/mo</p>
                       </div>
                     )}
                     <div className="flex items-center gap-1">
                       {customer.qbDisplayName && (
-                        <span className="rounded px-1.5 py-px text-[10px] font-medium bg-indigo-100 text-indigo-700">QB</span>
+                        <span className="rounded px-1.5 py-px text-xs font-medium bg-indigo-100 text-indigo-700">QB</span>
                       )}
                       {customer.achAuthorized ? (
-                        <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-px text-[10px] font-medium bg-green-100 text-green-700">
+                        <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-px text-xs font-medium bg-green-100 text-green-700">
                           <CheckCircle className="h-2.5 w-2.5" />ACH
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-px text-[10px] font-medium bg-gray-100 text-gray-400">
+                        <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-px text-xs font-medium bg-gray-100 text-gray-400">
                           <XCircle className="h-2.5 w-2.5" />No ACH
                         </span>
                       )}
                       {customer.unitsRented > 0 ? (
-                        <span className="rounded px-1.5 py-px text-[10px] font-medium bg-blue-100 text-blue-700">Active</span>
+                        <span className="rounded px-1.5 py-px text-xs font-medium bg-blue-100 text-blue-700">Active</span>
                       ) : (
-                        <span className="rounded px-1.5 py-px text-[10px] font-medium bg-gray-100 text-gray-400">Idle</span>
+                        <span className="rounded px-1.5 py-px text-xs font-medium bg-gray-100 text-gray-400">Idle</span>
                       )}
                     </div>
                     {isExpanded ? <ChevronUp className="h-3.5 w-3.5 text-gray-400" /> : <ChevronDown className="h-3.5 w-3.5 text-gray-400" />}
@@ -1742,7 +1849,7 @@ function DashboardContent() {
                 {isExpanded && (
                   <div className="border-t bg-gray-50/80 px-3 py-3">
                     {/* Customer info — compact inline */}
-                    <div className="flex flex-wrap gap-x-6 gap-y-1 text-[11px] mb-3">
+                    <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs mb-3">
                       {customer.businessType && <span><span className="text-gray-400">Type:</span> <span className="text-gray-700">{customer.businessType}</span></span>}
                       {customer.stateFormed && <span><span className="text-gray-400">State:</span> <span className="text-gray-700">{customer.stateFormed}</span></span>}
                       {customer.insuranceCompany && <span><span className="text-gray-400">Insurance:</span> <span className="text-gray-700">{customer.insuranceCompany}</span></span>}
@@ -1754,7 +1861,7 @@ function DashboardContent() {
                     {/* Rental Journal */}
                     {customer.units.length > 0 ? (
                       <div className="overflow-x-auto rounded border bg-white">
-                        <table className="min-w-full text-xs">
+                        <table className="min-w-full text-sm">
                           <thead>
                             <tr className="border-b bg-gray-50/80">
                               <th className="px-2 py-1 text-left font-medium text-gray-500">Unit</th>
@@ -1772,14 +1879,14 @@ function DashboardContent() {
                               <tr key={unit.unitNumber} className="hover:bg-blue-50/30">
                                 <td className="px-2 py-1 font-semibold text-gray-900">{unit.unitNumber}</td>
                                 <td className="px-2 py-1 text-gray-500">{TRAILER_TYPE_LABELS[unit.trailerType] ?? unit.trailerType}</td>
-                                <td className="px-2 py-1 text-gray-400 font-mono text-[10px]">{unit.vin ?? '—'}</td>
+                                <td className="px-2 py-1 text-gray-400 font-mono text-xs">{unit.vin ?? '—'}</td>
                                 <td className="px-2 py-1 text-right text-gray-700 tabular-nums">{unit.rentalRate ? formatCurrency(unit.rentalRate) : '—'}</td>
                                 <td className="px-2 py-1 text-right text-gray-700 tabular-nums">{unit.depositTotal ? formatCurrency(unit.depositTotal) : '—'}</td>
                                 <td className="px-2 py-1 text-right tabular-nums">
                                   {unit.pendingDeposit ? <span className="text-orange-600 font-medium">{formatCurrency(unit.pendingDeposit)}</span> : <span className="text-gray-300">—</span>}
                                 </td>
-                                <td className="px-2 py-1 text-gray-400 text-[10px]">{unit.rentStartDate ? formatDate(unit.rentStartDate) : '—'}</td>
-                                <td className="px-2 py-1 text-gray-400 text-[10px]">{unit.rentDueDay ?? '—'}</td>
+                                <td className="px-2 py-1 text-gray-400 text-xs">{unit.rentStartDate ? formatDate(unit.rentStartDate) : '—'}</td>
+                                <td className="px-2 py-1 text-gray-400 text-xs">{unit.rentDueDay ?? '—'}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -1795,11 +1902,11 @@ function DashboardContent() {
                         </table>
                       </div>
                     ) : (
-                      <p className="text-[11px] text-gray-400 italic">No active rentals.</p>
+                      <p className="text-xs text-gray-400 italic">No active rentals.</p>
                     )}
 
                     {customer.notes && (
-                      <div className="mt-2 px-2 py-1.5 bg-yellow-50 rounded border border-yellow-200 text-[11px]">
+                      <div className="mt-2 px-2 py-1.5 bg-yellow-50 rounded border border-yellow-200 text-xs">
                         <span className="font-medium text-yellow-800">Note:</span> <span className="text-yellow-700">{customer.notes}</span>
                       </div>
                     )}
@@ -1849,29 +1956,29 @@ function DashboardContent() {
         {/* Summary */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="rounded-lg px-3 py-2 bg-gray-900 text-white">
-            <p className="text-[10px] font-medium uppercase opacity-70">Total</p>
+            <p className="text-xs font-semibold uppercase opacity-70">Total</p>
             <p className="text-lg font-bold">{qbInvoiceSummary.totalInvoices}</p>
           </div>
           <div className="rounded-lg px-3 py-2 bg-orange-50 text-orange-700">
-            <p className="text-[10px] font-medium uppercase opacity-70">Open</p>
+            <p className="text-xs font-semibold uppercase opacity-70">Open</p>
             <p className="text-lg font-bold">{qbInvoiceSummary.openCount}</p>
           </div>
           <div className="rounded-lg px-3 py-2 bg-green-50 text-green-700">
-            <p className="text-[10px] font-medium uppercase opacity-70">Paid</p>
+            <p className="text-xs font-semibold uppercase opacity-70">Paid</p>
             <p className="text-lg font-bold">{qbInvoiceSummary.paidCount}</p>
           </div>
           <div className="rounded-lg px-3 py-2 bg-red-50 text-red-700">
-            <p className="text-[10px] font-medium uppercase opacity-70">Outstanding</p>
+            <p className="text-xs font-semibold uppercase opacity-70">Outstanding</p>
             <p className="text-lg font-bold">{formatCurrency(qbInvoiceSummary.totalOutstanding)}</p>
           </div>
           {qbInvoiceSummary.overdueCount > 0 && (
             <div className="rounded-lg px-3 py-2 bg-red-100 text-red-800">
-              <p className="text-[10px] font-medium uppercase opacity-70">Overdue</p>
+              <p className="text-xs font-semibold uppercase opacity-70">Overdue</p>
               <p className="text-lg font-bold">{qbInvoiceSummary.overdueCount} ({formatCurrency(qbInvoiceSummary.totalOverdue)})</p>
             </div>
           )}
           {syncTime && (
-            <div className="ml-auto flex items-center gap-1 text-[10px] text-gray-400">
+            <div className="ml-auto flex items-center gap-1 text-xs text-gray-400">
               <Clock className="h-3 w-3" />
               QB synced {formatDate(syncTime)}
             </div>
@@ -1887,7 +1994,7 @@ function DashboardContent() {
               placeholder="Search invoice # or customer..."
               value={invoiceSearch}
               onChange={(e) => setInvoiceSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 rounded border border-gray-300 bg-white focus:outline-none focus:ring-1 focus:ring-brand-blue/50 text-xs"
+              className="w-full pl-8 pr-3 py-1.5 rounded border border-gray-300 bg-white focus:outline-none focus:ring-1 focus:ring-brand-blue/50 text-sm"
             />
           </div>
           <select
@@ -1902,24 +2009,35 @@ function DashboardContent() {
           </select>
         </div>
 
-        <p className="text-[11px] text-gray-400">{filtered.length} invoices</p>
+        <p className="text-xs text-gray-400">{filtered.length} invoices</p>
 
         {/* Table */}
         <div className="overflow-x-auto rounded-lg border bg-white">
-          <table className="min-w-full text-xs">
+          <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b bg-gray-50">
-                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Invoice #</th>
-                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Customer</th>
-                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Date</th>
-                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Due Date</th>
-                <th className="px-2.5 py-1.5 text-right font-medium text-gray-500">Amount</th>
-                <th className="px-2.5 py-1.5 text-right font-medium text-gray-500">Balance</th>
-                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Status</th>
+                <SortHeader label="Invoice #" sortId="docNumber" />
+                <SortHeader label="Customer" sortId="invCustomer" />
+                <SortHeader label="Date" sortId="txnDate" />
+                <SortHeader label="Due Date" sortId="dueDate" />
+                <SortHeader label="Amount" sortId="totalAmt" align="right" />
+                <SortHeader label="Balance" sortId="invBalance" align="right" />
+                <SortHeader label="Status" sortId="invStatus" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filtered.map((inv, idx) => {
+              {genericSort(filtered, (inv) => {
+                switch (sortKey) {
+                  case 'docNumber': return inv.docNumber
+                  case 'invCustomer': return inv.customerName
+                  case 'txnDate': return inv.txnDate
+                  case 'dueDate': return inv.dueDate
+                  case 'totalAmt': return inv.totalAmt
+                  case 'invBalance': return inv.balance
+                  case 'invStatus': return inv.status
+                  default: return null
+                }
+              }).map((inv, idx) => {
                 const isOverdue = inv.status === 'Open' && inv.dueDate && new Date(inv.dueDate) < now
                 return (
                   <tr key={`${inv.docNumber}-${idx}`} className="hover:bg-blue-50/40">
@@ -1944,11 +2062,11 @@ function DashboardContent() {
                     </td>
                     <td className="px-2.5 py-1.5">
                       {isOverdue ? (
-                        <span className="rounded px-1.5 py-px text-[10px] font-medium bg-red-100 text-red-700">Overdue</span>
+                        <span className="rounded px-1.5 py-px text-xs font-medium bg-red-100 text-red-700">Overdue</span>
                       ) : inv.status === 'Paid' ? (
-                        <span className="rounded px-1.5 py-px text-[10px] font-medium bg-green-100 text-green-700">Paid</span>
+                        <span className="rounded px-1.5 py-px text-xs font-medium bg-green-100 text-green-700">Paid</span>
                       ) : (
-                        <span className="rounded px-1.5 py-px text-[10px] font-medium bg-orange-100 text-orange-700">Open</span>
+                        <span className="rounded px-1.5 py-px text-xs font-medium bg-orange-100 text-orange-700">Open</span>
                       )}
                     </td>
                   </tr>
@@ -1985,15 +2103,15 @@ function DashboardContent() {
         {/* Summary */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="rounded-lg px-3 py-2 bg-gray-900 text-white">
-            <p className="text-[10px] font-medium uppercase opacity-70">Total Payments</p>
+            <p className="text-xs font-semibold uppercase opacity-70">Total Payments</p>
             <p className="text-lg font-bold">{qbPaymentSummary.totalPayments}</p>
           </div>
           <div className="rounded-lg px-3 py-2 bg-green-50 text-green-700">
-            <p className="text-[10px] font-medium uppercase opacity-70">Total Collected</p>
+            <p className="text-xs font-semibold uppercase opacity-70">Total Collected</p>
             <p className="text-lg font-bold">{formatCurrency(qbPaymentSummary.totalCollected)}</p>
           </div>
           {syncTime && (
-            <div className="ml-auto flex items-center gap-1 text-[10px] text-gray-400">
+            <div className="ml-auto flex items-center gap-1 text-xs text-gray-400">
               <Clock className="h-3 w-3" />
               QB synced {formatDate(syncTime)}
             </div>
@@ -2008,25 +2126,33 @@ function DashboardContent() {
             placeholder="Search customer..."
             value={paymentSearch}
             onChange={(e) => setPaymentSearch(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 rounded border border-gray-300 bg-white focus:outline-none focus:ring-1 focus:ring-brand-blue/50 text-xs"
+            className="w-full pl-8 pr-3 py-1.5 rounded border border-gray-300 bg-white focus:outline-none focus:ring-1 focus:ring-brand-blue/50 text-sm"
           />
         </div>
 
-        <p className="text-[11px] text-gray-400">{filtered.length} payments</p>
+        <p className="text-xs text-gray-400">{filtered.length} payments</p>
 
         {/* Table */}
         <div className="overflow-x-auto rounded-lg border bg-white">
-          <table className="min-w-full text-xs">
+          <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b bg-gray-50">
-                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Customer</th>
-                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Date</th>
-                <th className="px-2.5 py-1.5 text-right font-medium text-gray-500">Amount</th>
-                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Method</th>
+                <SortHeader label="Customer" sortId="payCustomer" />
+                <SortHeader label="Date" sortId="payDate" />
+                <SortHeader label="Amount" sortId="payAmt" align="right" />
+                <SortHeader label="Method" sortId="payMethod" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filtered.map((p, idx) => (
+              {genericSort(filtered, (p) => {
+                switch (sortKey) {
+                  case 'payCustomer': return p.customerName
+                  case 'payDate': return p.txnDate
+                  case 'payAmt': return p.totalAmt
+                  case 'payMethod': return p.paymentMethod
+                  default: return null
+                }
+              }).map((p, idx) => (
                 <tr key={`${p.customerName}-${idx}`} className="hover:bg-blue-50/40">
                   <td className="px-2.5 py-1.5 font-medium text-gray-900">{p.customerName}</td>
                   <td className="px-2.5 py-1.5 text-gray-500">{p.txnDate ? formatDate(p.txnDate) : '—'}</td>
@@ -2058,20 +2184,29 @@ function DashboardContent() {
     return (
       <div className="rounded-lg border bg-white overflow-hidden">
         <div className="px-3 py-2 border-b bg-gray-50">
-          <h3 className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Customer Concentration</h3>
+          <h3 className="text-xs font-bold uppercase text-gray-400 tracking-wider">Customer Concentration</h3>
         </div>
-        <table className="min-w-full text-xs">
+        <table className="min-w-full text-sm">
           <thead>
             <tr className="border-b bg-gray-50/50">
-              <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Customer</th>
-              <th className="px-2.5 py-1.5 text-right font-medium text-gray-500">Units</th>
-              <th className="px-2.5 py-1.5 text-right font-medium text-gray-500">% Fleet</th>
-              <th className="px-2.5 py-1.5 text-right font-medium text-gray-500">Revenue/Mo</th>
-              <th className="px-2.5 py-1.5 text-right font-medium text-gray-500">% Revenue</th>
+              <SortHeader label="Customer" sortId="concCustomer" />
+              <SortHeader label="Units" sortId="concUnits" align="right" />
+              <SortHeader label="% Fleet" sortId="concFleet" align="right" />
+              <SortHeader label="Revenue/Mo" sortId="concRevenue" align="right" />
+              <SortHeader label="% Revenue" sortId="concRevPct" align="right" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {concentration.map((row) => {
+            {genericSort(concentration, (row) => {
+              switch (sortKey) {
+                case 'concCustomer': return row.customer
+                case 'concUnits': return row.unitCount
+                case 'concFleet': return row.percentOfFleet
+                case 'concRevenue': return row.monthlyRevenue
+                case 'concRevPct': return totalRevenue > 0 ? row.monthlyRevenue / totalRevenue : 0
+                default: return null
+              }
+            }).map((row) => {
               const revenuePercent = totalRevenue > 0 ? ((row.monthlyRevenue / totalRevenue) * 100).toFixed(1) : '0.0'
               return (
                 <tr key={row.customer} className="hover:bg-blue-50/40">
@@ -2189,7 +2324,7 @@ function DashboardContent() {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Compact header */}
         <header className="flex items-center justify-between bg-white border-b px-4 py-2 shrink-0">
-          <h1 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
+          <h1 className="text-base font-bold text-gray-900 uppercase tracking-wide">
             {currentTabLabel}
           </h1>
           <button
