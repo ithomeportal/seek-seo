@@ -381,6 +381,10 @@ function DashboardContent() {
     notes: '',
   })
 
+  // Sort state (must be before guard/early-return)
+  const [sortKey, setSortKey] = useState<string>('')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
   // Loading / error
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -669,10 +673,7 @@ function DashboardContent() {
     )
   }
 
-  // ------ Sort state ------
-  const [sortKey, setSortKey] = useState<string>('')
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
-
+  // ------ Sort helpers ------
   function handleSort(key: string) {
     if (sortKey === key) {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
