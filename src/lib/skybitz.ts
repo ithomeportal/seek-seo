@@ -15,6 +15,7 @@ export interface SkyBitzPosition {
   battery: string | null
   externalPower: boolean | null
   landmark: string | null
+  location: string | null
   observedAt: string
   deviceSerial: string | null
 }
@@ -84,6 +85,10 @@ function parsePositionsXml(xml: string): SkyBitzPosition[] {
     const lng = get('longitude')
     if (!lat || !lng) continue
 
+    const geoname = get('geoname')
+    const state = get('state')
+    const location = [geoname, state].filter(Boolean).join(', ') || null
+
     positions.push({
       assetId: get('assetid') ?? '',
       latitude: parseFloat(lat),
@@ -94,7 +99,8 @@ function parsePositionsXml(xml: string): SkyBitzPosition[] {
         : null,
       battery: get('battery'),
       externalPower: get('extpwr') === '1',
-      landmark: get('geoname'),
+      landmark: geoname,
+      location,
       observedAt: get('time_iso8601') ?? get('time') ?? '',
       deviceSerial: get('mtsn'),
     })

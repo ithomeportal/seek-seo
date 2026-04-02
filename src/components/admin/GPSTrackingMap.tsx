@@ -26,6 +26,7 @@ interface GPSUnit {
   skybitzDeviceId: string | null
   latitude: number | null
   longitude: number | null
+  lastLocation: string | null
   rentedTo: string | null
   updatedAt: string
 }
@@ -299,7 +300,8 @@ export function GPSTrackingMap() {
             <span style="font-size:12px;font-weight:500;">${statusLabel(unit.status)}</span>
           </div>
           ${unit.rentedTo ? `<div style="font-size:11px;color:#666;">Rented to: <strong>${unit.rentedTo}</strong></div>` : ''}
-          <div style="font-size:10px;color:#999;margin-top:6px;">
+          ${unit.lastLocation ? `<div style="font-size:11px;color:#444;margin-top:4px;">📍 ${unit.lastLocation}</div>` : ''}
+          <div style="font-size:10px;color:#999;margin-top:4px;">
             ${unit.latitude?.toFixed(4)}, ${unit.longitude?.toFixed(4)}
           </div>
         </div>
@@ -585,13 +587,7 @@ export function GPSTrackingMap() {
                     Rented To
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500">
-                    Device ID
-                  </th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">
-                    Latitude
-                  </th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">
-                    Longitude
+                    Location
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500">
                     Last Update
@@ -640,14 +636,8 @@ export function GPSTrackingMap() {
                     <td className="px-4 py-3 text-gray-600">
                       {unit.rentedTo ?? '—'}
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-gray-500">
-                      {unit.skybitzDeviceId ?? '—'}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-xs text-gray-600">
-                      {unit.latitude?.toFixed(4) ?? '—'}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-xs text-gray-600">
-                      {unit.longitude?.toFixed(4) ?? '—'}
+                    <td className="px-4 py-3 text-gray-600">
+                      {unit.lastLocation ?? '—'}
                     </td>
                     <td className="px-4 py-3 text-gray-500 text-xs">
                       {new Date(unit.updatedAt).toLocaleDateString('en-US', {

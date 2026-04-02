@@ -7,7 +7,7 @@ export async function GET() {
       `SELECT
         id, unit_number, trailer_type, status,
         skybitz_device_id, last_latitude, last_longitude,
-        rented_to, updated_at
+        last_location, rented_to, updated_at
       FROM fleet_units
       ORDER BY unit_number`
     )
@@ -20,6 +20,7 @@ export async function GET() {
       skybitzDeviceId: row.skybitz_device_id,
       latitude: row.last_latitude ? parseFloat(row.last_latitude) : null,
       longitude: row.last_longitude ? parseFloat(row.last_longitude) : null,
+      lastLocation: row.last_location,
       rentedTo: row.rented_to,
       updatedAt: row.updated_at,
     }))
