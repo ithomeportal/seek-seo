@@ -195,8 +195,10 @@ export function GPSTrackingMap() {
   }, [fetchPositions, checkSkyBitz])
 
   // ------ Initialize map ------
+  // Defer creation until the container is painted and has dimensions.
   useEffect(() => {
-    if (!mapContainer.current) return
+    const container = mapContainer.current
+    if (!container) return
 
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN
     if (!token) return
@@ -208,25 +210,37 @@ export function GPSTrackingMap() {
         ? 'mapbox://styles/mapbox/satellite-streets-v12'
         : 'mapbox://styles/mapbox/streets-v12'
 
-    const map = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: styleUrl,
-      center: [-98.5, 30.0], // San Antonio / Von Ormy area
-      zoom: 7,
+    // Wait for the browser to paint the container so it has a real size
+    let cancelled = false
+    const rafId = requestAnimationFrame(() => {
+      if (cancelled || !container) return
+
+      const map = new mapboxgl.Map({
+        container,
+        style: styleUrl,
+        center: [-98.5, 30.0],
+        zoom: 7,
+      })
+
+      map.addControl(new mapboxgl.NavigationControl(), 'top-right')
+      map.addControl(new mapboxgl.FullscreenControl(), 'top-right')
+
+      map.on('load', () => {
+        if (!cancelled) setMapReady(true)
+      })
+
+      mapRef.current = map
     })
 
-    map.addControl(new mapboxgl.NavigationControl(), 'top-right')
-    map.addControl(new mapboxgl.FullscreenControl(), 'top-right')
-
-    map.on('load', () => setMapReady(true))
-
-    mapRef.current = map
-
     return () => {
+      cancelled = true
+      cancelAnimationFrame(rafId)
       markersRef.current.forEach((m) => m.remove())
       markersRef.current = []
-      map.remove()
-      mapRef.current = null
+      if (mapRef.current) {
+        mapRef.current.remove()
+        mapRef.current = null
+      }
       initialFitDone.current = false
       setMapReady(false)
     }
