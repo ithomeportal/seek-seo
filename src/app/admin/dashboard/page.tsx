@@ -586,9 +586,7 @@ function DashboardContent() {
   // ------ Render helpers ------
   function renderBadge(text: string, colorClass: string) {
     return (
-      <span
-        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${colorClass}`}
-      >
+      <span className={`inline-flex items-center rounded px-1.5 py-px text-[10px] font-medium ${colorClass}`}>
         {statusLabel(text)}
       </span>
     )
@@ -598,196 +596,112 @@ function DashboardContent() {
   function renderOverview() {
     if (!stats) {
       return (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-brand-blue" />
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-brand-blue" />
         </div>
       )
     }
 
     const fleetCards = [
-      {
-        label: 'Total Fleet',
-        value: stats.total,
-        color: 'bg-gray-900 text-white',
-      },
-      {
-        label: 'Available',
-        value: stats.available,
-        color: 'bg-green-50 text-green-700 border-green-200',
-      },
-      {
-        label: 'Rented',
-        value: stats.rented,
-        color: 'bg-blue-50 text-blue-700 border-blue-200',
-      },
-      {
-        label: 'Damaged',
-        value: stats.damaged,
-        color: 'bg-red-50 text-red-700 border-red-200',
-      },
-      {
-        label: 'Maintenance',
-        value: stats.maintenance,
-        color: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-      },
-      {
-        label: 'For Sale',
-        value: stats.forSale,
-        color: 'bg-purple-50 text-purple-700 border-purple-200',
-      },
+      { label: 'Total', value: stats.total, color: 'bg-gray-900 text-white' },
+      { label: 'Available', value: stats.available, color: 'bg-green-50 text-green-700' },
+      { label: 'Rented', value: stats.rented, color: 'bg-blue-50 text-blue-700' },
+      { label: 'Damaged', value: stats.damaged, color: 'bg-red-50 text-red-700' },
+      { label: 'Maint.', value: stats.maintenance, color: 'bg-yellow-50 text-yellow-700' },
+      { label: 'For Sale', value: stats.forSale, color: 'bg-purple-50 text-purple-700' },
     ]
 
     return (
-      <div className="space-y-6">
-        {/* Fleet Status Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="space-y-4">
+        {/* Row 1: Fleet cards + Revenue */}
+        <div className="grid grid-cols-6 lg:grid-cols-10 gap-2">
           {fleetCards.map((c) => (
-            <div key={c.label} className={`rounded-xl border p-5 ${c.color}`}>
-              <p className="text-sm font-medium opacity-80">{c.label}</p>
-              <p className="text-3xl font-bold mt-1">{c.value}</p>
+            <div key={c.label} className={`rounded-lg p-3 ${c.color}`}>
+              <p className="text-[10px] font-medium uppercase opacity-70 leading-tight">{c.label}</p>
+              <p className="text-2xl font-bold">{c.value}</p>
             </div>
           ))}
-        </div>
-
-        {/* Revenue + Financial KPIs */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="rounded-xl border bg-gradient-to-br from-brand-blue to-brand-blue/90 text-white p-6 lg:col-span-2">
-            <p className="text-sm font-medium opacity-80">
-              Expected Monthly Revenue
-            </p>
-            <p className="text-4xl font-bold mt-2">
-              {formatCurrency(stats.expectedMonthlyRevenue)}
-            </p>
-            <p className="text-sm opacity-70 mt-1">
-              Based on {stats.rented} rented units ({stats.utilizationRate}%
-              utilization)
-            </p>
-          </div>
-          <div className="rounded-xl border bg-white p-6">
-            <p className="text-sm font-medium text-gray-500">Deposits Held</p>
-            <p className="text-3xl font-bold text-gray-900 mt-2">
-              {formatCurrency(stats.totalDepositsHeld)}
-            </p>
-            {stats.totalPendingDeposits > 0 && (
-              <p className="text-sm text-orange-600 mt-1">
-                {formatCurrency(stats.totalPendingDeposits)} pending
-              </p>
-            )}
-          </div>
-          <div className="rounded-xl border bg-white p-6">
-            <p className="text-sm font-medium text-gray-500">
-              Active Customers
-            </p>
-            <p className="text-3xl font-bold text-gray-900 mt-2">
-              {stats.activeCustomers}
-            </p>
-            <p className="text-sm text-gray-400 mt-1">
-              Currently renting units
-            </p>
-          </div>
-        </div>
-
-        {/* Fleet by Type + Top Customers */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Fleet Breakdown by Type */}
-          <div className="rounded-xl border bg-white overflow-hidden">
-            <div className="px-6 py-4 border-b bg-gray-50">
-              <h3 className="font-semibold text-gray-900">Fleet by Type</h3>
+          <div className="col-span-6 lg:col-span-4 rounded-lg bg-brand-orange text-white p-3 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-medium uppercase opacity-80">Monthly Revenue</p>
+              <p className="text-2xl font-bold">{formatCurrency(stats.expectedMonthlyRevenue)}</p>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="text-right text-xs opacity-80 hidden sm:block">
+              <p>{stats.utilizationRate}% utilization</p>
+              <p>{stats.activeCustomers} active customers</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 2: Deposits + Utilization bars + Top Customers */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          {/* Deposits */}
+          <div className="rounded-lg border bg-white p-3">
+            <h3 className="text-[10px] font-bold uppercase text-gray-400 tracking-wider mb-2">Deposits</h3>
+            <div className="flex items-baseline gap-4">
+              <div>
+                <p className="text-xs text-gray-500">Held</p>
+                <p className="text-xl font-bold text-gray-900">{formatCurrency(stats.totalDepositsHeld)}</p>
+              </div>
+              {stats.totalPendingDeposits > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500">Pending</p>
+                  <p className="text-xl font-bold text-orange-600">{formatCurrency(stats.totalPendingDeposits)}</p>
+                </div>
+              )}
+            </div>
+            {/* Fleet by Type */}
+            <div className="mt-3 pt-3 border-t space-y-2">
+              <h3 className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Fleet by Type</h3>
               {stats.byType.map((t) => {
-                const utilization =
-                  t.total > 0
-                    ? Math.round((t.rented / t.total) * 100)
-                    : 0
+                const util = t.total > 0 ? Math.round((t.rented / t.total) * 100) : 0
                 return (
                   <div key={t.type}>
-                    <div className="flex items-center justify-between text-sm mb-1.5">
-                      <span className="font-medium text-gray-900">
+                    <div className="flex items-center justify-between text-xs mb-0.5">
+                      <span className="font-medium text-gray-700">
                         {TRAILER_TYPE_LABELS[t.type] ?? statusLabel(t.type)}
                       </span>
-                      <span className="text-gray-500">
-                        {t.rented}/{t.total} rented ({utilization}%)
-                      </span>
+                      <span className="text-gray-400">{t.rented}/{t.total} ({util}%)</span>
                     </div>
-                    <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-brand-blue rounded-full transition-all"
-                        style={{ width: `${utilization}%` }}
-                      />
+                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-brand-blue rounded-full" style={{ width: `${util}%` }} />
                     </div>
                   </div>
                 )
               })}
-              {stats.byType.length === 0 && (
-                <p className="text-sm text-gray-400 text-center py-4">
-                  No fleet data yet.
-                </p>
-              )}
             </div>
           </div>
 
-          {/* Top Customers */}
-          <div className="rounded-xl border bg-white overflow-hidden">
-            <div className="px-6 py-4 border-b bg-gray-50">
-              <h3 className="font-semibold text-gray-900">
-                Top Customers by Units
-              </h3>
+          {/* Top Customers — spans 2 cols */}
+          <div className="lg:col-span-2 rounded-lg border bg-white overflow-hidden">
+            <div className="px-3 py-2 border-b bg-gray-50">
+              <h3 className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Top Customers</h3>
             </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500">
-                      Customer
-                    </th>
-                    <th className="px-4 py-3 text-right font-medium text-gray-500">
-                      Units
-                    </th>
-                    <th className="px-4 py-3 text-right font-medium text-gray-500">
-                      % Fleet
-                    </th>
-                    <th className="px-4 py-3 text-right font-medium text-gray-500">
-                      Revenue/Mo
-                    </th>
-                    <th className="px-4 py-3 text-right font-medium text-gray-500">
-                      Deposits
-                    </th>
+            <table className="min-w-full text-xs">
+              <thead>
+                <tr className="border-b bg-gray-50/50">
+                  <th className="px-3 py-1.5 text-left font-medium text-gray-500">Customer</th>
+                  <th className="px-3 py-1.5 text-right font-medium text-gray-500">Units</th>
+                  <th className="px-3 py-1.5 text-right font-medium text-gray-500">% Fleet</th>
+                  <th className="px-3 py-1.5 text-right font-medium text-gray-500">Revenue/Mo</th>
+                  <th className="px-3 py-1.5 text-right font-medium text-gray-500">Deposits</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {stats.topCustomers.map((c) => (
+                  <tr key={c.name} className="hover:bg-gray-50">
+                    <td className="px-3 py-1.5 font-medium text-gray-900">{c.name}</td>
+                    <td className="px-3 py-1.5 text-right text-gray-600">{c.units}</td>
+                    <td className="px-3 py-1.5 text-right text-gray-600">{c.percentOfFleet}%</td>
+                    <td className="px-3 py-1.5 text-right text-gray-600">{formatCurrency(c.revenue)}</td>
+                    <td className="px-3 py-1.5 text-right text-gray-600">{formatCurrency(c.deposits)}</td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {stats.topCustomers.map((c) => (
-                    <tr key={c.name} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium text-gray-900">
-                        {c.name}
-                      </td>
-                      <td className="px-4 py-3 text-right text-gray-600">
-                        {c.units}
-                      </td>
-                      <td className="px-4 py-3 text-right text-gray-600">
-                        {c.percentOfFleet}%
-                      </td>
-                      <td className="px-4 py-3 text-right text-gray-600">
-                        {formatCurrency(c.revenue)}
-                      </td>
-                      <td className="px-4 py-3 text-right text-gray-600">
-                        {formatCurrency(c.deposits)}
-                      </td>
-                    </tr>
-                  ))}
-                  {stats.topCustomers.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={5}
-                        className="px-4 py-8 text-center text-gray-400"
-                      >
-                        No active rentals yet.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                ))}
+                {stats.topCustomers.length === 0 && (
+                  <tr><td colSpan={5} className="px-3 py-6 text-center text-gray-400">No active rentals yet.</td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -796,39 +710,37 @@ function DashboardContent() {
 
   function renderFleetMaster() {
     const inputClass =
-      'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange'
-    const labelClass = 'block text-sm font-medium text-gray-700 mb-1'
+      'w-full rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand-orange/50 focus:border-brand-orange'
+    const labelClass = 'block text-[11px] font-medium text-gray-600 mb-0.5'
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-2">
         {/* Filters + Add button */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
             <input
               type="text"
               placeholder="Search unit, VIN, or customer..."
               value={fleetSearch}
               onChange={(e) => setFleetSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue text-sm"
+              className="w-full pl-8 pr-3 py-1.5 rounded border border-gray-300 bg-white focus:outline-none focus:ring-1 focus:ring-brand-blue/50 text-xs"
             />
           </div>
           <select
             value={fleetTypeFilter}
             onChange={(e) => setFleetTypeFilter(e.target.value)}
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
+            className="rounded border border-gray-300 bg-white px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand-blue/50"
           >
             <option value="all">All Types</option>
             {Object.entries(TRAILER_TYPE_LABELS).map(([key, label]) => (
-              <option key={key} value={key}>
-                {label}
-              </option>
+              <option key={key} value={key}>{label}</option>
             ))}
           </select>
           <select
             value={fleetStatusFilter}
             onChange={(e) => setFleetStatusFilter(e.target.value)}
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
+            className="rounded border border-gray-300 bg-white px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand-blue/50"
           >
             <option value="all">All Statuses</option>
             <option value="available">Available</option>
@@ -839,15 +751,15 @@ function DashboardContent() {
           </select>
           <button
             onClick={() => setShowAddUnit(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange/90 transition-colors shrink-0"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-brand-orange text-white text-xs font-medium hover:bg-brand-orange/90 transition-colors shrink-0"
           >
-            <Plus className="h-4 w-4" />
-            Add New Unit
+            <Plus className="h-3.5 w-3.5" />
+            Add Unit
           </button>
         </div>
 
-        <p className="text-sm text-gray-500">
-          {filteredFleet.length} units found
+        <p className="text-[11px] text-gray-400">
+          {filteredFleet.length} units
         </p>
 
         {/* Add New Unit Modal */}
@@ -1466,82 +1378,46 @@ function DashboardContent() {
         )}
 
         {/* Table */}
-        <div className="overflow-x-auto rounded-xl border bg-white">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">
-                  Unit #
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">
-                  Type
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">
-                  Year/Make/Model
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">
-                  VIN
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">
-                  Rented To
-                </th>
-                <th className="px-4 py-3 text-right font-medium text-gray-500">
-                  Rate
-                </th>
-                <th className="px-4 py-3 text-right font-medium text-gray-500">
-                  Deposit
-                </th>
-                <th className="px-4 py-3 text-center font-medium text-gray-500">
-                  Actions
-                </th>
+        <div className="overflow-x-auto rounded-lg border bg-white">
+          <table className="min-w-full text-xs">
+            <thead>
+              <tr className="border-b bg-gray-50">
+                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Unit #</th>
+                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Type</th>
+                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Year/Make/Model</th>
+                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">VIN</th>
+                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Status</th>
+                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Rented To</th>
+                <th className="px-2.5 py-1.5 text-right font-medium text-gray-500">Rate</th>
+                <th className="px-2.5 py-1.5 text-right font-medium text-gray-500">Deposit</th>
+                <th className="px-2.5 py-1.5 w-12"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-50">
               {filteredFleet.map((unit) => (
-                <tr key={unit.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">
-                    {unit.unitNumber}
+                <tr key={unit.id} className="hover:bg-blue-50/40">
+                  <td className="px-2.5 py-1.5 font-semibold text-gray-900 whitespace-nowrap">{unit.unitNumber}</td>
+                  <td className="px-2.5 py-1.5">
+                    <span className="text-gray-500">{TRAILER_TYPE_LABELS[unit.trailerType] ?? unit.trailerType}</span>
                   </td>
-                  <td className="px-4 py-3">
-                    {renderBadge(
-                      unit.trailerType,
-                      'bg-gray-100 text-gray-700'
-                    )}
+                  <td className="px-2.5 py-1.5 text-gray-600">
+                    {[unit.year, unit.make, unit.model].filter(Boolean).join(' ') || '—'}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {[unit.year, unit.make, unit.model]
-                      .filter(Boolean)
-                      .join(' ')}
+                  <td className="px-2.5 py-1.5 text-gray-400 font-mono text-[10px]">{unit.vin ?? '—'}</td>
+                  <td className="px-2.5 py-1.5">
+                    {renderBadge(unit.status, STATUS_COLORS[unit.status] ?? 'bg-gray-100 text-gray-800')}
                   </td>
-                  <td className="px-4 py-3 text-gray-500 font-mono text-xs">
-                    {unit.vin ?? '—'}
+                  <td className="px-2.5 py-1.5 text-gray-700 font-medium">{unit.rentedTo ?? '—'}</td>
+                  <td className="px-2.5 py-1.5 text-right text-gray-600 tabular-nums">
+                    {unit.rentalRate ? formatCurrency(parseFloat(unit.rentalRate)) : '—'}
                   </td>
-                  <td className="px-4 py-3">
-                    {renderBadge(
-                      unit.status,
-                      STATUS_COLORS[unit.status] ?? 'bg-gray-100 text-gray-800'
-                    )}
+                  <td className="px-2.5 py-1.5 text-right text-gray-600 tabular-nums">
+                    {unit.depositTotal ? formatCurrency(parseFloat(unit.depositTotal)) : '—'}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {unit.rentedTo ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-600">
-                    {unit.rentalRate
-                      ? formatCurrency(parseFloat(unit.rentalRate)) + '/mo'
-                      : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-600">
-                    {unit.depositTotal
-                      ? formatCurrency(parseFloat(unit.depositTotal))
-                      : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-2.5 py-1.5 text-center">
                     <button
                       onClick={() => openEditUnit(unit)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-brand-blue hover:bg-brand-blue/10 transition-colors"
+                      className="px-2 py-0.5 rounded text-[10px] font-medium text-brand-blue hover:bg-brand-blue/10 transition-colors"
                     >
                       Edit
                     </button>
@@ -1549,14 +1425,7 @@ function DashboardContent() {
                 </tr>
               ))}
               {filteredFleet.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={9}
-                    className="px-4 py-12 text-center text-gray-400"
-                  >
-                    No units match your filters.
-                  </td>
-                </tr>
+                <tr><td colSpan={9} className="px-3 py-8 text-center text-gray-400">No units match your filters.</td></tr>
               )}
             </tbody>
           </table>
@@ -1572,88 +1441,43 @@ function DashboardContent() {
   function renderInquiries() {
     if (inquiries.length === 0 && loading) {
       return (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-brand-blue" />
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-brand-blue" />
         </div>
       )
     }
 
     return (
-      <div className="space-y-4">
-        <div className="overflow-x-auto rounded-xl border bg-white">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">
-                  Name
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">
-                  Email
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">
-                  Company
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">
-                  Message
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">
-                  Type
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">
-                  Date
-                </th>
+      <div className="overflow-x-auto rounded-lg border bg-white">
+        <table className="min-w-full text-xs">
+          <thead>
+            <tr className="border-b bg-gray-50">
+              <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Name</th>
+              <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Email</th>
+              <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Company</th>
+              <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Message</th>
+              <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Type</th>
+              <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Status</th>
+              <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Date</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {inquiries.map((inq) => (
+              <tr key={inq.id} className="hover:bg-blue-50/40">
+                <td className="px-2.5 py-1.5 font-medium text-gray-900 whitespace-nowrap">{inq.name}</td>
+                <td className="px-2.5 py-1.5 text-gray-600 whitespace-nowrap">{inq.email}</td>
+                <td className="px-2.5 py-1.5 text-gray-600 whitespace-nowrap">{inq.company ?? '—'}</td>
+                <td className="px-2.5 py-1.5 text-gray-500 max-w-[200px] truncate">{inq.message}</td>
+                <td className="px-2.5 py-1.5">{renderBadge(inq.type, INQUIRY_TYPE_COLORS[inq.type] ?? 'bg-gray-100 text-gray-800')}</td>
+                <td className="px-2.5 py-1.5">{renderBadge(inq.status, INQUIRY_STATUS_COLORS[inq.status] ?? 'bg-gray-100 text-gray-800')}</td>
+                <td className="px-2.5 py-1.5 text-gray-400 whitespace-nowrap text-[10px]">{formatDate(inq.createdAt)}</td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {inquiries.map((inq) => (
-                <tr key={inq.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
-                    {inq.name}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                    {inq.email}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                    {inq.company ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 max-w-xs truncate">
-                    {inq.message}
-                  </td>
-                  <td className="px-4 py-3">
-                    {renderBadge(
-                      inq.type,
-                      INQUIRY_TYPE_COLORS[inq.type] ??
-                        'bg-gray-100 text-gray-800'
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {renderBadge(
-                      inq.status,
-                      INQUIRY_STATUS_COLORS[inq.status] ??
-                        'bg-gray-100 text-gray-800'
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">
-                    {formatDate(inq.createdAt)}
-                  </td>
-                </tr>
-              ))}
-              {inquiries.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="px-4 py-12 text-center text-gray-400"
-                  >
-                    No inquiries found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+            ))}
+            {inquiries.length === 0 && (
+              <tr><td colSpan={7} className="px-3 py-8 text-center text-gray-400">No inquiries found.</td></tr>
+            )}
+          </tbody>
+        </table>
       </div>
     )
   }
@@ -1661,71 +1485,39 @@ function DashboardContent() {
   function renderForSale() {
     if (forSaleItems.length === 0 && loading) {
       return (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-brand-blue" />
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-brand-blue" />
         </div>
       )
     }
 
     return (
-      <div className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div>
+        <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {forSaleItems.map((item) => (
-            <div
-              key={item.id}
-              className="rounded-xl border bg-white p-5 hover:shadow-lg transition-shadow"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <h3 className="font-semibold text-gray-900 text-sm leading-tight">
-                  {item.title}
-                </h3>
+            <div key={item.id} className="rounded-lg border bg-white p-3 hover:shadow-md transition-shadow">
+              <div className="flex items-start justify-between mb-1.5">
+                <h3 className="font-semibold text-gray-900 text-xs leading-tight">{item.title}</h3>
                 {item.isSold === 1 && (
-                  <span className="shrink-0 ml-2 inline-flex items-center rounded-full bg-red-100 text-red-800 px-2 py-0.5 text-xs font-medium">
-                    Sold
-                  </span>
+                  <span className="shrink-0 ml-1 rounded px-1.5 py-px text-[10px] font-medium bg-red-100 text-red-800">Sold</span>
                 )}
               </div>
-              <div className="space-y-1.5 text-sm text-gray-600">
-                <p>
-                  <span className="font-medium text-gray-500">Type:</span>{' '}
-                  {TRAILER_TYPE_LABELS[item.trailerType] ?? item.trailerType}
-                </p>
-                <p>
-                  <span className="font-medium text-gray-500">
-                    Year/Make/Model:
-                  </span>{' '}
-                  {[item.year, item.make, item.model].filter(Boolean).join(' ')}
-                </p>
-                {item.condition && (
-                  <p>
-                    <span className="font-medium text-gray-500">
-                      Condition:
-                    </span>{' '}
-                    {statusLabel(item.condition)}
-                  </p>
-                )}
-                {item.description && (
-                  <p className="text-gray-400 text-xs">{item.description}</p>
-                )}
+              <div className="space-y-0.5 text-[11px] text-gray-500">
+                <p>{TRAILER_TYPE_LABELS[item.trailerType] ?? item.trailerType} &middot; {[item.year, item.make, item.model].filter(Boolean).join(' ')}</p>
+                {item.condition && <p>Condition: {statusLabel(item.condition)}</p>}
               </div>
-              <div className="mt-4 pt-3 border-t flex items-center justify-between">
-                <span className="text-lg font-bold text-brand-blue">
-                  {item.price
-                    ? formatCurrency(parseFloat(item.price))
-                    : 'Contact us'}
+              <div className="mt-2 pt-2 border-t flex items-center justify-between">
+                <span className="text-sm font-bold text-brand-blue">
+                  {item.price ? formatCurrency(parseFloat(item.price)) : 'Contact us'}
                 </span>
                 {item.isSold === 0 && (
-                  <span className="inline-flex items-center rounded-full bg-green-100 text-green-800 px-2.5 py-0.5 text-xs font-medium">
-                    Available
-                  </span>
+                  <span className="rounded px-1.5 py-px text-[10px] font-medium bg-green-100 text-green-800">Available</span>
                 )}
               </div>
             </div>
           ))}
           {forSaleItems.length === 0 && (
-            <div className="col-span-full text-center py-12 text-gray-400">
-              No items listed for sale.
-            </div>
+            <div className="col-span-full text-center py-8 text-gray-400 text-xs">No items listed for sale.</div>
           )}
         </div>
       </div>
@@ -1735,8 +1527,8 @@ function DashboardContent() {
   function renderCustomers() {
     if (!customerSummary) {
       return (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-brand-blue" />
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-brand-blue" />
         </div>
       )
     }
@@ -1756,65 +1548,41 @@ function DashboardContent() {
     })
 
     const summaryCards = [
-      {
-        label: 'Total Customers',
-        value: customerSummary.totalCustomers,
-        color: 'bg-gray-900 text-white',
-      },
-      {
-        label: 'Active Renters',
-        value: customerSummary.activeRenters,
-        color: 'bg-blue-50 text-blue-700 border-blue-200',
-      },
-      {
-        label: 'Monthly Revenue',
-        value: formatCurrency(customerSummary.totalMonthlyRevenue),
-        color: 'bg-green-50 text-green-700 border-green-200',
-      },
-      {
-        label: 'Deposits Held',
-        value: formatCurrency(customerSummary.totalDepositsHeld),
-        color: 'bg-purple-50 text-purple-700 border-purple-200',
-      },
-      {
-        label: 'Pending Deposits',
-        value: formatCurrency(customerSummary.totalPendingDeposits),
-        color: 'bg-orange-50 text-orange-700 border-orange-200',
-      },
+      { label: 'Customers', value: customerSummary.totalCustomers, color: 'bg-gray-900 text-white' },
+      { label: 'Active', value: customerSummary.activeRenters, color: 'bg-blue-50 text-blue-700' },
+      { label: 'Revenue/Mo', value: formatCurrency(customerSummary.totalMonthlyRevenue), color: 'bg-green-50 text-green-700' },
+      { label: 'Deposits', value: formatCurrency(customerSummary.totalDepositsHeld), color: 'bg-purple-50 text-purple-700' },
+      { label: 'Pending', value: formatCurrency(customerSummary.totalPendingDeposits), color: 'bg-orange-50 text-orange-700' },
     ]
 
     return (
-      <div className="space-y-6">
-        {/* Summary cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="space-y-3">
+        {/* Summary + Filters row */}
+        <div className="flex flex-wrap items-center gap-2">
           {summaryCards.map((c) => (
-            <div key={c.label} className={`rounded-xl border p-5 ${c.color}`}>
-              <p className="text-sm font-medium opacity-80">{c.label}</p>
-              <p className="text-2xl font-bold mt-1">{c.value}</p>
+            <div key={c.label} className={`rounded-lg px-3 py-2 ${c.color}`}>
+              <p className="text-[10px] font-medium uppercase opacity-70">{c.label}</p>
+              <p className="text-lg font-bold leading-tight">{c.value}</p>
             </div>
           ))}
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
             <input
               type="text"
               placeholder="Search company, contact, or email..."
               value={customerSearch}
               onChange={(e) => setCustomerSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue text-sm"
+              className="w-full pl-8 pr-3 py-1.5 rounded border border-gray-300 bg-white focus:outline-none focus:ring-1 focus:ring-brand-blue/50 text-xs"
             />
           </div>
           <select
             value={customerFilter}
-            onChange={(e) =>
-              setCustomerFilter(
-                e.target.value as 'all' | 'active' | 'no_rentals'
-              )
-            }
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
+            onChange={(e) => setCustomerFilter(e.target.value as 'all' | 'active' | 'no_rentals')}
+            className="rounded border border-gray-300 bg-white px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand-blue/50"
           >
             <option value="all">All Customers</option>
             <option value="active">Active Renters</option>
@@ -1822,306 +1590,129 @@ function DashboardContent() {
           </select>
         </div>
 
-        <p className="text-sm text-gray-500">
-          {filtered.length} customer{filtered.length !== 1 ? 's' : ''} found
-        </p>
+        <p className="text-[11px] text-gray-400">{filtered.length} customers</p>
 
         {/* Customer list */}
-        <div className="space-y-3">
+        <div className="space-y-1">
           {filtered.map((customer) => {
             const isExpanded = expandedCustomer === customer.id
             return (
               <div
                 key={customer.id}
-                className="rounded-xl border bg-white overflow-hidden"
+                className="rounded-lg border bg-white overflow-hidden"
               >
                 {/* Customer header row */}
                 <button
-                  onClick={() =>
-                    setExpandedCustomer(isExpanded ? null : customer.id)
-                  }
-                  className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors text-left"
+                  onClick={() => setExpandedCustomer(isExpanded ? null : customer.id)}
+                  className="w-full flex items-center justify-between px-3 py-2 hover:bg-gray-50 transition-colors text-left gap-3"
                 >
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div className="shrink-0 w-10 h-10 rounded-full bg-brand-blue/10 flex items-center justify-center">
-                      <Building2 className="h-5 w-5 text-brand-blue" />
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="shrink-0 w-7 h-7 rounded bg-brand-blue/10 flex items-center justify-center">
+                      <Building2 className="h-3.5 w-3.5 text-brand-blue" />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-semibold text-gray-900 truncate">
-                        {customer.companyName}
-                      </p>
-                      <div className="flex items-center gap-3 text-xs text-gray-500 mt-0.5">
-                        {customer.contactName && (
-                          <span>{customer.contactName}</span>
-                        )}
+                      <p className="text-xs font-semibold text-gray-900 truncate">{customer.companyName}</p>
+                      <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                        {customer.contactName && <span>{customer.contactName}</span>}
                         {customer.phone && (
-                          <span className="flex items-center gap-1">
-                            <Phone className="h-3 w-3" />
-                            {customer.phone}
-                          </span>
+                          <span className="flex items-center gap-0.5"><Phone className="h-2.5 w-2.5" />{customer.phone}</span>
                         )}
                         {customer.email && (
-                          <span className="flex items-center gap-1">
-                            <Mail className="h-3 w-3" />
-                            {customer.email}
-                          </span>
+                          <span className="flex items-center gap-0.5 hidden md:flex"><Mail className="h-2.5 w-2.5" />{customer.email}</span>
                         )}
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 shrink-0">
+                  <div className="flex items-center gap-3 shrink-0">
                     {customer.unitsRented > 0 && (
                       <div className="text-right hidden sm:block">
-                        <p className="text-sm font-semibold text-gray-900">
-                          {customer.unitsRented} unit
-                          {customer.unitsRented !== 1 ? 's' : ''}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {formatCurrency(customer.totalMonthlyRent)}/mo
-                        </p>
+                        <p className="text-xs font-bold text-gray-900">{customer.unitsRented} unit{customer.unitsRented !== 1 ? 's' : ''}</p>
+                        <p className="text-[10px] text-gray-400">{formatCurrency(customer.totalMonthlyRent)}/mo</p>
                       </div>
                     )}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       {customer.achAuthorized ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-green-100 text-green-700 px-2 py-0.5 text-xs font-medium">
-                          <CheckCircle className="h-3 w-3" />
-                          ACH
+                        <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-px text-[10px] font-medium bg-green-100 text-green-700">
+                          <CheckCircle className="h-2.5 w-2.5" />ACH
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-500 px-2 py-0.5 text-xs font-medium">
-                          <XCircle className="h-3 w-3" />
-                          No ACH
+                        <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-px text-[10px] font-medium bg-gray-100 text-gray-400">
+                          <XCircle className="h-2.5 w-2.5" />No ACH
                         </span>
                       )}
                       {customer.unitsRented > 0 ? (
-                        <span className="inline-flex items-center rounded-full bg-blue-100 text-blue-700 px-2.5 py-0.5 text-xs font-medium">
-                          Active
-                        </span>
+                        <span className="rounded px-1.5 py-px text-[10px] font-medium bg-blue-100 text-blue-700">Active</span>
                       ) : (
-                        <span className="inline-flex items-center rounded-full bg-gray-100 text-gray-500 px-2.5 py-0.5 text-xs font-medium">
-                          No Rentals
-                        </span>
+                        <span className="rounded px-1.5 py-px text-[10px] font-medium bg-gray-100 text-gray-400">Idle</span>
                       )}
                     </div>
-                    {isExpanded ? (
-                      <ChevronUp className="h-5 w-5 text-gray-400" />
-                    ) : (
-                      <ChevronDown className="h-5 w-5 text-gray-400" />
-                    )}
+                    {isExpanded ? <ChevronUp className="h-3.5 w-3.5 text-gray-400" /> : <ChevronDown className="h-3.5 w-3.5 text-gray-400" />}
                   </div>
                 </button>
 
                 {/* Expanded detail */}
                 {isExpanded && (
-                  <div className="border-t bg-gray-50 px-5 py-4">
-                    {/* Customer info grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
-                      <div>
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Business Type
-                        </p>
-                        <p className="text-sm text-gray-900 mt-0.5">
-                          {customer.businessType ?? '—'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          State Formed
-                        </p>
-                        <p className="text-sm text-gray-900 mt-0.5">
-                          {customer.stateFormed ?? '—'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Insurance
-                        </p>
-                        <p className="text-sm text-gray-900 mt-0.5">
-                          {customer.insuranceCompany ?? '—'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          ACH Bank
-                        </p>
-                        <p className="text-sm text-gray-900 mt-0.5">
-                          {customer.achBankName ?? '—'}
-                        </p>
-                      </div>
-                      {customer.address && (
-                        <div className="col-span-2">
-                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Address
-                          </p>
-                          <p className="text-sm text-gray-900 mt-0.5">
-                            {[
-                              customer.address,
-                              customer.city,
-                              customer.state,
-                              customer.zip,
-                            ]
-                              .filter(Boolean)
-                              .join(', ')}
-                          </p>
-                        </div>
-                      )}
-                      {customer.apEmail && (
-                        <div>
-                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            A/P Email
-                          </p>
-                          <p className="text-sm text-gray-900 mt-0.5">
-                            {customer.apEmail}
-                          </p>
-                        </div>
-                      )}
-                      {customer.apPhone && (
-                        <div>
-                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            A/P Phone
-                          </p>
-                          <p className="text-sm text-gray-900 mt-0.5">
-                            {customer.apPhone}
-                          </p>
-                        </div>
-                      )}
+                  <div className="border-t bg-gray-50/80 px-3 py-3">
+                    {/* Customer info — compact inline */}
+                    <div className="flex flex-wrap gap-x-6 gap-y-1 text-[11px] mb-3">
+                      {customer.businessType && <span><span className="text-gray-400">Type:</span> <span className="text-gray-700">{customer.businessType}</span></span>}
+                      {customer.stateFormed && <span><span className="text-gray-400">State:</span> <span className="text-gray-700">{customer.stateFormed}</span></span>}
+                      {customer.insuranceCompany && <span><span className="text-gray-400">Insurance:</span> <span className="text-gray-700">{customer.insuranceCompany}</span></span>}
+                      {customer.achBankName && <span><span className="text-gray-400">Bank:</span> <span className="text-gray-700">{customer.achBankName}</span></span>}
+                      {customer.address && <span><span className="text-gray-400">Address:</span> <span className="text-gray-700">{[customer.address, customer.city, customer.state, customer.zip].filter(Boolean).join(', ')}</span></span>}
+                      {customer.apEmail && <span><span className="text-gray-400">A/P:</span> <span className="text-gray-700">{customer.apEmail}</span></span>}
                     </div>
 
                     {/* Rental Journal */}
                     {customer.units.length > 0 ? (
-                      <div>
-                        <h4 className="text-sm font-semibold text-gray-900 mb-3">
-                          Rental Journal
-                        </h4>
-                        <div className="overflow-x-auto rounded-lg border bg-white">
-                          <table className="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-3 py-2 text-left font-medium text-gray-500">
-                                  Unit #
-                                </th>
-                                <th className="px-3 py-2 text-left font-medium text-gray-500">
-                                  Type
-                                </th>
-                                <th className="px-3 py-2 text-left font-medium text-gray-500">
-                                  VIN
-                                </th>
-                                <th className="px-3 py-2 text-left font-medium text-gray-500">
-                                  Status
-                                </th>
-                                <th className="px-3 py-2 text-right font-medium text-gray-500">
-                                  Rent/Mo
-                                </th>
-                                <th className="px-3 py-2 text-right font-medium text-gray-500">
-                                  Deposit
-                                </th>
-                                <th className="px-3 py-2 text-right font-medium text-gray-500">
-                                  Pending
-                                </th>
-                                <th className="px-3 py-2 text-left font-medium text-gray-500">
-                                  Start Date
-                                </th>
-                                <th className="px-3 py-2 text-left font-medium text-gray-500">
-                                  Due
-                                </th>
+                      <div className="overflow-x-auto rounded border bg-white">
+                        <table className="min-w-full text-xs">
+                          <thead>
+                            <tr className="border-b bg-gray-50/80">
+                              <th className="px-2 py-1 text-left font-medium text-gray-500">Unit</th>
+                              <th className="px-2 py-1 text-left font-medium text-gray-500">Type</th>
+                              <th className="px-2 py-1 text-left font-medium text-gray-500">VIN</th>
+                              <th className="px-2 py-1 text-right font-medium text-gray-500">Rent/Mo</th>
+                              <th className="px-2 py-1 text-right font-medium text-gray-500">Deposit</th>
+                              <th className="px-2 py-1 text-right font-medium text-gray-500">Pending</th>
+                              <th className="px-2 py-1 text-left font-medium text-gray-500">Start</th>
+                              <th className="px-2 py-1 text-left font-medium text-gray-500">Due</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-50">
+                            {customer.units.map((unit) => (
+                              <tr key={unit.unitNumber} className="hover:bg-blue-50/30">
+                                <td className="px-2 py-1 font-semibold text-gray-900">{unit.unitNumber}</td>
+                                <td className="px-2 py-1 text-gray-500">{TRAILER_TYPE_LABELS[unit.trailerType] ?? unit.trailerType}</td>
+                                <td className="px-2 py-1 text-gray-400 font-mono text-[10px]">{unit.vin ?? '—'}</td>
+                                <td className="px-2 py-1 text-right text-gray-700 tabular-nums">{unit.rentalRate ? formatCurrency(unit.rentalRate) : '—'}</td>
+                                <td className="px-2 py-1 text-right text-gray-700 tabular-nums">{unit.depositTotal ? formatCurrency(unit.depositTotal) : '—'}</td>
+                                <td className="px-2 py-1 text-right tabular-nums">
+                                  {unit.pendingDeposit ? <span className="text-orange-600 font-medium">{formatCurrency(unit.pendingDeposit)}</span> : <span className="text-gray-300">—</span>}
+                                </td>
+                                <td className="px-2 py-1 text-gray-400 text-[10px]">{unit.rentStartDate ? formatDate(unit.rentStartDate) : '—'}</td>
+                                <td className="px-2 py-1 text-gray-400 text-[10px]">{unit.rentDueDay ?? '—'}</td>
                               </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                              {customer.units.map((unit) => (
-                                <tr
-                                  key={unit.unitNumber}
-                                  className="hover:bg-gray-50"
-                                >
-                                  <td className="px-3 py-2 font-medium text-gray-900">
-                                    {unit.unitNumber}
-                                  </td>
-                                  <td className="px-3 py-2">
-                                    {renderBadge(
-                                      unit.trailerType,
-                                      'bg-gray-100 text-gray-700'
-                                    )}
-                                  </td>
-                                  <td className="px-3 py-2 text-gray-500 font-mono text-xs">
-                                    {unit.vin ?? '—'}
-                                  </td>
-                                  <td className="px-3 py-2">
-                                    {renderBadge(
-                                      unit.status,
-                                      STATUS_COLORS[unit.status] ??
-                                        'bg-gray-100 text-gray-800'
-                                    )}
-                                  </td>
-                                  <td className="px-3 py-2 text-right text-gray-600">
-                                    {unit.rentalRate
-                                      ? formatCurrency(unit.rentalRate)
-                                      : '—'}
-                                  </td>
-                                  <td className="px-3 py-2 text-right text-gray-600">
-                                    {unit.depositTotal
-                                      ? formatCurrency(unit.depositTotal)
-                                      : '—'}
-                                  </td>
-                                  <td className="px-3 py-2 text-right">
-                                    {unit.pendingDeposit ? (
-                                      <span className="text-orange-600 font-medium">
-                                        {formatCurrency(unit.pendingDeposit)}
-                                      </span>
-                                    ) : (
-                                      <span className="text-gray-400">—</span>
-                                    )}
-                                  </td>
-                                  <td className="px-3 py-2 text-gray-500 text-xs">
-                                    {unit.rentStartDate
-                                      ? formatDate(unit.rentStartDate)
-                                      : '—'}
-                                  </td>
-                                  <td className="px-3 py-2 text-gray-500 text-xs">
-                                    {unit.rentDueDay ?? '—'}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                            <tfoot className="bg-gray-50 font-medium">
-                              <tr>
-                                <td
-                                  colSpan={4}
-                                  className="px-3 py-2 text-gray-700"
-                                >
-                                  Totals ({customer.units.length} units)
-                                </td>
-                                <td className="px-3 py-2 text-right text-gray-900">
-                                  {formatCurrency(customer.totalMonthlyRent)}
-                                </td>
-                                <td className="px-3 py-2 text-right text-gray-900">
-                                  {formatCurrency(customer.totalDeposits)}
-                                </td>
-                                <td className="px-3 py-2 text-right text-orange-600">
-                                  {customer.totalPendingDeposits > 0
-                                    ? formatCurrency(
-                                        customer.totalPendingDeposits
-                                      )
-                                    : '—'}
-                                </td>
-                                <td colSpan={2} />
-                              </tr>
-                            </tfoot>
-                          </table>
-                        </div>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className="border-t bg-gray-50/80 font-medium text-xs">
+                              <td colSpan={3} className="px-2 py-1 text-gray-600">{customer.units.length} units</td>
+                              <td className="px-2 py-1 text-right text-gray-900">{formatCurrency(customer.totalMonthlyRent)}</td>
+                              <td className="px-2 py-1 text-right text-gray-900">{formatCurrency(customer.totalDeposits)}</td>
+                              <td className="px-2 py-1 text-right text-orange-600">{customer.totalPendingDeposits > 0 ? formatCurrency(customer.totalPendingDeposits) : '—'}</td>
+                              <td colSpan={2} />
+                            </tr>
+                          </tfoot>
+                        </table>
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-400 italic">
-                        No units currently rented to this customer.
-                      </p>
+                      <p className="text-[11px] text-gray-400 italic">No active rentals.</p>
                     )}
 
                     {customer.notes && (
-                      <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                        <p className="text-xs font-medium text-yellow-800">
-                          Notes
-                        </p>
-                        <p className="text-sm text-yellow-700 mt-0.5">
-                          {customer.notes}
-                        </p>
+                      <div className="mt-2 px-2 py-1.5 bg-yellow-50 rounded border border-yellow-200 text-[11px]">
+                        <span className="font-medium text-yellow-800">Note:</span> <span className="text-yellow-700">{customer.notes}</span>
                       </div>
                     )}
                   </div>
@@ -2143,89 +1734,47 @@ function DashboardContent() {
   function renderReports() {
     if (concentration.length === 0 && loading) {
       return (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-brand-blue" />
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-brand-blue" />
         </div>
       )
     }
 
-    const totalRevenue = concentration.reduce(
-      (sum, row) => sum + row.monthlyRevenue,
-      0
-    )
+    const totalRevenue = concentration.reduce((sum, row) => sum + row.monthlyRevenue, 0)
 
     return (
-      <div className="space-y-4">
-        <div className="rounded-xl border bg-white overflow-hidden">
-          <div className="px-6 py-4 border-b bg-gray-50">
-            <h3 className="font-semibold text-gray-900">
-              Customer Concentration
-            </h3>
-            <p className="text-sm text-gray-500 mt-0.5">
-              Revenue and fleet allocation by customer
-            </p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500">
-                    Customer
-                  </th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">
-                    Units Rented
-                  </th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">
-                    % of Fleet
-                  </th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">
-                    Monthly Revenue
-                  </th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-500">
-                    % of Revenue
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {concentration.map((row) => {
-                  const revenuePercent =
-                    totalRevenue > 0
-                      ? ((row.monthlyRevenue / totalRevenue) * 100).toFixed(1)
-                      : '0.0'
-                  return (
-                    <tr key={row.customer} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium text-gray-900">
-                        {row.customer}
-                      </td>
-                      <td className="px-4 py-3 text-right text-gray-600">
-                        {row.unitCount}
-                      </td>
-                      <td className="px-4 py-3 text-right text-gray-600">
-                        {row.percentOfFleet}%
-                      </td>
-                      <td className="px-4 py-3 text-right text-gray-600">
-                        {formatCurrency(row.monthlyRevenue)}
-                      </td>
-                      <td className="px-4 py-3 text-right text-gray-600">
-                        {revenuePercent}%
-                      </td>
-                    </tr>
-                  )
-                })}
-                {concentration.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={5}
-                      className="px-4 py-12 text-center text-gray-400"
-                    >
-                      No concentration data available.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+      <div className="rounded-lg border bg-white overflow-hidden">
+        <div className="px-3 py-2 border-b bg-gray-50">
+          <h3 className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Customer Concentration</h3>
         </div>
+        <table className="min-w-full text-xs">
+          <thead>
+            <tr className="border-b bg-gray-50/50">
+              <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Customer</th>
+              <th className="px-2.5 py-1.5 text-right font-medium text-gray-500">Units</th>
+              <th className="px-2.5 py-1.5 text-right font-medium text-gray-500">% Fleet</th>
+              <th className="px-2.5 py-1.5 text-right font-medium text-gray-500">Revenue/Mo</th>
+              <th className="px-2.5 py-1.5 text-right font-medium text-gray-500">% Revenue</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {concentration.map((row) => {
+              const revenuePercent = totalRevenue > 0 ? ((row.monthlyRevenue / totalRevenue) * 100).toFixed(1) : '0.0'
+              return (
+                <tr key={row.customer} className="hover:bg-blue-50/40">
+                  <td className="px-2.5 py-1.5 font-medium text-gray-900">{row.customer}</td>
+                  <td className="px-2.5 py-1.5 text-right text-gray-600">{row.unitCount}</td>
+                  <td className="px-2.5 py-1.5 text-right text-gray-600">{row.percentOfFleet}%</td>
+                  <td className="px-2.5 py-1.5 text-right text-gray-600">{formatCurrency(row.monthlyRevenue)}</td>
+                  <td className="px-2.5 py-1.5 text-right text-gray-600">{revenuePercent}%</td>
+                </tr>
+              )
+            })}
+            {concentration.length === 0 && (
+              <tr><td colSpan={5} className="px-3 py-8 text-center text-gray-400">No concentration data.</td></tr>
+            )}
+          </tbody>
+        </table>
       </div>
     )
   }
@@ -2244,41 +1793,41 @@ function DashboardContent() {
     TABS.find((t) => t.key === activeTab)?.label ?? 'Dashboard'
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex h-screen overflow-hidden bg-gray-100">
       {/* Sidebar */}
       <aside
-        className={`flex flex-col bg-gray-900 text-white transition-all duration-200 ${
-          sidebarOpen ? 'w-64' : 'w-16'
+        className={`flex flex-col bg-gray-900 text-white transition-all duration-200 shrink-0 ${
+          sidebarOpen ? 'w-52' : 'w-12'
         }`}
       >
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-4 py-5 border-b border-gray-700">
-          <div className="shrink-0 bg-white rounded-lg p-1.5">
-            <Image
-              src="/images/logo/logo.png"
-              alt="SEEK Equipment"
-              width={sidebarOpen ? 120 : 28}
-              height={sidebarOpen ? 40 : 10}
-              className={sidebarOpen ? 'h-8 w-auto' : 'h-5 w-auto'}
-            />
-          </div>
+        {/* Logo + collapse */}
+        <div className="flex items-center justify-between px-3 py-3 border-b border-gray-700/50">
+          {sidebarOpen && (
+            <div className="shrink-0 bg-white rounded p-1">
+              <Image
+                src="/images/logo/logo.png"
+                alt="SEEK"
+                width={90}
+                height={28}
+                className="h-5 w-auto"
+              />
+            </div>
+          )}
+          <button
+            onClick={() => setSidebarOpen((prev) => !prev)}
+            className="p-1 rounded text-gray-400 hover:text-white transition-colors"
+            aria-label={sidebarOpen ? 'Collapse' : 'Expand'}
+          >
+            {sidebarOpen ? (
+              <ChevronLeft className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronRight className="h-3.5 w-3.5" />
+            )}
+          </button>
         </div>
 
-        {/* Collapse toggle */}
-        <button
-          onClick={() => setSidebarOpen((prev) => !prev)}
-          className="flex items-center justify-center py-2 text-gray-400 hover:text-white transition-colors border-b border-gray-700"
-          aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-        >
-          {sidebarOpen ? (
-            <ChevronLeft className="h-4 w-4" />
-          ) : (
-            <ChevronRight className="h-4 w-4" />
-          )}
-        </button>
-
-        {/* Nav items */}
-        <nav className="flex-1 py-4 space-y-1 overflow-y-auto">
+        {/* Nav */}
+        <nav className="flex-1 py-2 space-y-0.5 overflow-y-auto">
           {TABS.map((tab) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.key
@@ -2286,61 +1835,61 @@ function DashboardContent() {
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium transition-colors ${
+                className={`flex items-center gap-2.5 w-full px-3 py-1.5 text-xs font-medium transition-colors ${
                   isActive
-                    ? 'bg-brand-blue text-white'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                    ? 'bg-brand-orange/90 text-white'
+                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                 }`}
                 title={tab.label}
               >
-                <Icon className="h-5 w-5 shrink-0" />
+                <Icon className="h-4 w-4 shrink-0" />
                 {sidebarOpen && <span>{tab.label}</span>}
               </button>
             )
           })}
         </nav>
 
-        {/* Bottom links */}
-        <div className="border-t border-gray-700 py-3 space-y-1">
+        {/* Bottom */}
+        <div className="border-t border-gray-700/50 py-2 space-y-0.5">
           <a
             href="/"
-            className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
-            title="Back to main site"
+            className="flex items-center gap-2.5 px-3 py-1.5 text-xs text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
+            title="Back to site"
           >
-            <Home className="h-5 w-5 shrink-0" />
+            <Home className="h-4 w-4 shrink-0" />
             {sidebarOpen && <span>Back to Site</span>}
           </a>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-800 hover:text-red-400 transition-colors"
+            className="flex items-center gap-2.5 w-full px-3 py-1.5 text-xs text-gray-400 hover:bg-gray-800 hover:text-red-400 transition-colors"
             title="Logout"
           >
-            <LogOut className="h-5 w-5 shrink-0" />
+            <LogOut className="h-4 w-4 shrink-0" />
             {sidebarOpen && <span>Logout</span>}
           </button>
         </div>
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top header bar */}
-        <header className="flex items-center justify-between bg-white border-b px-6 py-4 shrink-0">
-          <h1 className="text-xl font-bold text-gray-900">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        {/* Compact header */}
+        <header className="flex items-center justify-between bg-white border-b px-4 py-2 shrink-0">
+          <h1 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
             {currentTabLabel}
           </h1>
           <button
-            className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+            className="p-1.5 rounded text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
             aria-label="Settings"
           >
-            <Settings className="h-5 w-5" />
+            <Settings className="h-4 w-4" />
           </button>
         </header>
 
-        {/* Content area */}
-        <main className="flex-1 overflow-y-auto p-6">
+        {/* Content */}
+        <main className="flex-1 overflow-y-auto p-4">
           {error && (
-            <div className="flex items-center gap-2 bg-red-50 text-red-700 rounded-lg p-4 mb-6 text-sm">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
+            <div className="flex items-center gap-2 bg-red-50 text-red-700 rounded-md px-3 py-2 mb-4 text-xs">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
               {error}
             </div>
           )}

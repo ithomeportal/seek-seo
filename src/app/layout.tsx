@@ -2,8 +2,7 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
-import { Header } from '@/components/layout/Header'
-import { Footer } from '@/components/layout/Footer'
+import { ConditionalShell } from '@/components/layout/ConditionalShell'
 import { LocalBusinessSchema } from '@/components/seo/LocalBusinessSchema'
 import { COMPANY } from '@/lib/constants'
 import './globals.css'
@@ -84,11 +83,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <LocalBusinessSchema />
-        <Header />
-        <main className="min-h-screen">
-          {children}
-        </main>
-        <Footer />
+        <ConditionalShell>{children}</ConditionalShell>
         <Analytics />
         <SpeedInsights />
       </body>
