@@ -28,6 +28,10 @@ import {
   Building2,
   Phone,
   Mail,
+  Receipt,
+  CreditCard,
+  Clock,
+  AlertCircle,
 } from 'lucide-react'
 import { GPSTrackingMap } from '@/components/admin/GPSTrackingMap'
 
@@ -141,6 +145,9 @@ interface CustomerUnit {
 interface Customer {
   id: number
   companyName: string
+  alias: string | null
+  qbDisplayName: string | null
+  qbBalance: number | null
   contactName: string | null
   phone: string | null
   email: string | null
@@ -174,16 +181,49 @@ interface CustomerSummary {
   totalPendingDeposits: number
 }
 
+interface QBInvoice {
+  docNumber: string
+  customerName: string
+  totalAmt: number
+  balance: number
+  dueDate: string | null
+  txnDate: string | null
+  status: string
+}
+
+interface QBInvoiceSummary {
+  totalInvoices: number
+  openCount: number
+  paidCount: number
+  totalOutstanding: number
+  overdueCount: number
+  totalOverdue: number
+}
+
+interface QBPayment {
+  customerName: string
+  totalAmt: number
+  txnDate: string | null
+  paymentMethod: string | null
+}
+
+interface QBPaymentSummary {
+  totalPayments: number
+  totalCollected: number
+}
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-type TabKey = 'overview' | 'fleet' | 'customers' | 'gps' | 'inquiries' | 'for_sale' | 'reports'
+type TabKey = 'overview' | 'fleet' | 'customers' | 'invoices' | 'payments' | 'gps' | 'inquiries' | 'for_sale' | 'reports'
 
 const TABS: { key: TabKey; label: string; icon: typeof BarChart3 }[] = [
   { key: 'overview', label: 'Overview', icon: BarChart3 },
   { key: 'fleet', label: 'Fleet Master', icon: Truck },
   { key: 'customers', label: 'Customers', icon: Users },
+  { key: 'invoices', label: 'Invoices', icon: Receipt },
+  { key: 'payments', label: 'Payments', icon: CreditCard },
   { key: 'gps', label: 'GPS Tracking', icon: MapPin },
   { key: 'inquiries', label: 'Inquiries', icon: ClipboardList },
   { key: 'for_sale', label: 'For Sale Mgmt', icon: DollarSign },
@@ -277,6 +317,14 @@ function DashboardContent() {
   const [concentration, setConcentration] = useState<ConcentrationRow[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [customerSummary, setCustomerSummary] = useState<CustomerSummary | null>(null)
+  const [qbInvoices, setQbInvoices] = useState<QBInvoice[]>([])
+  const [qbInvoiceSummary, setQbInvoiceSummary] = useState<QBInvoiceSummary | null>(null)
+  const [qbPayments, setQbPayments] = useState<QBPayment[]>([])
+  const [qbPaymentSummary, setQbPaymentSummary] = useState<QBPaymentSummary | null>(null)
+  const [qbSyncStatus, setQbSyncStatus] = useState<Record<string, { syncedAt: string }>>({})
+  const [invoiceSearch, setInvoiceSearch] = useState('')
+  const [invoiceStatusFilter, setInvoiceStatusFilter] = useState<'all' | 'Open' | 'Paid' | 'Overdue'>('all')
+  const [paymentSearch, setPaymentSearch] = useState('')
 
   // Customer filters
   const [customerSearch, setCustomerSearch] = useState('')
@@ -371,6 +419,34 @@ function DashboardContent() {
               setCustomers(json.data.customers)
               setCustomerSummary(json.data.summary)
             }
+            break
+          }
+          case 'invoices': {
+            const [invRes, syncRes] = await Promise.all([
+              fetch('/api/admin/qb/invoices'),
+              fetch('/api/admin/qb/sync-status'),
+            ])
+            const invJson = await invRes.json()
+            if (invJson.success) {
+              setQbInvoices(invJson.data.invoices)
+              setQbInvoiceSummary(invJson.data.summary)
+            }
+            const syncJson = await syncRes.json()
+            if (syncJson.success) setQbSyncStatus(syncJson.data)
+            break
+          }
+          case 'payments': {
+            const [payRes, syncRes] = await Promise.all([
+              fetch('/api/admin/qb/payments'),
+              fetch('/api/admin/qb/sync-status'),
+            ])
+            const payJson = await payRes.json()
+            if (payJson.success) {
+              setQbPayments(payJson.data.payments)
+              setQbPaymentSummary(payJson.data.summary)
+            }
+            const syncJson = await syncRes.json()
+            if (syncJson.success) setQbSyncStatus(syncJson.data)
             break
           }
           case 'inquiries': {
@@ -1611,7 +1687,10 @@ function DashboardContent() {
                       <Building2 className="h-3.5 w-3.5 text-brand-blue" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-gray-900 truncate">{customer.companyName}</p>
+                      <p className="text-xs font-semibold text-gray-900 truncate">
+                        {customer.qbDisplayName ?? customer.companyName}
+                        {customer.alias && <span className="text-gray-400 font-normal ml-1">({customer.alias})</span>}
+                      </p>
                       <div className="flex items-center gap-2 text-[10px] text-gray-400">
                         {customer.contactName && <span>{customer.contactName}</span>}
                         {customer.phone && (
@@ -1624,6 +1703,12 @@ function DashboardContent() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
+                    {customer.qbBalance !== null && customer.qbBalance > 0 && (
+                      <div className="text-right hidden sm:block">
+                        <p className="text-[10px] text-gray-400">AR Balance</p>
+                        <p className="text-xs font-bold text-red-600">{formatCurrency(customer.qbBalance)}</p>
+                      </div>
+                    )}
                     {customer.unitsRented > 0 && (
                       <div className="text-right hidden sm:block">
                         <p className="text-xs font-bold text-gray-900">{customer.unitsRented} unit{customer.unitsRented !== 1 ? 's' : ''}</p>
@@ -1631,6 +1716,9 @@ function DashboardContent() {
                       </div>
                     )}
                     <div className="flex items-center gap-1">
+                      {customer.qbDisplayName && (
+                        <span className="rounded px-1.5 py-px text-[10px] font-medium bg-indigo-100 text-indigo-700">QB</span>
+                      )}
                       {customer.achAuthorized ? (
                         <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-px text-[10px] font-medium bg-green-100 text-green-700">
                           <CheckCircle className="h-2.5 w-2.5" />ACH
@@ -1731,6 +1819,231 @@ function DashboardContent() {
     )
   }
 
+  function renderInvoices() {
+    if (!qbInvoiceSummary) {
+      return (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-brand-blue" />
+        </div>
+      )
+    }
+
+    const now = new Date()
+    const filtered = qbInvoices.filter((inv) => {
+      const searchLower = invoiceSearch.toLowerCase()
+      const matchesSearch =
+        invoiceSearch === '' ||
+        inv.docNumber.toLowerCase().includes(searchLower) ||
+        inv.customerName.toLowerCase().includes(searchLower)
+      const isOverdue = inv.status === 'Open' && inv.dueDate && new Date(inv.dueDate) < now
+      const matchesStatus =
+        invoiceStatusFilter === 'all' ||
+        (invoiceStatusFilter === 'Overdue' ? isOverdue : inv.status === invoiceStatusFilter)
+      return matchesSearch && matchesStatus
+    })
+
+    const syncTime = qbSyncStatus.invoices?.syncedAt
+
+    return (
+      <div className="space-y-3">
+        {/* Summary */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="rounded-lg px-3 py-2 bg-gray-900 text-white">
+            <p className="text-[10px] font-medium uppercase opacity-70">Total</p>
+            <p className="text-lg font-bold">{qbInvoiceSummary.totalInvoices}</p>
+          </div>
+          <div className="rounded-lg px-3 py-2 bg-orange-50 text-orange-700">
+            <p className="text-[10px] font-medium uppercase opacity-70">Open</p>
+            <p className="text-lg font-bold">{qbInvoiceSummary.openCount}</p>
+          </div>
+          <div className="rounded-lg px-3 py-2 bg-green-50 text-green-700">
+            <p className="text-[10px] font-medium uppercase opacity-70">Paid</p>
+            <p className="text-lg font-bold">{qbInvoiceSummary.paidCount}</p>
+          </div>
+          <div className="rounded-lg px-3 py-2 bg-red-50 text-red-700">
+            <p className="text-[10px] font-medium uppercase opacity-70">Outstanding</p>
+            <p className="text-lg font-bold">{formatCurrency(qbInvoiceSummary.totalOutstanding)}</p>
+          </div>
+          {qbInvoiceSummary.overdueCount > 0 && (
+            <div className="rounded-lg px-3 py-2 bg-red-100 text-red-800">
+              <p className="text-[10px] font-medium uppercase opacity-70">Overdue</p>
+              <p className="text-lg font-bold">{qbInvoiceSummary.overdueCount} ({formatCurrency(qbInvoiceSummary.totalOverdue)})</p>
+            </div>
+          )}
+          {syncTime && (
+            <div className="ml-auto flex items-center gap-1 text-[10px] text-gray-400">
+              <Clock className="h-3 w-3" />
+              QB synced {formatDate(syncTime)}
+            </div>
+          )}
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search invoice # or customer..."
+              value={invoiceSearch}
+              onChange={(e) => setInvoiceSearch(e.target.value)}
+              className="w-full pl-8 pr-3 py-1.5 rounded border border-gray-300 bg-white focus:outline-none focus:ring-1 focus:ring-brand-blue/50 text-xs"
+            />
+          </div>
+          <select
+            value={invoiceStatusFilter}
+            onChange={(e) => setInvoiceStatusFilter(e.target.value as 'all' | 'Open' | 'Paid' | 'Overdue')}
+            className="rounded border border-gray-300 bg-white px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand-blue/50"
+          >
+            <option value="all">All Statuses</option>
+            <option value="Open">Open</option>
+            <option value="Paid">Paid</option>
+            <option value="Overdue">Overdue</option>
+          </select>
+        </div>
+
+        <p className="text-[11px] text-gray-400">{filtered.length} invoices</p>
+
+        {/* Table */}
+        <div className="overflow-x-auto rounded-lg border bg-white">
+          <table className="min-w-full text-xs">
+            <thead>
+              <tr className="border-b bg-gray-50">
+                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Invoice #</th>
+                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Customer</th>
+                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Date</th>
+                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Due Date</th>
+                <th className="px-2.5 py-1.5 text-right font-medium text-gray-500">Amount</th>
+                <th className="px-2.5 py-1.5 text-right font-medium text-gray-500">Balance</th>
+                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {filtered.map((inv, idx) => {
+                const isOverdue = inv.status === 'Open' && inv.dueDate && new Date(inv.dueDate) < now
+                return (
+                  <tr key={`${inv.docNumber}-${idx}`} className="hover:bg-blue-50/40">
+                    <td className="px-2.5 py-1.5 font-semibold text-gray-900">#{inv.docNumber}</td>
+                    <td className="px-2.5 py-1.5 text-gray-700 font-medium">{inv.customerName}</td>
+                    <td className="px-2.5 py-1.5 text-gray-500">{inv.txnDate ? formatDate(inv.txnDate) : '—'}</td>
+                    <td className="px-2.5 py-1.5">
+                      {inv.dueDate ? (
+                        <span className={isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}>
+                          {formatDate(inv.dueDate)}
+                          {isOverdue && <AlertCircle className="inline h-3 w-3 ml-0.5" />}
+                        </span>
+                      ) : '—'}
+                    </td>
+                    <td className="px-2.5 py-1.5 text-right text-gray-700 tabular-nums">{formatCurrency(inv.totalAmt)}</td>
+                    <td className="px-2.5 py-1.5 text-right tabular-nums">
+                      {inv.balance > 0 ? (
+                        <span className="text-red-600 font-medium">{formatCurrency(inv.balance)}</span>
+                      ) : (
+                        <span className="text-gray-300">$0</span>
+                      )}
+                    </td>
+                    <td className="px-2.5 py-1.5">
+                      {isOverdue ? (
+                        <span className="rounded px-1.5 py-px text-[10px] font-medium bg-red-100 text-red-700">Overdue</span>
+                      ) : inv.status === 'Paid' ? (
+                        <span className="rounded px-1.5 py-px text-[10px] font-medium bg-green-100 text-green-700">Paid</span>
+                      ) : (
+                        <span className="rounded px-1.5 py-px text-[10px] font-medium bg-orange-100 text-orange-700">Open</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+              {filtered.length === 0 && (
+                <tr><td colSpan={7} className="px-3 py-8 text-center text-gray-400">No invoices found.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
+  }
+
+  function renderPayments() {
+    if (!qbPaymentSummary) {
+      return (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-brand-blue" />
+        </div>
+      )
+    }
+
+    const filtered = qbPayments.filter((p) => {
+      const searchLower = paymentSearch.toLowerCase()
+      return paymentSearch === '' || p.customerName.toLowerCase().includes(searchLower)
+    })
+
+    const syncTime = qbSyncStatus.payments?.syncedAt
+
+    return (
+      <div className="space-y-3">
+        {/* Summary */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="rounded-lg px-3 py-2 bg-gray-900 text-white">
+            <p className="text-[10px] font-medium uppercase opacity-70">Total Payments</p>
+            <p className="text-lg font-bold">{qbPaymentSummary.totalPayments}</p>
+          </div>
+          <div className="rounded-lg px-3 py-2 bg-green-50 text-green-700">
+            <p className="text-[10px] font-medium uppercase opacity-70">Total Collected</p>
+            <p className="text-lg font-bold">{formatCurrency(qbPaymentSummary.totalCollected)}</p>
+          </div>
+          {syncTime && (
+            <div className="ml-auto flex items-center gap-1 text-[10px] text-gray-400">
+              <Clock className="h-3 w-3" />
+              QB synced {formatDate(syncTime)}
+            </div>
+          )}
+        </div>
+
+        {/* Search */}
+        <div className="relative max-w-sm">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search customer..."
+            value={paymentSearch}
+            onChange={(e) => setPaymentSearch(e.target.value)}
+            className="w-full pl-8 pr-3 py-1.5 rounded border border-gray-300 bg-white focus:outline-none focus:ring-1 focus:ring-brand-blue/50 text-xs"
+          />
+        </div>
+
+        <p className="text-[11px] text-gray-400">{filtered.length} payments</p>
+
+        {/* Table */}
+        <div className="overflow-x-auto rounded-lg border bg-white">
+          <table className="min-w-full text-xs">
+            <thead>
+              <tr className="border-b bg-gray-50">
+                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Customer</th>
+                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Date</th>
+                <th className="px-2.5 py-1.5 text-right font-medium text-gray-500">Amount</th>
+                <th className="px-2.5 py-1.5 text-left font-medium text-gray-500">Method</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {filtered.map((p, idx) => (
+                <tr key={`${p.customerName}-${idx}`} className="hover:bg-blue-50/40">
+                  <td className="px-2.5 py-1.5 font-medium text-gray-900">{p.customerName}</td>
+                  <td className="px-2.5 py-1.5 text-gray-500">{p.txnDate ? formatDate(p.txnDate) : '—'}</td>
+                  <td className="px-2.5 py-1.5 text-right text-green-700 font-medium tabular-nums">{formatCurrency(p.totalAmt)}</td>
+                  <td className="px-2.5 py-1.5 text-gray-500">{p.paymentMethod ?? '—'}</td>
+                </tr>
+              ))}
+              {filtered.length === 0 && (
+                <tr><td colSpan={4} className="px-3 py-8 text-center text-gray-400">No payments found.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
+  }
+
   function renderReports() {
     if (concentration.length === 0 && loading) {
       return (
@@ -1783,6 +2096,8 @@ function DashboardContent() {
     overview: renderOverview,
     fleet: renderFleetMaster,
     customers: renderCustomers,
+    invoices: renderInvoices,
+    payments: renderPayments,
     gps: renderGPS,
     inquiries: renderInquiries,
     for_sale: renderForSale,

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
+import { qbQuery } from '@/lib/qb-db'
 
 interface CustomerRow {
   id: number
@@ -21,6 +22,8 @@ interface CustomerRow {
   ap_phone: string | null
   status: string
   notes: string | null
+  alias: string | null
+  qb_display_name: string | null
   created_at: string
   updated_at: string
 }
@@ -115,11 +118,32 @@ export async function GET() {
       GROUP BY rented_to`
     )
 
+    // Fetch QB balances for linked customers
+    const qbBalanceMap = new Map<string, number>()
+    try {
+      const qbResult = await qbQuery(
+        `SELECT display_name, balance FROM qb_customers WHERE active = true`
+      )
+      for (const r of qbResult.rows) {
+        qbBalanceMap.set(
+          (r.display_name as string).toLowerCase(),
+          parseFloat(String(r.balance ?? '0'))
+        )
+      }
+    } catch {
+      // QB database may be unavailable — continue without it
+    }
+
     const customers = customersResult.rows.map((row) => {
       const rental = rentalMap.get(row.id)
+      const qbName = row.qb_display_name as string | null
+      const qbBalance = qbName ? (qbBalanceMap.get(qbName.toLowerCase()) ?? null) : null
       return {
         id: row.id,
         companyName: row.company_name,
+        alias: row.alias as string | null,
+        qbDisplayName: qbName,
+        qbBalance,
         contactName: [row.contact_first_name, row.contact_last_name]
           .filter(Boolean)
           .join(' ') || null,
