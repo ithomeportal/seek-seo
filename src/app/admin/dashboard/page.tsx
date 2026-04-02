@@ -18,6 +18,8 @@ import {
   Search,
   AlertTriangle,
   Loader2,
+  Plus,
+  X,
 } from 'lucide-react'
 import { GPSTrackingMap } from '@/components/admin/GPSTrackingMap'
 
@@ -199,6 +201,24 @@ function DashboardContent() {
   const [fleetTypeFilter, setFleetTypeFilter] = useState('all')
   const [fleetStatusFilter, setFleetStatusFilter] = useState('all')
 
+  // Add Unit modal
+  const [showAddUnit, setShowAddUnit] = useState(false)
+  const [addUnitLoading, setAddUnitLoading] = useState(false)
+  const [addUnitForm, setAddUnitForm] = useState({
+    unitNumber: '',
+    trailerType: 'sand_chassis',
+    year: '',
+    make: '',
+    model: '',
+    vin: '',
+    purchasingCost: '',
+    tireType: '',
+    status: 'available',
+    skybitzDeviceId: '',
+    imageUrl: '',
+    notes: '',
+  })
+
   // Loading / error
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -288,6 +308,66 @@ function DashboardContent() {
       fleetStatusFilter === 'all' || unit.status === fleetStatusFilter
     return matchesSearch && matchesType && matchesStatus
   })
+
+  // ------ Add Unit handler ------
+  async function handleAddUnit() {
+    setAddUnitLoading(true)
+    setError('')
+    try {
+      const payload = {
+        unitNumber: addUnitForm.unitNumber.trim(),
+        trailerType: addUnitForm.trailerType,
+        year: addUnitForm.year ? parseInt(addUnitForm.year, 10) : null,
+        make: addUnitForm.make.trim() || null,
+        model: addUnitForm.model.trim() || null,
+        vin: addUnitForm.vin.trim() || null,
+        purchasingCost: addUnitForm.purchasingCost
+          ? parseFloat(addUnitForm.purchasingCost)
+          : null,
+        tireType: addUnitForm.tireType.trim() || null,
+        status: addUnitForm.status,
+        skybitzDeviceId: addUnitForm.skybitzDeviceId.trim() || null,
+        imageUrl: addUnitForm.imageUrl.trim() || null,
+        notes: addUnitForm.notes.trim() || null,
+      }
+
+      const res = await fetch('/api/admin/fleet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const json = await res.json()
+
+      if (!json.success) {
+        setError(json.error ?? 'Failed to create unit')
+        return
+      }
+
+      // Reset form and close modal
+      setShowAddUnit(false)
+      setAddUnitForm({
+        unitNumber: '',
+        trailerType: 'sand_chassis',
+        year: '',
+        make: '',
+        model: '',
+        vin: '',
+        purchasingCost: '',
+        tireType: '',
+        status: 'available',
+        skybitzDeviceId: '',
+        imageUrl: '',
+        notes: '',
+      })
+
+      // Refresh fleet data
+      await fetchData('fleet')
+    } catch {
+      setError('Failed to create unit. Please try again.')
+    } finally {
+      setAddUnitLoading(false)
+    }
+  }
 
   // ------ Guard ------
   if (!authenticated) {
@@ -379,9 +459,13 @@ function DashboardContent() {
   }
 
   function renderFleetMaster() {
+    const inputClass =
+      'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange'
+    const labelClass = 'block text-sm font-medium text-gray-700 mb-1'
+
     return (
       <div className="space-y-4">
-        {/* Filters */}
+        {/* Filters + Add button */}
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -417,11 +501,274 @@ function DashboardContent() {
             <option value="maintenance">Maintenance</option>
             <option value="for_sale">For Sale</option>
           </select>
+          <button
+            onClick={() => setShowAddUnit(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange/90 transition-colors shrink-0"
+          >
+            <Plus className="h-4 w-4" />
+            Add New Unit
+          </button>
         </div>
 
         <p className="text-sm text-gray-500">
           {filteredFleet.length} units found
         </p>
+
+        {/* Add New Unit Modal */}
+        {showAddUnit && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between px-6 py-4 border-b">
+                <h3 className="text-lg font-bold text-gray-900">
+                  Add New Unit
+                </h3>
+                <button
+                  onClick={() => setShowAddUnit(false)}
+                  className="p-1 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="px-6 py-5 space-y-4">
+                {/* Row 1: Unit Number + Trailer Type */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelClass}>
+                      Unit Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={addUnitForm.unitNumber}
+                      onChange={(e) =>
+                        setAddUnitForm({
+                          ...addUnitForm,
+                          unitNumber: e.target.value,
+                        })
+                      }
+                      className={inputClass}
+                      placeholder="e.g. SC-001"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>
+                      Trailer Type <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={addUnitForm.trailerType}
+                      onChange={(e) =>
+                        setAddUnitForm({
+                          ...addUnitForm,
+                          trailerType: e.target.value,
+                        })
+                      }
+                      className={inputClass}
+                    >
+                      {Object.entries(TRAILER_TYPE_LABELS).map(
+                        ([key, label]) => (
+                          <option key={key} value={key}>
+                            {label}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Row 2: Year + Make */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelClass}>Year</label>
+                    <input
+                      type="number"
+                      value={addUnitForm.year}
+                      onChange={(e) =>
+                        setAddUnitForm({
+                          ...addUnitForm,
+                          year: e.target.value,
+                        })
+                      }
+                      className={inputClass}
+                      placeholder="2024"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Make</label>
+                    <input
+                      type="text"
+                      value={addUnitForm.make}
+                      onChange={(e) =>
+                        setAddUnitForm({
+                          ...addUnitForm,
+                          make: e.target.value,
+                        })
+                      }
+                      className={inputClass}
+                      placeholder="e.g. Heil"
+                    />
+                  </div>
+                </div>
+
+                {/* Row 3: Model + VIN */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelClass}>Model</label>
+                    <input
+                      type="text"
+                      value={addUnitForm.model}
+                      onChange={(e) =>
+                        setAddUnitForm({
+                          ...addUnitForm,
+                          model: e.target.value,
+                        })
+                      }
+                      className={inputClass}
+                      placeholder="e.g. 9200 Gal"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>VIN</label>
+                    <input
+                      type="text"
+                      value={addUnitForm.vin}
+                      onChange={(e) =>
+                        setAddUnitForm({
+                          ...addUnitForm,
+                          vin: e.target.value,
+                        })
+                      }
+                      className={inputClass}
+                      placeholder="Vehicle ID number"
+                    />
+                  </div>
+                </div>
+
+                {/* Row 4: Purchasing Cost + Tire Type */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelClass}>Purchasing Cost ($)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={addUnitForm.purchasingCost}
+                      onChange={(e) =>
+                        setAddUnitForm({
+                          ...addUnitForm,
+                          purchasingCost: e.target.value,
+                        })
+                      }
+                      className={inputClass}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Tire Type</label>
+                    <input
+                      type="text"
+                      value={addUnitForm.tireType}
+                      onChange={(e) =>
+                        setAddUnitForm({
+                          ...addUnitForm,
+                          tireType: e.target.value,
+                        })
+                      }
+                      className={inputClass}
+                      placeholder="e.g. 11R22.5"
+                    />
+                  </div>
+                </div>
+
+                {/* Row 5: Status + SkyBitz Device ID */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelClass}>Status</label>
+                    <select
+                      value={addUnitForm.status}
+                      onChange={(e) =>
+                        setAddUnitForm({
+                          ...addUnitForm,
+                          status: e.target.value,
+                        })
+                      }
+                      className={inputClass}
+                    >
+                      <option value="available">Available</option>
+                      <option value="rented">Rented</option>
+                      <option value="damaged">Damaged</option>
+                      <option value="for_sale">For Sale</option>
+                      <option value="maintenance">Maintenance</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelClass}>SkyBitz Device ID</label>
+                    <input
+                      type="text"
+                      value={addUnitForm.skybitzDeviceId}
+                      onChange={(e) =>
+                        setAddUnitForm({
+                          ...addUnitForm,
+                          skybitzDeviceId: e.target.value,
+                        })
+                      }
+                      className={inputClass}
+                      placeholder="GPS tracker ID"
+                    />
+                  </div>
+                </div>
+
+                {/* Row 6: Image URL */}
+                <div>
+                  <label className={labelClass}>Image URL</label>
+                  <input
+                    type="text"
+                    value={addUnitForm.imageUrl}
+                    onChange={(e) =>
+                      setAddUnitForm({
+                        ...addUnitForm,
+                        imageUrl: e.target.value,
+                      })
+                    }
+                    className={inputClass}
+                    placeholder="https://..."
+                  />
+                </div>
+
+                {/* Row 7: Notes */}
+                <div>
+                  <label className={labelClass}>Notes</label>
+                  <textarea
+                    value={addUnitForm.notes}
+                    onChange={(e) =>
+                      setAddUnitForm({
+                        ...addUnitForm,
+                        notes: e.target.value,
+                      })
+                    }
+                    className={inputClass}
+                    rows={3}
+                    placeholder="Any additional notes..."
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t bg-gray-50 rounded-b-xl">
+                <button
+                  onClick={() => setShowAddUnit(false)}
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddUnit}
+                  disabled={
+                    addUnitLoading || addUnitForm.unitNumber.trim() === ''
+                  }
+                  className="px-5 py-2 rounded-lg bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange/90 transition-colors disabled:opacity-50"
+                >
+                  {addUnitLoading ? 'Adding...' : 'Add Unit'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Table */}
         <div className="overflow-x-auto rounded-xl border bg-white">
