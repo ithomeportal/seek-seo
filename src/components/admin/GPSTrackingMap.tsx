@@ -207,11 +207,17 @@ export function GPSTrackingMap() {
         ? 'mapbox://styles/mapbox/satellite-streets-v12'
         : 'mapbox://styles/mapbox/streets-v12'
 
+    // Disable telemetry to avoid ad-blocker conflicts (ERR_BLOCKED_BY_CLIENT)
+    ;(mapboxgl as unknown as { config: { EVENTS_URL: string } }).config = {
+      EVENTS_URL: '',
+    }
+
     const map = new mapboxgl.Map({
       container: mapContainer.current,
       style: styleUrl,
       center: [-98.5, 30.0], // San Antonio / Von Ormy area
       zoom: 7,
+      collectResourceTiming: false,
     })
 
     map.addControl(new mapboxgl.NavigationControl(), 'top-right')
