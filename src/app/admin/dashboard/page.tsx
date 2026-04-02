@@ -20,6 +20,14 @@ import {
   Loader2,
   Plus,
   X,
+  Users,
+  ChevronDown,
+  ChevronUp,
+  CheckCircle,
+  XCircle,
+  Building2,
+  Phone,
+  Mail,
 } from 'lucide-react'
 import { GPSTrackingMap } from '@/components/admin/GPSTrackingMap'
 
@@ -95,15 +103,64 @@ interface ConcentrationRow {
   percentOfFleet: number
 }
 
+interface CustomerUnit {
+  unitNumber: string
+  trailerType: string
+  status: string
+  rentalRate: number | null
+  depositTotal: number | null
+  pendingDeposit: number | null
+  rentStartDate: string | null
+  rentDueDay: string | null
+  vin: string | null
+}
+
+interface Customer {
+  id: number
+  companyName: string
+  contactName: string | null
+  phone: string | null
+  email: string | null
+  businessType: string | null
+  stateFormed: string | null
+  address: string | null
+  city: string | null
+  state: string | null
+  zip: string | null
+  insuranceCompany: string | null
+  achAuthorized: boolean
+  achBankName: string | null
+  apEmail: string | null
+  apPhone: string | null
+  status: string
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+  unitsRented: number
+  totalMonthlyRent: number
+  totalDeposits: number
+  totalPendingDeposits: number
+  units: CustomerUnit[]
+}
+
+interface CustomerSummary {
+  totalCustomers: number
+  activeRenters: number
+  totalMonthlyRevenue: number
+  totalDepositsHeld: number
+  totalPendingDeposits: number
+}
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-type TabKey = 'overview' | 'fleet' | 'gps' | 'inquiries' | 'for_sale' | 'reports'
+type TabKey = 'overview' | 'fleet' | 'customers' | 'gps' | 'inquiries' | 'for_sale' | 'reports'
 
 const TABS: { key: TabKey; label: string; icon: typeof BarChart3 }[] = [
   { key: 'overview', label: 'Overview', icon: BarChart3 },
   { key: 'fleet', label: 'Fleet Master', icon: Truck },
+  { key: 'customers', label: 'Customers', icon: Users },
   { key: 'gps', label: 'GPS Tracking', icon: MapPin },
   { key: 'inquiries', label: 'Inquiries', icon: ClipboardList },
   { key: 'for_sale', label: 'For Sale Mgmt', icon: DollarSign },
@@ -195,6 +252,13 @@ function DashboardContent() {
   const [inquiries, setInquiries] = useState<ContactSubmission[]>([])
   const [forSaleItems, setForSaleItems] = useState<EquipmentForSale[]>([])
   const [concentration, setConcentration] = useState<ConcentrationRow[]>([])
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [customerSummary, setCustomerSummary] = useState<CustomerSummary | null>(null)
+
+  // Customer filters
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [customerFilter, setCustomerFilter] = useState<'all' | 'active' | 'no_rentals'>('all')
+  const [expandedCustomer, setExpandedCustomer] = useState<number | null>(null)
 
   // Fleet filters
   const [fleetSearch, setFleetSearch] = useState('')
@@ -250,6 +314,15 @@ function DashboardContent() {
             const res = await fetch('/api/admin/fleet')
             const json = await res.json()
             if (json.success) setFleet(json.data)
+            break
+          }
+          case 'customers': {
+            const res = await fetch('/api/admin/customers')
+            const json = await res.json()
+            if (json.success) {
+              setCustomers(json.data.customers)
+              setCustomerSummary(json.data.summary)
+            }
             break
           }
           case 'inquiries': {
@@ -1018,6 +1091,414 @@ function DashboardContent() {
     )
   }
 
+  function renderCustomers() {
+    if (!customerSummary) {
+      return (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-blue" />
+        </div>
+      )
+    }
+
+    const filtered = customers.filter((c) => {
+      const searchLower = customerSearch.toLowerCase()
+      const matchesSearch =
+        customerSearch === '' ||
+        c.companyName.toLowerCase().includes(searchLower) ||
+        (c.contactName ?? '').toLowerCase().includes(searchLower) ||
+        (c.email ?? '').toLowerCase().includes(searchLower)
+      const matchesFilter =
+        customerFilter === 'all' ||
+        (customerFilter === 'active' && c.unitsRented > 0) ||
+        (customerFilter === 'no_rentals' && c.unitsRented === 0)
+      return matchesSearch && matchesFilter
+    })
+
+    const summaryCards = [
+      {
+        label: 'Total Customers',
+        value: customerSummary.totalCustomers,
+        color: 'bg-gray-900 text-white',
+      },
+      {
+        label: 'Active Renters',
+        value: customerSummary.activeRenters,
+        color: 'bg-blue-50 text-blue-700 border-blue-200',
+      },
+      {
+        label: 'Monthly Revenue',
+        value: formatCurrency(customerSummary.totalMonthlyRevenue),
+        color: 'bg-green-50 text-green-700 border-green-200',
+      },
+      {
+        label: 'Deposits Held',
+        value: formatCurrency(customerSummary.totalDepositsHeld),
+        color: 'bg-purple-50 text-purple-700 border-purple-200',
+      },
+      {
+        label: 'Pending Deposits',
+        value: formatCurrency(customerSummary.totalPendingDeposits),
+        color: 'bg-orange-50 text-orange-700 border-orange-200',
+      },
+    ]
+
+    return (
+      <div className="space-y-6">
+        {/* Summary cards */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {summaryCards.map((c) => (
+            <div key={c.label} className={`rounded-xl border p-5 ${c.color}`}>
+              <p className="text-sm font-medium opacity-80">{c.label}</p>
+              <p className="text-2xl font-bold mt-1">{c.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search company, contact, or email..."
+              value={customerSearch}
+              onChange={(e) => setCustomerSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue text-sm"
+            />
+          </div>
+          <select
+            value={customerFilter}
+            onChange={(e) =>
+              setCustomerFilter(
+                e.target.value as 'all' | 'active' | 'no_rentals'
+              )
+            }
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
+          >
+            <option value="all">All Customers</option>
+            <option value="active">Active Renters</option>
+            <option value="no_rentals">No Current Rentals</option>
+          </select>
+        </div>
+
+        <p className="text-sm text-gray-500">
+          {filtered.length} customer{filtered.length !== 1 ? 's' : ''} found
+        </p>
+
+        {/* Customer list */}
+        <div className="space-y-3">
+          {filtered.map((customer) => {
+            const isExpanded = expandedCustomer === customer.id
+            return (
+              <div
+                key={customer.id}
+                className="rounded-xl border bg-white overflow-hidden"
+              >
+                {/* Customer header row */}
+                <button
+                  onClick={() =>
+                    setExpandedCustomer(isExpanded ? null : customer.id)
+                  }
+                  className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="shrink-0 w-10 h-10 rounded-full bg-brand-blue/10 flex items-center justify-center">
+                      <Building2 className="h-5 w-5 text-brand-blue" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-900 truncate">
+                        {customer.companyName}
+                      </p>
+                      <div className="flex items-center gap-3 text-xs text-gray-500 mt-0.5">
+                        {customer.contactName && (
+                          <span>{customer.contactName}</span>
+                        )}
+                        {customer.phone && (
+                          <span className="flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            {customer.phone}
+                          </span>
+                        )}
+                        {customer.email && (
+                          <span className="flex items-center gap-1">
+                            <Mail className="h-3 w-3" />
+                            {customer.email}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 shrink-0">
+                    {customer.unitsRented > 0 && (
+                      <div className="text-right hidden sm:block">
+                        <p className="text-sm font-semibold text-gray-900">
+                          {customer.unitsRented} unit
+                          {customer.unitsRented !== 1 ? 's' : ''}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {formatCurrency(customer.totalMonthlyRent)}/mo
+                        </p>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      {customer.achAuthorized ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-green-100 text-green-700 px-2 py-0.5 text-xs font-medium">
+                          <CheckCircle className="h-3 w-3" />
+                          ACH
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-500 px-2 py-0.5 text-xs font-medium">
+                          <XCircle className="h-3 w-3" />
+                          No ACH
+                        </span>
+                      )}
+                      {customer.unitsRented > 0 ? (
+                        <span className="inline-flex items-center rounded-full bg-blue-100 text-blue-700 px-2.5 py-0.5 text-xs font-medium">
+                          Active
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-gray-100 text-gray-500 px-2.5 py-0.5 text-xs font-medium">
+                          No Rentals
+                        </span>
+                      )}
+                    </div>
+                    {isExpanded ? (
+                      <ChevronUp className="h-5 w-5 text-gray-400" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5 text-gray-400" />
+                    )}
+                  </div>
+                </button>
+
+                {/* Expanded detail */}
+                {isExpanded && (
+                  <div className="border-t bg-gray-50 px-5 py-4">
+                    {/* Customer info grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Business Type
+                        </p>
+                        <p className="text-sm text-gray-900 mt-0.5">
+                          {customer.businessType ?? '—'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          State Formed
+                        </p>
+                        <p className="text-sm text-gray-900 mt-0.5">
+                          {customer.stateFormed ?? '—'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Insurance
+                        </p>
+                        <p className="text-sm text-gray-900 mt-0.5">
+                          {customer.insuranceCompany ?? '—'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          ACH Bank
+                        </p>
+                        <p className="text-sm text-gray-900 mt-0.5">
+                          {customer.achBankName ?? '—'}
+                        </p>
+                      </div>
+                      {customer.address && (
+                        <div className="col-span-2">
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Address
+                          </p>
+                          <p className="text-sm text-gray-900 mt-0.5">
+                            {[
+                              customer.address,
+                              customer.city,
+                              customer.state,
+                              customer.zip,
+                            ]
+                              .filter(Boolean)
+                              .join(', ')}
+                          </p>
+                        </div>
+                      )}
+                      {customer.apEmail && (
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            A/P Email
+                          </p>
+                          <p className="text-sm text-gray-900 mt-0.5">
+                            {customer.apEmail}
+                          </p>
+                        </div>
+                      )}
+                      {customer.apPhone && (
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            A/P Phone
+                          </p>
+                          <p className="text-sm text-gray-900 mt-0.5">
+                            {customer.apPhone}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Rental Journal */}
+                    {customer.units.length > 0 ? (
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                          Rental Journal
+                        </h4>
+                        <div className="overflow-x-auto rounded-lg border bg-white">
+                          <table className="min-w-full divide-y divide-gray-200 text-sm">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-3 py-2 text-left font-medium text-gray-500">
+                                  Unit #
+                                </th>
+                                <th className="px-3 py-2 text-left font-medium text-gray-500">
+                                  Type
+                                </th>
+                                <th className="px-3 py-2 text-left font-medium text-gray-500">
+                                  VIN
+                                </th>
+                                <th className="px-3 py-2 text-left font-medium text-gray-500">
+                                  Status
+                                </th>
+                                <th className="px-3 py-2 text-right font-medium text-gray-500">
+                                  Rent/Mo
+                                </th>
+                                <th className="px-3 py-2 text-right font-medium text-gray-500">
+                                  Deposit
+                                </th>
+                                <th className="px-3 py-2 text-right font-medium text-gray-500">
+                                  Pending
+                                </th>
+                                <th className="px-3 py-2 text-left font-medium text-gray-500">
+                                  Start Date
+                                </th>
+                                <th className="px-3 py-2 text-left font-medium text-gray-500">
+                                  Due
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {customer.units.map((unit) => (
+                                <tr
+                                  key={unit.unitNumber}
+                                  className="hover:bg-gray-50"
+                                >
+                                  <td className="px-3 py-2 font-medium text-gray-900">
+                                    {unit.unitNumber}
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    {renderBadge(
+                                      unit.trailerType,
+                                      'bg-gray-100 text-gray-700'
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2 text-gray-500 font-mono text-xs">
+                                    {unit.vin ?? '—'}
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    {renderBadge(
+                                      unit.status,
+                                      STATUS_COLORS[unit.status] ??
+                                        'bg-gray-100 text-gray-800'
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2 text-right text-gray-600">
+                                    {unit.rentalRate
+                                      ? formatCurrency(unit.rentalRate)
+                                      : '—'}
+                                  </td>
+                                  <td className="px-3 py-2 text-right text-gray-600">
+                                    {unit.depositTotal
+                                      ? formatCurrency(unit.depositTotal)
+                                      : '—'}
+                                  </td>
+                                  <td className="px-3 py-2 text-right">
+                                    {unit.pendingDeposit ? (
+                                      <span className="text-orange-600 font-medium">
+                                        {formatCurrency(unit.pendingDeposit)}
+                                      </span>
+                                    ) : (
+                                      <span className="text-gray-400">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2 text-gray-500 text-xs">
+                                    {unit.rentStartDate
+                                      ? formatDate(unit.rentStartDate)
+                                      : '—'}
+                                  </td>
+                                  <td className="px-3 py-2 text-gray-500 text-xs">
+                                    {unit.rentDueDay ?? '—'}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot className="bg-gray-50 font-medium">
+                              <tr>
+                                <td
+                                  colSpan={4}
+                                  className="px-3 py-2 text-gray-700"
+                                >
+                                  Totals ({customer.units.length} units)
+                                </td>
+                                <td className="px-3 py-2 text-right text-gray-900">
+                                  {formatCurrency(customer.totalMonthlyRent)}
+                                </td>
+                                <td className="px-3 py-2 text-right text-gray-900">
+                                  {formatCurrency(customer.totalDeposits)}
+                                </td>
+                                <td className="px-3 py-2 text-right text-orange-600">
+                                  {customer.totalPendingDeposits > 0
+                                    ? formatCurrency(
+                                        customer.totalPendingDeposits
+                                      )
+                                    : '—'}
+                                </td>
+                                <td colSpan={2} />
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-400 italic">
+                        No units currently rented to this customer.
+                      </p>
+                    )}
+
+                    {customer.notes && (
+                      <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                        <p className="text-xs font-medium text-yellow-800">
+                          Notes
+                        </p>
+                        <p className="text-sm text-yellow-700 mt-0.5">
+                          {customer.notes}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+
+          {filtered.length === 0 && (
+            <div className="text-center py-12 text-gray-400">
+              No customers match your filters.
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   function renderReports() {
     if (concentration.length === 0 && loading) {
       return (
@@ -1111,6 +1592,7 @@ function DashboardContent() {
   const tabContent: Record<TabKey, () => React.JSX.Element> = {
     overview: renderOverview,
     fleet: renderFleetMaster,
+    customers: renderCustomers,
     gps: renderGPS,
     inquiries: renderInquiries,
     for_sale: renderForSale,
