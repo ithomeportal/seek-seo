@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import {
   BarChart3,
@@ -163,15 +163,29 @@ function statusLabel(s: string): string {
 // Component
 // ---------------------------------------------------------------------------
 
-export default function AdminDashboardPage() {
+function DashboardContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   // Auth
   const [authenticated, setAuthenticated] = useState(false)
 
   // Sidebar
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [activeTab, setActiveTab] = useState<TabKey>('overview')
+
+  // Read initial tab from URL ?tab=xxx, default to 'overview'
+  const tabFromUrl = (searchParams.get('tab') ?? 'overview') as TabKey
+  const validTab = TABS.some((t) => t.key === tabFromUrl) ? tabFromUrl : 'overview'
+  const [activeTab, setActiveTabState] = useState<TabKey>(validTab)
+
+  // Sync tab changes to URL
+  const setActiveTab = useCallback(
+    (tab: TabKey) => {
+      setActiveTabState(tab)
+      router.replace(`/admin/dashboard?tab=${tab}`, { scroll: false })
+    },
+    [router]
+  )
 
   // Data
   const [stats, setStats] = useState<FleetStats | null>(null)
@@ -864,5 +878,19 @@ export default function AdminDashboardPage() {
         </main>
       </div>
     </div>
+  )
+}
+
+export default function AdminDashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-blue" />
+        </div>
+      }
+    >
+      <DashboardContent />
+    </Suspense>
   )
 }
