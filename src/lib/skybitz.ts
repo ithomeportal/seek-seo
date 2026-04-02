@@ -1,18 +1,10 @@
 /**
- * SkyBitz GPS API client
+ * SkyBitz GPS API client — XML Legacy authentication
  *
- * OAuth2 flow:
- *   1. POST to token URL with client_credentials grant
- *   2. Use bearer token to call the SkyBitz data API
- *
- * The data API URL (SKYBITZ_API_URL) must be provided by SkyBitz support.
- * Until then, this module returns null from fetchPositions().
+ * Uses username/password query parameters against xml.skybitz.com.
+ * OAuth2 was disabled by SkyBitz support (Leo) on 2026-04-02 when
+ * switching the account to XML Legacy mode.
  */
-
-interface SkyBitzToken {
-  accessToken: string
-  expiresAt: number
-}
 
 export interface SkyBitzPosition {
   assetId: string
@@ -27,90 +19,52 @@ export interface SkyBitzPosition {
   deviceSerial: string | null
 }
 
-let cachedToken: SkyBitzToken | null = null
+interface CachedPositions {
+  data: SkyBitzPosition[]
+  fetchedAt: number
+}
+
+let cachedPositions: CachedPositions | null = null
+const CACHE_TTL_MS = 60_000
 
 function getConfig() {
   return {
-    clientId: process.env.SKYBITZ_CLIENT_ID ?? '',
-    clientSecret: process.env.SKYBITZ_CLIENT_SECRET ?? '',
-    tokenUrl:
-      process.env.SKYBITZ_TOKEN_URL ??
-      'https://prodssoidp.skybitz.com/oauth2/token',
     apiUrl: process.env.SKYBITZ_API_URL ?? '',
     xmlUsername: process.env.SKYBITZ_XML_USERNAME ?? '',
     xmlPassword: process.env.SKYBITZ_XML_PASSWORD ?? '',
   }
 }
 
-export async function getAccessToken(): Promise<string | null> {
-  const { clientId, clientSecret, tokenUrl } = getConfig()
-  if (!clientId || !clientSecret) return null
-
-  if (cachedToken && Date.now() < cachedToken.expiresAt) {
-    return cachedToken.accessToken
-  }
-
-  const res = await fetch(tokenUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'client_credentials',
-      client_id: clientId,
-      client_secret: clientSecret,
-    }),
-  })
-
-  if (!res.ok) return null
-
-  const data = (await res.json()) as {
-    access_token: string
-    expires_in: number
-  }
-  cachedToken = {
-    accessToken: data.access_token,
-    expiresAt: Date.now() + (data.expires_in - 30) * 1000,
-  }
-  return cachedToken.accessToken
-}
-
 /**
  * Fetch all GPS positions from SkyBitz.
- * Returns null if the API URL is not configured yet.
+ * Returns null if not configured. Caches for 60s to respect rate limits.
  */
 export async function fetchPositions(): Promise<SkyBitzPosition[] | null> {
   const { apiUrl, xmlUsername, xmlPassword } = getConfig()
-  if (!apiUrl) return null
+  if (!apiUrl || !xmlUsername || !xmlPassword) return null
 
-  // Use XML username/password auth (required by SkyBitz legacy API)
-  if (xmlUsername && xmlPassword) {
-    const params = new URLSearchParams({
-      version: '2.67',
-      customer: xmlUsername,
-      password: xmlPassword,
-      assetid: 'ALL',
-      sortby: '1',
-    })
-    const res = await fetch(`${apiUrl}/QueryPositions?${params}`)
-    if (!res.ok) return null
-    const text = await res.text()
-    // Check for SkyBitz error codes
-    const errMatch = text.match(/<error>(\d+)<\/error>/)
-    if (errMatch && errMatch[1] !== '0') return null
-    return parsePositionsXml(text)
+  if (cachedPositions && Date.now() - cachedPositions.fetchedAt < CACHE_TTL_MS) {
+    return cachedPositions.data
   }
 
-  // Fallback: OAuth2 bearer token
-  const token = await getAccessToken()
-  if (!token) return null
-
-  const res = await fetch(`${apiUrl}/QueryPositions?assetid=ALL&sortby=1`, {
-    headers: { Authorization: `Bearer ${token}` },
+  const params = new URLSearchParams({
+    version: '2.67',
+    customer: xmlUsername,
+    password: xmlPassword,
+    assetid: 'ALL',
+    sortby: '1',
   })
 
+  const res = await fetch(`${apiUrl}/QueryPositions?${params}`)
   if (!res.ok) return null
 
   const text = await res.text()
-  return parsePositionsXml(text)
+  const errMatch = text.match(/<error>(\d+)<\/error>/)
+  if (errMatch && errMatch[1] !== '0') return null
+
+  const positions = parsePositionsXml(text)
+  cachedPositions = { data: positions, fetchedAt: Date.now() }
+  return positions
 }
 
 /** Parse SkyBitz XML response into structured positions */

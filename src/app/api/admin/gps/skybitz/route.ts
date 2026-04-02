@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
-import { getAccessToken, fetchPositions } from '@/lib/skybitz'
+import { fetchPositions } from '@/lib/skybitz'
 
 /** POST /api/admin/gps/skybitz — Refresh GPS positions from SkyBitz */
 export async function POST() {
@@ -11,7 +11,7 @@ export async function POST() {
       return NextResponse.json({
         success: false,
         error:
-          'SkyBitz API not configured. Set SKYBITZ_API_URL environment variable.',
+          'SkyBitz API not configured. Set SKYBITZ_API_URL, SKYBITZ_XML_USERNAME, and SKYBITZ_XML_PASSWORD.',
         configured: false,
       })
     }
@@ -45,22 +45,13 @@ export async function POST() {
 
 /** GET /api/admin/gps/skybitz — Check SkyBitz connection status */
 export async function GET() {
-  try {
-    const token = await getAccessToken()
-    const apiUrl = process.env.SKYBITZ_API_URL ?? ''
+  const apiUrl = process.env.SKYBITZ_API_URL ?? ''
+  const username = process.env.SKYBITZ_XML_USERNAME ?? ''
 
-    return NextResponse.json({
-      success: true,
-      tokenValid: token !== null,
-      apiConfigured: apiUrl !== '',
-      provider: 'SkyBitz (AMETEK)',
-    })
-  } catch {
-    return NextResponse.json({
-      success: true,
-      tokenValid: false,
-      apiConfigured: false,
-      provider: 'SkyBitz (AMETEK)',
-    })
-  }
+  return NextResponse.json({
+    success: true,
+    configured: apiUrl !== '' && username !== '',
+    provider: 'SkyBitz (AMETEK)',
+    authMode: 'XML Legacy',
+  })
 }
