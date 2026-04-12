@@ -7,7 +7,7 @@ export async function GET() {
       `SELECT
         id, unit_number, trailer_type, status,
         skybitz_device_id, last_latitude, last_longitude,
-        last_location, rented_to, updated_at
+        last_location, rented_to, updated_at, last_gps_time
       FROM fleet_units
       ORDER BY unit_number`
     )
@@ -23,6 +23,7 @@ export async function GET() {
       lastLocation: row.last_location,
       rentedTo: row.rented_to,
       updatedAt: row.updated_at,
+      lastGpsTime: row.last_gps_time,
     }))
 
     return NextResponse.json({ success: true, data: units })

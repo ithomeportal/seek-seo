@@ -61,7 +61,7 @@ const createUnitSchema = z.object({
   purchasingCost: z.number().min(0).nullable().optional(),
   tireType: z.string().nullable().optional(),
   status: z
-    .enum(['available', 'rented', 'damaged', 'for_sale', 'maintenance'])
+    .enum(['available', 'rented', 'damaged', 'for_sale', 'maintenance', 'sold'])
     .default('available'),
   skybitzDeviceId: z.string().nullable().optional(),
   imageUrl: z.string().url().nullable().optional().or(z.literal('')),

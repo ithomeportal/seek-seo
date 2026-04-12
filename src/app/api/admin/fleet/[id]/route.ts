@@ -21,7 +21,7 @@ const updateUnitSchema = z.object({
   purchasingCost: z.number().min(0).nullable().optional(),
   tireType: z.string().nullable().optional(),
   status: z
-    .enum(['available', 'rented', 'damaged', 'for_sale', 'maintenance'])
+    .enum(['available', 'rented', 'damaged', 'for_sale', 'maintenance', 'sold'])
     .optional(),
   rentedTo: z.string().nullable().optional(),
   rentedToContact: z.string().nullable().optional(),

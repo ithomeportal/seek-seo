@@ -16,27 +16,36 @@ export async function GET() {
     let damaged = 0
     let maintenance = 0
     let forSale = 0
+    let sold = 0
     let expectedMonthlyRevenue = 0
 
     for (const row of statusResult.rows) {
       const count = Number(row.count)
-      total += count
       switch (row.status) {
         case 'available':
           available = count
+          total += count
           break
         case 'rented':
           rented = count
           expectedMonthlyRevenue = Number(row.total_rate)
+          total += count
           break
         case 'damaged':
           damaged = count
+          total += count
           break
         case 'maintenance':
           maintenance = count
+          total += count
           break
         case 'for_sale':
           forSale = count
+          total += count
+          break
+        case 'sold':
+          sold = count
+          // Sold units excluded from total & stats
           break
       }
     }
@@ -55,11 +64,12 @@ export async function GET() {
       depositResult.rows[0]?.total_pending ?? 0
     )
 
-    // Fleet by type
+    // Fleet by type (exclude sold)
     const typeResult = await query(
       `SELECT trailer_type, COUNT(*)::int AS count,
               SUM(CASE WHEN status = 'rented' THEN 1 ELSE 0 END)::int AS rented_count
-       FROM fleet_units GROUP BY trailer_type ORDER BY count DESC`
+       FROM fleet_units WHERE status != 'sold'
+       GROUP BY trailer_type ORDER BY count DESC`
     )
     const byType = typeResult.rows.map(
       (row: Record<string, unknown>) => ({
@@ -109,6 +119,7 @@ export async function GET() {
         damaged,
         maintenance,
         forSale,
+        sold,
         expectedMonthlyRevenue,
         utilizationRate,
         totalDepositsHeld,

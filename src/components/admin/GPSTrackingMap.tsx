@@ -12,6 +12,7 @@ import {
   Truck,
   X,
   Search,
+  AlertTriangle,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -29,6 +30,7 @@ interface GPSUnit {
   lastLocation: string | null
   rentedTo: string | null
   updatedAt: string
+  lastGpsTime: string | null
 }
 
 interface SkyBitzStatus {
@@ -43,6 +45,7 @@ const STATUS_COLORS: Record<string, string> = {
   damaged: '#dc2626',
   for_sale: '#7c3aed',
   maintenance: '#d97706',
+  sold: '#6b7280',
 }
 
 const STATUS_RING: Record<string, string> = {
@@ -51,6 +54,7 @@ const STATUS_RING: Record<string, string> = {
   damaged: 'ring-red-500 bg-red-50 text-red-700',
   for_sale: 'ring-purple-500 bg-purple-50 text-purple-700',
   maintenance: 'ring-yellow-500 bg-yellow-50 text-yellow-700',
+  sold: 'ring-gray-500 bg-gray-50 text-gray-700',
 }
 
 const STATUS_SELECTED: Record<string, string> = {
@@ -59,6 +63,7 @@ const STATUS_SELECTED: Record<string, string> = {
   damaged: 'ring-2 ring-red-500 bg-red-100 text-red-800',
   for_sale: 'ring-2 ring-purple-500 bg-purple-100 text-purple-800',
   maintenance: 'ring-2 ring-yellow-500 bg-yellow-100 text-yellow-800',
+  sold: 'ring-2 ring-gray-500 bg-gray-100 text-gray-800',
 }
 
 const STATUS_BG: Record<string, string> = {
@@ -67,6 +72,7 @@ const STATUS_BG: Record<string, string> = {
   damaged: 'bg-red-100 text-red-800',
   for_sale: 'bg-purple-100 text-purple-800',
   maintenance: 'bg-yellow-100 text-yellow-800',
+  sold: 'bg-gray-200 text-gray-600',
 }
 
 const TRAILER_LABELS: Record<string, string> = {
@@ -84,43 +90,34 @@ function statusLabel(s: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-/**
- * Offset overlapping markers in a spiral pattern so they don't stack.
- * Groups by rounded lat/lng (5-decimal precision ~1m) and offsets each
- * member by a small amount so all are visible when zoomed in.
- */
-function offsetOverlapping(
+interface MarkerGroup {
   units: GPSUnit[]
-): { unit: GPSUnit; lng: number; lat: number }[] {
+  lat: number
+  lng: number
+}
+
+/**
+ * Group co-located units by proximity. Units at similar lat/lng (within ~1km)
+ * are grouped together to show a single cluster marker.
+ */
+function groupByLocation(units: GPSUnit[]): MarkerGroup[] {
   const groups = new Map<string, GPSUnit[]>()
   for (const u of units) {
     if (u.latitude === null || u.longitude === null) continue
-    const key = `${u.latitude.toFixed(3)},${u.longitude.toFixed(3)}`
+    const key = `${u.latitude.toFixed(2)},${u.longitude.toFixed(2)}`
     const arr = groups.get(key) ?? []
     arr.push(u)
     groups.set(key, arr)
   }
 
-  const result: { unit: GPSUnit; lng: number; lat: number }[] = []
+  const result: MarkerGroup[] = []
   for (const members of groups.values()) {
-    if (members.length === 1) {
-      const u = members[0]
-      result.push({ unit: u, lat: u.latitude!, lng: u.longitude! })
-      continue
-    }
-    // Spiral offset — each marker gets a small nudge
-    const OFFSET = 0.0008 // ~90 meters at this latitude
-    for (let i = 0; i < members.length; i++) {
-      const u = members[i]
-      const angle = (2 * Math.PI * i) / members.length
-      const ring = Math.floor(i / 8) + 1
-      const r = OFFSET * ring
-      result.push({
-        unit: u,
-        lat: u.latitude! + r * Math.sin(angle),
-        lng: u.longitude! + r * Math.cos(angle),
-      })
-    }
+    // Use centroid as group position
+    const lat =
+      members.reduce((s, u) => s + u.latitude!, 0) / members.length
+    const lng =
+      members.reduce((s, u) => s + u.longitude!, 0) / members.length
+    result.push({ units: members, lat, lng })
   }
   return result
 }
@@ -215,11 +212,12 @@ export function GPSTrackingMap() {
     const rafId = requestAnimationFrame(() => {
       if (cancelled || !container) return
 
+      // Default center: YARD address (Von Ormy, TX)
       const map = new mapboxgl.Map({
         container,
         style: styleUrl,
-        center: [-98.5, 30.0],
-        zoom: 7,
+        center: [-98.688, 29.286],
+        zoom: 9,
       })
 
       map.addControl(new mapboxgl.NavigationControl(), 'top-right')
@@ -290,47 +288,110 @@ export function GPSTrackingMap() {
     const bounds = new mapboxgl.LngLatBounds()
     let hasPoints = false
 
-    const positioned = offsetOverlapping(filteredUnits)
+    const groups = groupByLocation(filteredUnits)
 
-    for (const { unit, lat, lng } of positioned) {
-      const markerColor = STATUS_COLORS[unit.status] ?? '#6b7280'
+    for (const group of groups) {
+      const { units: groupUnits, lat, lng } = group
 
-      const el = document.createElement('div')
-      el.style.cssText =
-        'position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;'
-      el.innerHTML = `
-        <div style="background:${markerColor};color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.3);line-height:1.3;">
-          ${unit.unitNumber}
-        </div>
-        <div style="width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid ${markerColor};"></div>
-        <div style="width:8px;height:8px;background:${markerColor};border-radius:50%;border:2px solid white;margin-top:-2px;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>
-      `
+      if (groupUnits.length === 1) {
+        // Single unit — show its label
+        const unit = groupUnits[0]
+        const markerColor = STATUS_COLORS[unit.status] ?? '#6b7280'
 
-      el.addEventListener('click', () => setSelectedUnit(unit))
-
-      const popup = new mapboxgl.Popup({ offset: 30, closeButton: true })
-        .setHTML(`
-        <div style="font-family:system-ui;min-width:180px;">
-          <div style="font-weight:700;font-size:14px;margin-bottom:4px;color:#111;">${unit.unitNumber}</div>
-          <div style="font-size:12px;color:#555;margin-bottom:6px;">${TRAILER_LABELS[unit.trailerType] ?? unit.trailerType}</div>
-          <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
-            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${markerColor};"></span>
-            <span style="font-size:12px;font-weight:500;">${statusLabel(unit.status)}</span>
+        const el = document.createElement('div')
+        el.style.cssText =
+          'position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;'
+        el.innerHTML = `
+          <div style="background:${markerColor};color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.3);line-height:1.3;">
+            ${unit.unitNumber}
           </div>
-          ${unit.rentedTo ? `<div style="font-size:11px;color:#666;">Rented to: <strong>${unit.rentedTo}</strong></div>` : ''}
-          ${unit.lastLocation ? `<div style="font-size:11px;color:#444;margin-top:4px;">📍 ${unit.lastLocation}</div>` : ''}
-          <div style="font-size:10px;color:#999;margin-top:4px;">
-            ${unit.latitude?.toFixed(4)}, ${unit.longitude?.toFixed(4)}
+          <div style="width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid ${markerColor};"></div>
+          <div style="width:8px;height:8px;background:${markerColor};border-radius:50%;border:2px solid white;margin-top:-2px;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>
+        `
+
+        el.addEventListener('click', () => setSelectedUnit(unit))
+
+        const popup = new mapboxgl.Popup({ offset: 30, closeButton: true })
+          .setHTML(`
+          <div style="font-family:system-ui;min-width:180px;">
+            <div style="font-weight:700;font-size:14px;margin-bottom:4px;color:#111;">${unit.unitNumber}</div>
+            <div style="font-size:12px;color:#555;margin-bottom:6px;">${TRAILER_LABELS[unit.trailerType] ?? unit.trailerType}</div>
+            <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
+              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${markerColor};"></span>
+              <span style="font-size:12px;font-weight:500;">${statusLabel(unit.status)}</span>
+            </div>
+            ${unit.rentedTo ? `<div style="font-size:11px;color:#666;">Rented to: <strong>${unit.rentedTo}</strong></div>` : ''}
+            ${unit.lastLocation ? `<div style="font-size:11px;color:#444;margin-top:4px;">📍 ${unit.lastLocation}</div>` : ''}
+            <div style="font-size:10px;color:#999;margin-top:4px;">
+              ${unit.latitude?.toFixed(4)}, ${unit.longitude?.toFixed(4)}
+            </div>
           </div>
-        </div>
-      `)
+        `)
 
-      const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
-        .setLngLat([lng, lat])
-        .setPopup(popup)
-        .addTo(map)
+        const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+          .setLngLat([lng, lat])
+          .setPopup(popup)
+          .addTo(map)
 
-      markersRef.current.push(marker)
+        markersRef.current.push(marker)
+      } else {
+        // Cluster — show count badge with hover list
+        const el = document.createElement('div')
+        el.style.cssText =
+          'position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;'
+
+        const location = groupUnits[0].lastLocation ?? ''
+
+        // Build unit list HTML for hover tooltip
+        const unitListHtml = groupUnits
+          .map((u) => {
+            const color = STATUS_COLORS[u.status] ?? '#6b7280'
+            return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #f3f4f6;">
+              <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${color};flex-shrink:0;"></span>
+              <span style="font-weight:600;font-size:11px;color:#111;min-width:50px;">${u.unitNumber}</span>
+              <span style="font-size:10px;color:#666;">${TRAILER_LABELS[u.trailerType] ?? u.trailerType}</span>
+              <span style="font-size:10px;color:#999;margin-left:auto;">${statusLabel(u.status)}</span>
+            </div>`
+          })
+          .join('')
+
+        el.innerHTML = `
+          <div style="background:#1f2937;color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3);line-height:1.3;display:flex;align-items:center;gap:4px;">
+            <span style="background:#ee5519;color:#fff;font-size:10px;font-weight:800;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;">${groupUnits.length}</span>
+            <span>${location || 'units'}</span>
+          </div>
+          <div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:6px solid #1f2937;"></div>
+        `
+
+        // Popup shows all units in this location
+        const popup = new mapboxgl.Popup({
+          offset: 30,
+          closeButton: true,
+          maxWidth: '320px',
+        }).setHTML(`
+          <div style="font-family:system-ui;min-width:200px;max-height:300px;overflow-y:auto;">
+            <div style="font-weight:700;font-size:13px;margin-bottom:6px;color:#111;border-bottom:2px solid #ee5519;padding-bottom:4px;">
+              ${groupUnits.length} Units${location ? ` — ${location}` : ''}
+            </div>
+            ${unitListHtml}
+          </div>
+        `)
+
+        el.addEventListener('click', () => {
+          // On click, zoom in so user can see individual markers
+          if (mapRef.current) {
+            mapRef.current.flyTo({ center: [lng, lat], zoom: 13, duration: 800 })
+          }
+        })
+
+        const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+          .setLngLat([lng, lat])
+          .setPopup(popup)
+          .addTo(map)
+
+        markersRef.current.push(marker)
+      }
+
       bounds.extend([lng, lat])
       hasPoints = true
     }
@@ -338,8 +399,7 @@ export function GPSTrackingMap() {
     // Only auto-fit on first load — after that, keep user's zoom/pan
     if (hasPoints && !initialFitDone.current) {
       initialFitDone.current = true
-      // Don't zoom out too far — cap at zoom 7 so SA area is clearly visible
-      map.fitBounds(bounds, { padding: 60, maxZoom: 8 })
+      map.fitBounds(bounds, { padding: 60, maxZoom: 10 })
     }
   }, [filteredUnits, mapReady])
 
@@ -559,118 +619,228 @@ export function GPSTrackingMap() {
         />
       </div>
 
-      {/* Unit list below map */}
-      {filteredUnits.length > 0 && (
-        <div className="rounded-xl border bg-white overflow-hidden">
-          <div className="px-6 py-4 border-b bg-gray-50 flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900">
-              {hasActiveFilters
-                ? `Filtered Units (${filteredUnits.length})`
-                : `Tracked Units (${filteredUnits.length})`}
-            </h3>
-            <div className="flex gap-3 text-xs">
-              {Object.entries(STATUS_COLORS).map(([status, color]) => {
-                const count = filteredUnits.filter(
-                  (u) => u.status === status
-                ).length
-                if (count === 0) return null
-                return (
-                  <div key={status} className="flex items-center gap-1">
-                    <span
-                      className="inline-block w-2.5 h-2.5 rounded-full"
-                      style={{ backgroundColor: color }}
-                    />
-                    <span className="text-gray-600">
-                      {statusLabel(status)} ({count})
-                    </span>
-                  </div>
-                )
-              })}
+      {/* Two-column layout: Unit list + Idle units */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Left column: Unit list */}
+        {filteredUnits.length > 0 && (
+          <div className="rounded-xl border bg-white overflow-hidden">
+            <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
+              <h3 className="font-semibold text-gray-900 text-sm">
+                {hasActiveFilters
+                  ? `Filtered Units (${filteredUnits.length})`
+                  : `Tracked Units (${filteredUnits.length})`}
+              </h3>
+              <div className="flex gap-2 text-xs">
+                {Object.entries(STATUS_COLORS).map(([status, color]) => {
+                  const count = filteredUnits.filter(
+                    (u) => u.status === status
+                  ).length
+                  if (count === 0) return null
+                  return (
+                    <div key={status} className="flex items-center gap-1">
+                      <span
+                        className="inline-block w-2 h-2 rounded-full"
+                        style={{ backgroundColor: color }}
+                      />
+                      <span className="text-gray-600">
+                        {statusLabel(status)} ({count})
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+            <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                <thead className="bg-gray-50 sticky top-0">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium text-gray-500">
+                      Unit #
+                    </th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-500">
+                      Type
+                    </th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-500">
+                      Status
+                    </th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-500">
+                      Rented To
+                    </th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-500">
+                      Location
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filteredUnits.map((unit) => (
+                    <tr
+                      key={unit.id}
+                      className={`hover:bg-gray-50 cursor-pointer transition-colors ${
+                        selectedUnit?.id === unit.id ? 'bg-blue-50' : ''
+                      }`}
+                      onClick={() => {
+                        setSelectedUnit(unit)
+                        if (
+                          mapRef.current &&
+                          unit.latitude !== null &&
+                          unit.longitude !== null
+                        ) {
+                          markersRef.current.forEach((m) => {
+                            if (m.getPopup()?.isOpen()) m.togglePopup()
+                          })
+                          mapRef.current.flyTo({
+                            center: [unit.longitude, unit.latitude],
+                            zoom: 14,
+                            duration: 1000,
+                          })
+                        }
+                      }}
+                    >
+                      <td className="px-3 py-2 font-semibold text-gray-900">
+                        {unit.unitNumber}
+                      </td>
+                      <td className="px-3 py-2 text-gray-600 text-xs">
+                        {TRAILER_LABELS[unit.trailerType] ?? unit.trailerType}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BG[unit.status] ?? 'bg-gray-100 text-gray-700'}`}
+                        >
+                          {statusLabel(unit.status)}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-gray-600 text-xs">
+                        {unit.rentedTo ?? '—'}
+                      </td>
+                      <td className="px-3 py-2 text-gray-600 text-xs">
+                        {unit.lastLocation ?? '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500">
-                    Unit #
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500">
-                    Type
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500">
-                    Rented To
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500">
-                    Location
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500">
-                    Last Update
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filteredUnits.map((unit) => (
+        )}
+
+        {/* Right column: Idle units (no movement > 24hrs) */}
+        <IdleUnitsTable units={allGpsUnits} />
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Idle Units Table — units with no GPS movement for >24 hours
+// ---------------------------------------------------------------------------
+
+function formatIdleDuration(ms: number): string {
+  const hours = Math.floor(ms / (1000 * 60 * 60))
+  const days = Math.floor(hours / 24)
+  const remainHours = hours % 24
+  if (days > 0) return `${days}d ${remainHours}h`
+  return `${hours}h`
+}
+
+function IdleUnitsTable({ units }: { units: GPSUnit[] }) {
+  const now = Date.now()
+  const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000
+
+  const idleUnits = units
+    .filter((u) => {
+      if (!u.lastGpsTime) return false
+      const gpsTime = new Date(u.lastGpsTime).getTime()
+      return now - gpsTime > TWENTY_FOUR_HOURS
+    })
+    .map((u) => ({
+      ...u,
+      idleMs: now - new Date(u.lastGpsTime!).getTime(),
+    }))
+    .sort((a, b) => b.idleMs - a.idleMs)
+
+  return (
+    <div className="rounded-xl border bg-white overflow-hidden">
+      <div className="px-4 py-3 border-b bg-orange-50 flex items-center gap-2">
+        <AlertTriangle className="h-4 w-4 text-orange-600" />
+        <h3 className="font-semibold text-gray-900 text-sm">
+          Idle Units ({idleUnits.length})
+        </h3>
+        <span className="text-xs text-gray-500 ml-auto">No movement &gt;24h</span>
+      </div>
+      <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+        {idleUnits.length === 0 ? (
+          <div className="flex items-center justify-center py-12 text-gray-400 text-sm">
+            All units have reported movement in the last 24 hours.
+          </div>
+        ) : (
+          <table className="min-w-full divide-y divide-gray-200 text-sm">
+            <thead className="bg-gray-50 sticky top-0">
+              <tr>
+                <th className="px-3 py-2 text-left font-medium text-gray-500">
+                  Unit #
+                </th>
+                <th className="px-3 py-2 text-left font-medium text-gray-500">
+                  Type
+                </th>
+                <th className="px-3 py-2 text-left font-medium text-gray-500">
+                  Location
+                </th>
+                <th className="px-3 py-2 text-left font-medium text-gray-500">
+                  Idle Time
+                </th>
+                <th className="px-3 py-2 text-left font-medium text-gray-500">
+                  Last Signal
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {idleUnits.map((unit) => {
+                const isLongIdle = unit.idleMs > 7 * 24 * 60 * 60 * 1000
+                return (
                   <tr
                     key={unit.id}
-                    className={`hover:bg-gray-50 cursor-pointer transition-colors ${
-                      selectedUnit?.id === unit.id ? 'bg-blue-50' : ''
-                    }`}
-                    onClick={() => {
-                      setSelectedUnit(unit)
-                      if (
-                        mapRef.current &&
-                        unit.latitude !== null &&
-                        unit.longitude !== null
-                      ) {
-                        mapRef.current.flyTo({
-                          center: [unit.longitude, unit.latitude],
-                          zoom: 14,
-                          duration: 1000,
-                        })
-                        const idx = filteredUnits.indexOf(unit)
-                        if (idx >= 0 && markersRef.current[idx]) {
-                          markersRef.current[idx].togglePopup()
-                        }
-                      }
-                    }}
+                    className="hover:bg-orange-50/50 transition-colors"
                   >
-                    <td className="px-4 py-3 font-semibold text-gray-900">
+                    <td className="px-3 py-2 font-semibold text-gray-900">
                       {unit.unitNumber}
                     </td>
-                    <td className="px-4 py-3 text-gray-600">
+                    <td className="px-3 py-2 text-gray-600 text-xs">
                       {TRAILER_LABELS[unit.trailerType] ?? unit.trailerType}
                     </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BG[unit.status] ?? 'bg-gray-100 text-gray-700'}`}
-                      >
-                        {statusLabel(unit.status)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">
-                      {unit.rentedTo ?? '—'}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">
+                    <td className="px-3 py-2 text-gray-600 text-xs">
                       {unit.lastLocation ?? '—'}
                     </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">
-                      {new Date(unit.updatedAt).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
+                    <td className="px-3 py-2">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold ${
+                          isLongIdle
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-orange-100 text-orange-700'
+                        }`}
+                      >
+                        {formatIdleDuration(unit.idleMs)}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-gray-500 text-xs">
+                      {unit.lastGpsTime
+                        ? new Date(unit.lastGpsTime).toLocaleDateString(
+                            'en-US',
+                            {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            }
+                          )
+                        : '—'}
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+                )
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   )
 }

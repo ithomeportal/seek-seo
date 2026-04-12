@@ -23,9 +23,16 @@ export async function POST() {
          SET last_latitude = $1,
              last_longitude = $2,
              last_location = $3,
+             last_gps_time = $4,
              updated_at = NOW()
-         WHERE skybitz_device_id = $4`,
-        [pos.latitude, pos.longitude, pos.location, pos.assetId]
+         WHERE skybitz_device_id = $5`,
+        [
+          pos.latitude,
+          pos.longitude,
+          pos.location,
+          pos.observedAt || null,
+          pos.assetId,
+        ]
       )
       if (result.rowCount && result.rowCount > 0) updated++
     }

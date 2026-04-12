@@ -34,6 +34,7 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import { GPSTrackingMap } from '@/components/admin/GPSTrackingMap'
+import { UploadButton } from '@/lib/uploadthing'
 
 // ---------------------------------------------------------------------------
 // Types (matching demo-data.ts shapes)
@@ -60,6 +61,7 @@ interface FleetStats {
   damaged: number
   maintenance: number
   forSale: number
+  sold: number
   expectedMonthlyRevenue: number
   utilizationRate: number
   totalDepositsHeld: number
@@ -94,6 +96,16 @@ interface FleetUnit {
   imageUrl: string | null
   createdAt: string
   updatedAt: string
+}
+
+interface UnitDocument {
+  id: number
+  unitId: number
+  fileName: string
+  fileUrl: string
+  fileType: string | null
+  fileSize: number | null
+  uploadedAt: string
 }
 
 interface ContactSubmission {
@@ -245,6 +257,7 @@ const STATUS_COLORS: Record<string, string> = {
   damaged: 'bg-red-100 text-red-800',
   for_sale: 'bg-purple-100 text-purple-800',
   maintenance: 'bg-yellow-100 text-yellow-800',
+  sold: 'bg-gray-200 text-gray-600',
 }
 
 const INQUIRY_TYPE_COLORS: Record<string, string> = {
@@ -331,6 +344,7 @@ function DashboardContent() {
   // Customer filters
   const [customerSearch, setCustomerSearch] = useState('')
   const [customerFilter, setCustomerFilter] = useState<'all' | 'active' | 'no_rentals'>('all')
+  const [customerSort, setCustomerSort] = useState<'name' | 'units' | 'revenue' | 'deposits'>('name')
   const [expandedCustomer, setExpandedCustomer] = useState<number | null>(null)
 
   // Fleet filters
@@ -359,6 +373,8 @@ function DashboardContent() {
   // Edit Unit modal
   const [editUnit, setEditUnit] = useState<FleetUnit | null>(null)
   const [editUnitLoading, setEditUnitLoading] = useState(false)
+  const [unitDocs, setUnitDocs] = useState<UnitDocument[]>([])
+  const [docsLoading, setDocsLoading] = useState(false)
   const [editUnitForm, setEditUnitForm] = useState({
     unitNumber: '',
     trailerType: 'sand_chassis',
@@ -413,9 +429,10 @@ function DashboardContent() {
             break
           }
           case 'fleet': {
-            const [fleetRes, custRes] = await Promise.all([
+            const [fleetRes, custRes, statsRes] = await Promise.all([
               fetch('/api/admin/fleet'),
               fetch('/api/admin/customers'),
+              fetch('/api/admin/fleet/stats'),
             ])
             const fleetJson = await fleetRes.json()
             if (fleetJson.success) setFleet(fleetJson.data)
@@ -424,6 +441,8 @@ function DashboardContent() {
               setCustomers(custJson.data.customers)
               setCustomerSummary(custJson.data.summary)
             }
+            const statsJson = await statsRes.json()
+            if (statsJson.success) setStats(statsJson.data)
             break
           }
           case 'customers': {
@@ -505,8 +524,14 @@ function DashboardContent() {
     router.push('/admin')
   }
 
+  // Historical sales toggle
+  const [showHistoricalSales, setShowHistoricalSales] = useState(false)
+
   // ------ Fleet filtering ------
   const filteredFleet = fleet.filter((unit) => {
+    // Exclude sold units from main fleet view (they appear in Historical Sales)
+    if (!showHistoricalSales && unit.status === 'sold') return false
+    if (showHistoricalSales) return unit.status === 'sold'
     const searchLower = fleetSearch.toLowerCase()
     const matchesSearch =
       fleetSearch === '' ||
@@ -581,6 +606,28 @@ function DashboardContent() {
   }
 
   // ------ Edit Unit helpers ------
+  async function fetchUnitDocs(unitId: number) {
+    setDocsLoading(true)
+    try {
+      const res = await fetch(`/api/admin/fleet/documents?unitId=${unitId}`)
+      const json = await res.json()
+      if (json.success) setUnitDocs(json.data)
+    } catch {
+      /* ignore */
+    } finally {
+      setDocsLoading(false)
+    }
+  }
+
+  async function deleteDoc(docId: number) {
+    try {
+      await fetch(`/api/admin/fleet/documents?id=${docId}`, { method: 'DELETE' })
+      setUnitDocs((prev) => prev.filter((d) => d.id !== docId))
+    } catch {
+      /* ignore */
+    }
+  }
+
   function openEditUnit(unit: FleetUnit) {
     setEditUnitForm({
       unitNumber: unit.unitNumber,
@@ -606,6 +653,7 @@ function DashboardContent() {
       notes: unit.notes ?? '',
     })
     setEditUnit(unit)
+    fetchUnitDocs(unit.id)
   }
 
   async function handleEditUnit() {
@@ -745,7 +793,7 @@ function DashboardContent() {
       { label: 'Rented', value: stats.rented, color: 'bg-blue-50 text-blue-700' },
       { label: 'Damaged', value: stats.damaged, color: 'bg-red-50 text-red-700' },
       { label: 'Maint.', value: stats.maintenance, color: 'bg-yellow-50 text-yellow-700' },
-      { label: 'For Sale', value: stats.forSale, color: 'bg-purple-50 text-purple-700' },
+      ...(stats.sold > 0 ? [{ label: 'Sold', value: stats.sold, color: 'bg-gray-100 text-gray-500' }] : []),
     ]
 
     return (
@@ -850,8 +898,132 @@ function DashboardContent() {
       'w-full rounded border border-gray-300 bg-white px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange/50 focus:border-brand-orange'
     const labelClass = 'block text-xs font-semibold text-gray-600 mb-0.5'
 
+    // Compute fleet KPIs from loaded data
+    const activeFleet = fleet.filter((u) => u.status !== 'sold')
+    const rentedUnits = activeFleet.filter((u) => u.status === 'rented')
+    const availableUnits = activeFleet.filter((u) => u.status === 'available')
+    const uniqueTypes = new Set(activeFleet.map((u) => u.trailerType))
+    const uniqueCompanies = new Set(rentedUnits.map((u) => u.rentedTo).filter(Boolean))
+    const totalMonthlyRevenue = rentedUnits.reduce(
+      (sum, u) => sum + (u.rentalRate ? parseFloat(u.rentalRate) : 0),
+      0
+    )
+    const totalDeposits = activeFleet.reduce(
+      (sum, u) => sum + (u.depositTotal ? parseFloat(u.depositTotal) : 0),
+      0
+    )
+    const totalPendingDep = activeFleet.reduce(
+      (sum, u) => sum + (u.pendingDeposit ? parseFloat(u.pendingDeposit) : 0),
+      0
+    )
+    const totalAssetValue = activeFleet.reduce(
+      (sum, u) => sum + (u.purchasingCost ? parseFloat(u.purchasingCost) : 0),
+      0
+    )
+    const utilization = activeFleet.length > 0
+      ? Math.round((rentedUnits.length / activeFleet.length) * 1000) / 10
+      : 0
+
+    // Average contract length (months from rent start to now)
+    const now = new Date()
+    const contractMonths = rentedUnits
+      .filter((u) => u.rentStartDate)
+      .map((u) => {
+        const start = new Date(u.rentStartDate!)
+        return (now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30)
+      })
+    const avgContractMonths = contractMonths.length > 0
+      ? Math.round(contractMonths.reduce((a, b) => a + b, 0) / contractMonths.length)
+      : 0
+    // Annual revenue forecast based on current rentals
+    const annualForecast = totalMonthlyRevenue * 12
+
+    // Type breakdown for mini-table
+    const typeBreakdown = Object.entries(TRAILER_TYPE_LABELS).map(([key, label]) => {
+      const typeUnits = activeFleet.filter((u) => u.trailerType === key)
+      const typeRented = typeUnits.filter((u) => u.status === 'rented')
+      return { key, label, total: typeUnits.length, rented: typeRented.length }
+    }).filter((t) => t.total > 0)
+
     return (
       <div className="space-y-2">
+        {/* KPI Summary Cards */}
+        {!showHistoricalSales && (
+          <div className="space-y-2">
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+              <div className="rounded-lg p-2.5 bg-gray-900 text-white">
+                <p className="text-[10px] font-semibold uppercase opacity-70">Total Fleet</p>
+                <p className="text-2xl font-bold">{activeFleet.length}</p>
+              </div>
+              <div className="rounded-lg p-2.5 bg-green-50 text-green-700">
+                <p className="text-[10px] font-semibold uppercase opacity-70">Available</p>
+                <p className="text-2xl font-bold">{availableUnits.length}</p>
+              </div>
+              <div className="rounded-lg p-2.5 bg-blue-50 text-blue-700">
+                <p className="text-[10px] font-semibold uppercase opacity-70">Rented</p>
+                <p className="text-2xl font-bold">{rentedUnits.length}</p>
+              </div>
+              <div className="rounded-lg p-2.5 bg-indigo-50 text-indigo-700">
+                <p className="text-[10px] font-semibold uppercase opacity-70">Types</p>
+                <p className="text-2xl font-bold">{uniqueTypes.size}</p>
+              </div>
+              <div className="rounded-lg p-2.5 bg-teal-50 text-teal-700">
+                <p className="text-[10px] font-semibold uppercase opacity-70">Companies</p>
+                <p className="text-2xl font-bold">{uniqueCompanies.size}</p>
+              </div>
+              <div className="rounded-lg p-2.5 bg-brand-orange/10 text-brand-orange">
+                <p className="text-[10px] font-semibold uppercase opacity-70">Utilization</p>
+                <p className="text-2xl font-bold">{utilization}%</p>
+              </div>
+              <div className="rounded-lg p-2.5 bg-brand-orange text-white col-span-2">
+                <p className="text-[10px] font-semibold uppercase opacity-80">Revenue/Mo</p>
+                <p className="text-2xl font-bold">{formatCurrency(totalMonthlyRevenue)}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+              <div className="rounded-lg p-2.5 border bg-white">
+                <p className="text-[10px] font-semibold uppercase text-gray-400">Annual Forecast</p>
+                <p className="text-lg font-bold text-gray-900">{formatCurrency(annualForecast)}</p>
+              </div>
+              <div className="rounded-lg p-2.5 border bg-white">
+                <p className="text-[10px] font-semibold uppercase text-gray-400">Deposits Held</p>
+                <p className="text-lg font-bold text-gray-900">{formatCurrency(totalDeposits)}</p>
+              </div>
+              <div className="rounded-lg p-2.5 border bg-white">
+                <p className="text-[10px] font-semibold uppercase text-gray-400">Pending Dep.</p>
+                <p className="text-lg font-bold text-orange-600">{totalPendingDep > 0 ? formatCurrency(totalPendingDep) : '$0'}</p>
+              </div>
+              <div className="rounded-lg p-2.5 border bg-white">
+                <p className="text-[10px] font-semibold uppercase text-gray-400">Asset Value</p>
+                <p className="text-lg font-bold text-gray-900">{totalAssetValue > 0 ? formatCurrency(totalAssetValue) : '—'}</p>
+              </div>
+              <div className="rounded-lg p-2.5 border bg-white">
+                <p className="text-[10px] font-semibold uppercase text-gray-400">Avg Contract</p>
+                <p className="text-lg font-bold text-gray-900">{avgContractMonths > 0 ? `${avgContractMonths} mo` : '—'}</p>
+              </div>
+              <div className="rounded-lg p-2.5 border bg-white">
+                <p className="text-[10px] font-semibold uppercase text-gray-400">Rev/Unit</p>
+                <p className="text-lg font-bold text-gray-900">{rentedUnits.length > 0 ? formatCurrency(totalMonthlyRevenue / rentedUnits.length) : '—'}</p>
+              </div>
+            </div>
+            {/* Type breakdown row */}
+            <div className="flex flex-wrap gap-2">
+              {typeBreakdown.map((t) => (
+                <div key={t.key} className="rounded-lg px-3 py-1.5 border bg-white flex items-center gap-2">
+                  <span className="text-xs font-medium text-gray-700">{t.label}</span>
+                  <span className="text-xs text-gray-400">{t.rented}/{t.total}</span>
+                  <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-brand-blue rounded-full"
+                      style={{ width: `${t.total > 0 ? (t.rented / t.total) * 100 : 0}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Filters + Add button */}
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
@@ -878,14 +1050,25 @@ function DashboardContent() {
             value={fleetStatusFilter}
             onChange={(e) => setFleetStatusFilter(e.target.value)}
             className="rounded border border-gray-300 bg-white px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand-blue/50"
+            disabled={showHistoricalSales}
           >
             <option value="all">All Statuses</option>
             <option value="available">Available</option>
             <option value="rented">Rented</option>
             <option value="damaged">Damaged</option>
             <option value="maintenance">Maintenance</option>
-            <option value="for_sale">For Sale</option>
           </select>
+          <button
+            onClick={() => setShowHistoricalSales(!showHistoricalSales)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors shrink-0 ${
+              showHistoricalSales
+                ? 'bg-gray-800 text-white'
+                : 'border border-gray-300 text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <Clock className="h-3.5 w-3.5" />
+            {showHistoricalSales ? 'Back to Fleet' : 'Historical Sales'}
+          </button>
           <button
             onClick={() => setShowAddUnit(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-brand-orange text-white text-xs font-medium hover:bg-brand-orange/90 transition-colors shrink-0"
@@ -896,7 +1079,9 @@ function DashboardContent() {
         </div>
 
         <p className="text-xs text-gray-400">
-          {filteredFleet.length} units
+          {showHistoricalSales
+            ? `${filteredFleet.length} sold units`
+            : `${filteredFleet.length} units`}
         </p>
 
         {/* Add New Unit Modal */}
@@ -1079,8 +1264,8 @@ function DashboardContent() {
                       <option value="available">Available</option>
                       <option value="rented">Rented</option>
                       <option value="damaged">Damaged</option>
-                      <option value="for_sale">For Sale</option>
                       <option value="maintenance">Maintenance</option>
+                      <option value="sold">Sold</option>
                     </select>
                   </div>
                   <div>
@@ -1100,21 +1285,11 @@ function DashboardContent() {
                   </div>
                 </div>
 
-                {/* Row 6: Image URL */}
-                <div>
-                  <label className={labelClass}>Image URL</label>
-                  <input
-                    type="text"
-                    value={addUnitForm.imageUrl}
-                    onChange={(e) =>
-                      setAddUnitForm({
-                        ...addUnitForm,
-                        imageUrl: e.target.value,
-                      })
-                    }
-                    className={inputClass}
-                    placeholder="https://..."
-                  />
+                {/* Row 6: Documents note */}
+                <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2">
+                  <p className="text-xs text-blue-700">
+                    <strong>Documents & Photos:</strong> You can upload files after creating the unit. Click &quot;Edit&quot; on the unit to add photos, documents, and other files.
+                  </p>
                 </div>
 
                 {/* Row 7: Notes */}
@@ -1289,8 +1464,8 @@ function DashboardContent() {
                       <option value="available">Available</option>
                       <option value="rented">Rented</option>
                       <option value="damaged">Damaged</option>
-                      <option value="for_sale">For Sale</option>
                       <option value="maintenance">Maintenance</option>
+                      <option value="sold">Sold</option>
                     </select>
                   </div>
                 </div>
@@ -1447,36 +1622,92 @@ function DashboardContent() {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 mt-4">
-                    <div>
-                      <label className={labelClass}>SkyBitz Device ID</label>
-                      <input
-                        type="text"
-                        value={editUnitForm.skybitzDeviceId}
-                        onChange={(e) =>
-                          setEditUnitForm({
-                            ...editUnitForm,
-                            skybitzDeviceId: e.target.value,
-                          })
-                        }
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}>Image URL</label>
-                      <input
-                        type="text"
-                        value={editUnitForm.imageUrl}
-                        onChange={(e) =>
-                          setEditUnitForm({
-                            ...editUnitForm,
-                            imageUrl: e.target.value,
-                          })
-                        }
-                        className={inputClass}
-                      />
-                    </div>
+                  <div className="mt-4">
+                    <label className={labelClass}>SkyBitz Device ID</label>
+                    <input
+                      type="text"
+                      value={editUnitForm.skybitzDeviceId}
+                      onChange={(e) =>
+                        setEditUnitForm({
+                          ...editUnitForm,
+                          skybitzDeviceId: e.target.value,
+                        })
+                      }
+                      className={inputClass}
+                    />
                   </div>
+
+                  {/* Documents & Photos Upload */}
+                  <div className="mt-4 border-t pt-4">
+                    <label className={labelClass}>Documents & Photos</label>
+                    <div className="mt-2">
+                      <UploadButton
+                        endpoint="unitDocuments"
+                        onClientUploadComplete={(res) => {
+                          if (!editUnit) return
+                          for (const file of res) {
+                            fetch('/api/admin/fleet/documents', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                unitId: editUnit.id,
+                                fileName: file.name,
+                                fileUrl: file.ufsUrl,
+                                fileType: file.type,
+                                fileSize: file.size,
+                              }),
+                            })
+                          }
+                          // Refresh docs list
+                          if (editUnit) fetchUnitDocs(editUnit.id)
+                        }}
+                        onUploadError={(err: Error) => {
+                          setError(`Upload failed: ${err.message}`)
+                        }}
+                        appearance={{
+                          button: 'bg-brand-orange text-white text-xs font-medium px-4 py-2 rounded-lg hover:bg-brand-orange/90',
+                          allowedContent: 'text-xs text-gray-400',
+                        }}
+                      />
+                    </div>
+                    {/* Documents list */}
+                    {docsLoading ? (
+                      <div className="flex items-center gap-2 py-3 text-xs text-gray-400">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Loading files...
+                      </div>
+                    ) : unitDocs.length > 0 ? (
+                      <div className="mt-2 space-y-1">
+                        {unitDocs.map((doc) => (
+                          <div
+                            key={doc.id}
+                            className="flex items-center justify-between gap-2 px-2 py-1.5 rounded bg-gray-50 border text-xs"
+                          >
+                            <a
+                              href={doc.fileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-brand-blue hover:underline font-medium truncate flex-1"
+                            >
+                              {doc.fileName}
+                            </a>
+                            <span className="text-gray-400 shrink-0">
+                              {doc.fileSize ? `${Math.round(doc.fileSize / 1024)}KB` : ''}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => deleteDoc(doc.id)}
+                              className="text-red-400 hover:text-red-600 shrink-0"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-400 mt-2 italic">No documents uploaded yet.</p>
+                    )}
+                  </div>
+
                   <div className="mt-4">
                     <label className={labelClass}>Notes</label>
                     <textarea
@@ -1739,15 +1970,50 @@ function DashboardContent() {
       { label: 'Pending', value: formatCurrency(customerSummary.totalPendingDeposits), color: 'bg-orange-50 text-orange-700' },
     ]
 
+    const sortButtons: { key: typeof customerSort; label: string }[] = [
+      { key: 'name', label: 'A-Z' },
+      { key: 'units', label: 'Most Units' },
+      { key: 'revenue', label: 'Revenue' },
+      { key: 'deposits', label: 'Deposits' },
+    ]
+
+    // Apply sorting
+    const sorted = [...filtered].sort((a, b) => {
+      switch (customerSort) {
+        case 'units':
+          return b.unitsRented - a.unitsRented
+        case 'revenue':
+          return b.totalMonthlyRent - a.totalMonthlyRent
+        case 'deposits':
+          return b.totalDeposits - a.totalDeposits
+        default:
+          return (a.qbDisplayName ?? a.companyName).localeCompare(b.qbDisplayName ?? b.companyName)
+      }
+    })
+
     return (
       <div className="space-y-3">
-        {/* Summary + Filters row */}
+        {/* Summary + Sort buttons row */}
         <div className="flex flex-wrap items-center gap-2">
           {summaryCards.map((c) => (
             <div key={c.label} className={`rounded-lg px-3 py-2 ${c.color}`}>
               <p className="text-xs font-semibold uppercase opacity-70">{c.label}</p>
               <p className="text-lg font-bold leading-tight">{c.value}</p>
             </div>
+          ))}
+          <div className="w-px h-8 bg-gray-200 mx-1" />
+          {sortButtons.map((s) => (
+            <button
+              key={s.key}
+              onClick={() => setCustomerSort(s.key)}
+              className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                customerSort === s.key
+                  ? 'bg-brand-orange text-white'
+                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {s.label}
+            </button>
           ))}
         </div>
 
@@ -1774,11 +2040,11 @@ function DashboardContent() {
           </select>
         </div>
 
-        <p className="text-xs text-gray-400">{filtered.length} customers</p>
+        <p className="text-xs text-gray-400">{sorted.length} customers</p>
 
         {/* Customer list */}
         <div className="space-y-1">
-          {filtered.map((customer) => {
+          {sorted.map((customer) => {
             const isExpanded = expandedCustomer === customer.id
             return (
               <div
@@ -1917,7 +2183,7 @@ function DashboardContent() {
             )
           })}
 
-          {filtered.length === 0 && (
+          {sorted.length === 0 && (
             <div className="text-center py-12 text-gray-400">
               No customers match your filters.
             </div>
