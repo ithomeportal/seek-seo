@@ -192,7 +192,7 @@ export function GPSTrackingMap() {
   }, [fetchPositions, checkSkyBitz])
 
   // ------ Initialize map ------
-  // Defer creation until the container is painted and has dimensions.
+  // Wait until container has real dimensions before creating the map.
   useEffect(() => {
     const container = mapContainer.current
     if (!container) return
@@ -207,9 +207,9 @@ export function GPSTrackingMap() {
         ? 'mapbox://styles/mapbox/satellite-streets-v12'
         : 'mapbox://styles/mapbox/streets-v12'
 
-    // Wait for the browser to paint the container so it has a real size
     let cancelled = false
-    const rafId = requestAnimationFrame(() => {
+
+    function createMap() {
       if (cancelled || !container) return
 
       // Default center: YARD address (Von Ormy, TX) — zoom 11 shows SA metro area
@@ -224,15 +224,46 @@ export function GPSTrackingMap() {
       map.addControl(new mapboxgl.FullscreenControl(), 'top-right')
 
       map.on('load', () => {
-        if (!cancelled) setMapReady(true)
+        if (!cancelled) {
+          setMapReady(true)
+          // Force a resize in case container dimensions changed
+          map.resize()
+        }
       })
 
       mapRef.current = map
-    })
+    }
+
+    // Use ResizeObserver to wait for the container to have actual dimensions
+    if (container.clientWidth > 0 && container.clientHeight > 0) {
+      // Container already has size — create immediately
+      createMap()
+    } else {
+      // Wait for the container to get dimensions
+      const observer = new ResizeObserver((entries) => {
+        const entry = entries[0]
+        if (entry && entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+          observer.disconnect()
+          createMap()
+        }
+      })
+      observer.observe(container)
+
+      return () => {
+        cancelled = true
+        observer.disconnect()
+        markersRef.current.forEach((m) => m.remove())
+        markersRef.current = []
+        if (mapRef.current) {
+          mapRef.current.remove()
+          mapRef.current = null
+        }
+        setMapReady(false)
+      }
+    }
 
     return () => {
       cancelled = true
-      cancelAnimationFrame(rafId)
       markersRef.current.forEach((m) => m.remove())
       markersRef.current = []
       if (mapRef.current) {
