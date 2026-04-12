@@ -141,6 +141,7 @@ export function GPSTrackingMap() {
   const [mapStyle, setMapStyle] = useState<'light' | 'satellite'>('light')
   const [mapReady, setMapReady] = useState(false)
   const [selectedUnit, setSelectedUnit] = useState<GPSUnit | null>(null)
+  const [zoomLevel, setZoomLevel] = useState(11)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [customerFilter, setCustomerFilter] = useState<string>('all')
@@ -232,6 +233,12 @@ export function GPSTrackingMap() {
       }
     })
 
+    map.on('zoomend', () => {
+      if (!cancelled) {
+        setZoomLevel(Math.round(map.getZoom()))
+      }
+    })
+
     mapRef.current = map
 
     return () => {
@@ -277,7 +284,52 @@ export function GPSTrackingMap() {
   const hasActiveFilters =
     statusFilter !== 'all' || typeFilter !== 'all' || customerFilter !== 'all'
 
-  // ------ Update markers when filtered units change ------
+  // ------ Helper: create a single-unit marker ------
+  function createUnitMarker(
+    map: mapboxgl.Map,
+    unit: GPSUnit,
+    lat: number,
+    lng: number
+  ): mapboxgl.Marker {
+    const markerColor = STATUS_COLORS[unit.status] ?? '#6b7280'
+
+    const el = document.createElement('div')
+    el.style.cssText =
+      'position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;'
+    el.innerHTML = `
+      <div style="background:${markerColor};color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.3);line-height:1.3;">
+        ${unit.unitNumber}
+      </div>
+      <div style="width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid ${markerColor};"></div>
+      <div style="width:8px;height:8px;background:${markerColor};border-radius:50%;border:2px solid white;margin-top:-2px;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>
+    `
+
+    el.addEventListener('click', () => setSelectedUnit(unit))
+
+    const popup = new mapboxgl.Popup({ offset: 30, closeButton: true })
+      .setHTML(`
+      <div style="font-family:system-ui;min-width:180px;">
+        <div style="font-weight:700;font-size:14px;margin-bottom:4px;color:#111;">${unit.unitNumber}</div>
+        <div style="font-size:12px;color:#555;margin-bottom:6px;">${TRAILER_LABELS[unit.trailerType] ?? unit.trailerType}</div>
+        <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${markerColor};"></span>
+          <span style="font-size:12px;font-weight:500;">${statusLabel(unit.status)}</span>
+        </div>
+        ${unit.rentedTo ? `<div style="font-size:11px;color:#666;">Rented to: <strong>${unit.rentedTo}</strong></div>` : ''}
+        ${unit.lastLocation ? `<div style="font-size:11px;color:#444;margin-top:4px;">📍 ${unit.lastLocation}</div>` : ''}
+        <div style="font-size:10px;color:#999;margin-top:4px;">
+          ${unit.latitude?.toFixed(4)}, ${unit.longitude?.toFixed(4)}
+        </div>
+      </div>
+    `)
+
+    return new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+      .setLngLat([lng, lat])
+      .setPopup(popup)
+      .addTo(map)
+  }
+
+  // ------ Update markers when units, zoom, or map readiness changes ------
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady) return
@@ -285,113 +337,84 @@ export function GPSTrackingMap() {
     markersRef.current.forEach((m) => m.remove())
     markersRef.current = []
 
-    const groups = groupByLocation(filteredUnits)
+    // At zoom >= 12, show every unit at its real coordinates (no clustering)
+    const useIndividualMarkers = zoomLevel >= 12
 
-    for (const group of groups) {
-      const { units: groupUnits, lat, lng } = group
-
-      if (groupUnits.length === 1) {
-        // Single unit — show its label
-        const unit = groupUnits[0]
-        const markerColor = STATUS_COLORS[unit.status] ?? '#6b7280'
-
-        const el = document.createElement('div')
-        el.style.cssText =
-          'position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;'
-        el.innerHTML = `
-          <div style="background:${markerColor};color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.3);line-height:1.3;">
-            ${unit.unitNumber}
-          </div>
-          <div style="width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid ${markerColor};"></div>
-          <div style="width:8px;height:8px;background:${markerColor};border-radius:50%;border:2px solid white;margin-top:-2px;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>
-        `
-
-        el.addEventListener('click', () => setSelectedUnit(unit))
-
-        const popup = new mapboxgl.Popup({ offset: 30, closeButton: true })
-          .setHTML(`
-          <div style="font-family:system-ui;min-width:180px;">
-            <div style="font-weight:700;font-size:14px;margin-bottom:4px;color:#111;">${unit.unitNumber}</div>
-            <div style="font-size:12px;color:#555;margin-bottom:6px;">${TRAILER_LABELS[unit.trailerType] ?? unit.trailerType}</div>
-            <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
-              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${markerColor};"></span>
-              <span style="font-size:12px;font-weight:500;">${statusLabel(unit.status)}</span>
-            </div>
-            ${unit.rentedTo ? `<div style="font-size:11px;color:#666;">Rented to: <strong>${unit.rentedTo}</strong></div>` : ''}
-            ${unit.lastLocation ? `<div style="font-size:11px;color:#444;margin-top:4px;">📍 ${unit.lastLocation}</div>` : ''}
-            <div style="font-size:10px;color:#999;margin-top:4px;">
-              ${unit.latitude?.toFixed(4)}, ${unit.longitude?.toFixed(4)}
-            </div>
-          </div>
-        `)
-
-        const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
-          .setLngLat([lng, lat])
-          .setPopup(popup)
-          .addTo(map)
-
-        markersRef.current.push(marker)
-      } else {
-        // Cluster — show count badge with hover list
-        const el = document.createElement('div')
-        el.style.cssText =
-          'position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;'
-
-        const location = groupUnits[0].lastLocation ?? ''
-
-        // Build unit list HTML for hover tooltip
-        const unitListHtml = groupUnits
-          .map((u) => {
-            const color = STATUS_COLORS[u.status] ?? '#6b7280'
-            return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #f3f4f6;">
-              <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${color};flex-shrink:0;"></span>
-              <span style="font-weight:600;font-size:11px;color:#111;min-width:50px;">${u.unitNumber}</span>
-              <span style="font-size:10px;color:#666;">${TRAILER_LABELS[u.trailerType] ?? u.trailerType}</span>
-              <span style="font-size:10px;color:#999;margin-left:auto;">${statusLabel(u.status)}</span>
-            </div>`
-          })
-          .join('')
-
-        el.innerHTML = `
-          <div style="background:#1f2937;color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3);line-height:1.3;display:flex;align-items:center;gap:4px;">
-            <span style="background:#ee5519;color:#fff;font-size:10px;font-weight:800;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;">${groupUnits.length}</span>
-            <span>${location || 'units'}</span>
-          </div>
-          <div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:6px solid #1f2937;"></div>
-        `
-
-        // Popup shows all units in this location
-        const popup = new mapboxgl.Popup({
-          offset: 30,
-          closeButton: true,
-          maxWidth: '320px',
-        }).setHTML(`
-          <div style="font-family:system-ui;min-width:200px;max-height:300px;overflow-y:auto;">
-            <div style="font-weight:700;font-size:13px;margin-bottom:6px;color:#111;border-bottom:2px solid #ee5519;padding-bottom:4px;">
-              ${groupUnits.length} Units${location ? ` — ${location}` : ''}
-            </div>
-            ${unitListHtml}
-          </div>
-        `)
-
-        el.addEventListener('click', () => {
-          // On click, zoom in so user can see individual markers
-          if (mapRef.current) {
-            mapRef.current.flyTo({ center: [lng, lat], zoom: 13, duration: 800 })
-          }
-        })
-
-        const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
-          .setLngLat([lng, lat])
-          .setPopup(popup)
-          .addTo(map)
-
+    if (useIndividualMarkers) {
+      for (const unit of filteredUnits) {
+        if (unit.latitude === null || unit.longitude === null) continue
+        const marker = createUnitMarker(map, unit, unit.latitude, unit.longitude)
         markersRef.current.push(marker)
       }
+    } else {
+      // Clustered view for zoomed-out
+      const groups = groupByLocation(filteredUnits)
 
+      for (const group of groups) {
+        const { units: groupUnits, lat, lng } = group
+
+        if (groupUnits.length === 1) {
+          const unit = groupUnits[0]
+          const marker = createUnitMarker(map, unit, unit.latitude!, unit.longitude!)
+          markersRef.current.push(marker)
+        } else {
+          // Cluster marker
+          const el = document.createElement('div')
+          el.style.cssText =
+            'position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;'
+
+          const location = groupUnits[0].lastLocation ?? ''
+
+          const unitListHtml = groupUnits
+            .map((u) => {
+              const color = STATUS_COLORS[u.status] ?? '#6b7280'
+              return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #f3f4f6;">
+                <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${color};flex-shrink:0;"></span>
+                <span style="font-weight:600;font-size:11px;color:#111;min-width:50px;">${u.unitNumber}</span>
+                <span style="font-size:10px;color:#666;">${TRAILER_LABELS[u.trailerType] ?? u.trailerType}</span>
+                <span style="font-size:10px;color:#999;margin-left:auto;">${statusLabel(u.status)}</span>
+              </div>`
+            })
+            .join('')
+
+          el.innerHTML = `
+            <div style="background:#1f2937;color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3);line-height:1.3;display:flex;align-items:center;gap:4px;">
+              <span style="background:#ee5519;color:#fff;font-size:10px;font-weight:800;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;">${groupUnits.length}</span>
+              <span>${location || 'units'}</span>
+            </div>
+            <div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:6px solid #1f2937;"></div>
+          `
+
+          const popup = new mapboxgl.Popup({
+            offset: 30,
+            closeButton: true,
+            maxWidth: '320px',
+          }).setHTML(`
+            <div style="font-family:system-ui;min-width:200px;max-height:300px;overflow-y:auto;">
+              <div style="font-weight:700;font-size:13px;margin-bottom:6px;color:#111;border-bottom:2px solid #ee5519;padding-bottom:4px;">
+                ${groupUnits.length} Units${location ? ` — ${location}` : ''}
+              </div>
+              ${unitListHtml}
+            </div>
+          `)
+
+          el.addEventListener('click', () => {
+            if (mapRef.current) {
+              mapRef.current.flyTo({ center: [lng, lat], zoom: 13, duration: 800 })
+            }
+          })
+
+          const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+            .setLngLat([lng, lat])
+            .setPopup(popup)
+            .addTo(map)
+
+          markersRef.current.push(marker)
+        }
+      }
     }
-    // Map stays at default YARD center/zoom — user can pan/zoom as needed
-  }, [filteredUnits, mapReady])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredUnits, mapReady, zoomLevel])
 
   if (loading) {
     return (
