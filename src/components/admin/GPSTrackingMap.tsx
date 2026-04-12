@@ -192,8 +192,13 @@ export function GPSTrackingMap() {
   }, [fetchPositions, checkSkyBitz])
 
   // ------ Initialize map ------
-  // Wait until container has real dimensions before creating the map.
+  // Depends on [loading, mapStyle] so it re-runs when:
+  //   - loading finishes (container appears in DOM)
+  //   - user toggles map style
   useEffect(() => {
+    // Don't try to create the map while loading — container isn't in the DOM
+    if (loading) return
+
     const container = mapContainer.current
     if (!container) return
 
@@ -207,72 +212,37 @@ export function GPSTrackingMap() {
         ? 'mapbox://styles/mapbox/satellite-streets-v12'
         : 'mapbox://styles/mapbox/streets-v12'
 
+    // Default center: YARD address (Von Ormy, TX) — zoom 11 shows SA metro area
+    const map = new mapboxgl.Map({
+      container,
+      style: styleUrl,
+      center: [-98.6273, 29.2685],
+      zoom: 11,
+    })
+
+    map.addControl(new mapboxgl.NavigationControl(), 'top-right')
+    map.addControl(new mapboxgl.FullscreenControl(), 'top-right')
+
     let cancelled = false
 
-    function createMap() {
-      if (cancelled || !container) return
-
-      // Default center: YARD address (Von Ormy, TX) — zoom 11 shows SA metro area
-      const map = new mapboxgl.Map({
-        container,
-        style: styleUrl,
-        center: [-98.688, 29.286],
-        zoom: 11,
-      })
-
-      map.addControl(new mapboxgl.NavigationControl(), 'top-right')
-      map.addControl(new mapboxgl.FullscreenControl(), 'top-right')
-
-      map.on('load', () => {
-        if (!cancelled) {
-          setMapReady(true)
-          // Force a resize in case container dimensions changed
-          map.resize()
-        }
-      })
-
-      mapRef.current = map
-    }
-
-    // Use ResizeObserver to wait for the container to have actual dimensions
-    if (container.clientWidth > 0 && container.clientHeight > 0) {
-      // Container already has size — create immediately
-      createMap()
-    } else {
-      // Wait for the container to get dimensions
-      const observer = new ResizeObserver((entries) => {
-        const entry = entries[0]
-        if (entry && entry.contentRect.width > 0 && entry.contentRect.height > 0) {
-          observer.disconnect()
-          createMap()
-        }
-      })
-      observer.observe(container)
-
-      return () => {
-        cancelled = true
-        observer.disconnect()
-        markersRef.current.forEach((m) => m.remove())
-        markersRef.current = []
-        if (mapRef.current) {
-          mapRef.current.remove()
-          mapRef.current = null
-        }
-        setMapReady(false)
+    map.on('load', () => {
+      if (!cancelled) {
+        setMapReady(true)
+        map.resize()
       }
-    }
+    })
+
+    mapRef.current = map
 
     return () => {
       cancelled = true
       markersRef.current.forEach((m) => m.remove())
       markersRef.current = []
-      if (mapRef.current) {
-        mapRef.current.remove()
-        mapRef.current = null
-      }
+      map.remove()
+      mapRef.current = null
       setMapReady(false)
     }
-  }, [mapStyle])
+  }, [loading, mapStyle])
 
   // ------ Derived data ------
   const allGpsUnits = units.filter(
