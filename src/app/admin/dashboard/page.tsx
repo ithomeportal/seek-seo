@@ -1017,16 +1017,16 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* Filters + Add button */}
-        <div className="flex flex-col sm:flex-row gap-2">
-          <div className="relative flex-1">
+        {/* Filters — single row */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative w-56">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
             <input
               type="text"
               placeholder="Search unit, VIN, or customer..."
               value={fleetSearch}
               onChange={(e) => setFleetSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 rounded border border-gray-300 bg-white focus:outline-none focus:ring-1 focus:ring-brand-blue/50 text-sm"
+              className="w-full pl-8 pr-3 py-1.5 rounded border border-gray-300 bg-white focus:outline-none focus:ring-1 focus:ring-brand-blue/50 text-xs"
             />
           </div>
           <select
@@ -1069,13 +1069,12 @@ function DashboardContent() {
             <Plus className="h-3.5 w-3.5" />
             Add Unit
           </button>
+          <span className="text-xs text-gray-400 ml-auto">
+            {showHistoricalSales
+              ? `${filteredFleet.length} sold`
+              : `${filteredFleet.length} units`}
+          </span>
         </div>
-
-        <p className="text-xs text-gray-400">
-          {showHistoricalSales
-            ? `${filteredFleet.length} sold units`
-            : `${filteredFleet.length} units`}
-        </p>
 
         {/* Add New Unit Modal */}
         {showAddUnit && (
