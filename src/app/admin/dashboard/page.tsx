@@ -947,80 +947,73 @@ function DashboardContent() {
 
     return (
       <div className="space-y-2">
-        {/* KPI Summary Cards */}
+        {/* KPI Summary — single compact row */}
         {!showHistoricalSales && (
-          <div className="space-y-2">
-            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 gap-2">
-              <div className="rounded-lg p-2.5 bg-gray-900 text-white">
-                <p className="text-[10px] font-semibold uppercase opacity-70">Total Fleet</p>
-                <p className="text-2xl font-bold">{activeFleet.length}</p>
-              </div>
-              <div className="rounded-lg p-2.5 bg-green-50 text-green-700">
-                <p className="text-[10px] font-semibold uppercase opacity-70">Available</p>
-                <p className="text-2xl font-bold">{availableUnits.length}</p>
-              </div>
-              <div className="rounded-lg p-2.5 bg-blue-50 text-blue-700">
-                <p className="text-[10px] font-semibold uppercase opacity-70">Rented</p>
-                <p className="text-2xl font-bold">{rentedUnits.length}</p>
-              </div>
-              <div className="rounded-lg p-2.5 bg-indigo-50 text-indigo-700">
-                <p className="text-[10px] font-semibold uppercase opacity-70">Types</p>
-                <p className="text-2xl font-bold">{uniqueTypes.size}</p>
-              </div>
-              <div className="rounded-lg p-2.5 bg-teal-50 text-teal-700">
-                <p className="text-[10px] font-semibold uppercase opacity-70">Companies</p>
-                <p className="text-2xl font-bold">{uniqueCompanies.size}</p>
-              </div>
-              <div className="rounded-lg p-2.5 bg-brand-orange/10 text-brand-orange">
-                <p className="text-[10px] font-semibold uppercase opacity-70">Utilization</p>
-                <p className="text-2xl font-bold">{utilization}%</p>
-              </div>
-              <div className="rounded-lg p-2.5 bg-brand-orange text-white col-span-2">
-                <p className="text-[10px] font-semibold uppercase opacity-80">Revenue/Mo</p>
-                <p className="text-2xl font-bold">{formatCurrency(totalMonthlyRevenue)}</p>
-              </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <div className="rounded-lg px-2.5 py-1.5 bg-gray-900 text-white">
+              <p className="text-[10px] font-semibold uppercase opacity-70 leading-tight">Fleet</p>
+              <p className="text-lg font-bold leading-tight">{activeFleet.length}</p>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
-              <div className="rounded-lg p-2.5 border bg-white">
-                <p className="text-[10px] font-semibold uppercase text-gray-400">Annual Forecast</p>
-                <p className="text-lg font-bold text-gray-900">{formatCurrency(annualForecast)}</p>
-              </div>
-              <div className="rounded-lg p-2.5 border bg-white">
-                <p className="text-[10px] font-semibold uppercase text-gray-400">Deposits Held</p>
-                <p className="text-lg font-bold text-gray-900">{formatCurrency(totalDeposits)}</p>
-              </div>
-              <div className="rounded-lg p-2.5 border bg-white">
-                <p className="text-[10px] font-semibold uppercase text-gray-400">Pending Dep.</p>
-                <p className="text-lg font-bold text-orange-600">{totalPendingDep > 0 ? formatCurrency(totalPendingDep) : '$0'}</p>
-              </div>
-              <div className="rounded-lg p-2.5 border bg-white">
-                <p className="text-[10px] font-semibold uppercase text-gray-400">Asset Value</p>
-                <p className="text-lg font-bold text-gray-900">{totalAssetValue > 0 ? formatCurrency(totalAssetValue) : '—'}</p>
-              </div>
-              <div className="rounded-lg p-2.5 border bg-white">
-                <p className="text-[10px] font-semibold uppercase text-gray-400">Avg Contract</p>
-                <p className="text-lg font-bold text-gray-900">{avgContractMonths > 0 ? `${avgContractMonths} mo` : '—'}</p>
-              </div>
-              <div className="rounded-lg p-2.5 border bg-white">
-                <p className="text-[10px] font-semibold uppercase text-gray-400">Rev/Unit</p>
-                <p className="text-lg font-bold text-gray-900">{rentedUnits.length > 0 ? formatCurrency(totalMonthlyRevenue / rentedUnits.length) : '—'}</p>
-              </div>
+            <div className="rounded-lg px-2.5 py-1.5 bg-green-50 text-green-700">
+              <p className="text-[10px] font-semibold uppercase opacity-70 leading-tight">Avail</p>
+              <p className="text-lg font-bold leading-tight">{availableUnits.length}</p>
             </div>
-            {/* Type breakdown row */}
-            <div className="flex flex-wrap gap-2">
-              {typeBreakdown.map((t) => (
-                <div key={t.key} className="rounded-lg px-3 py-1.5 border bg-white flex items-center gap-2">
-                  <span className="text-xs font-medium text-gray-700">{t.label}</span>
-                  <span className="text-xs text-gray-400">{t.rented}/{t.total}</span>
-                  <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-brand-blue rounded-full"
-                      style={{ width: `${t.total > 0 ? (t.rented / t.total) * 100 : 0}%` }}
-                    />
-                  </div>
+            <div className="rounded-lg px-2.5 py-1.5 bg-blue-50 text-blue-700">
+              <p className="text-[10px] font-semibold uppercase opacity-70 leading-tight">Rented</p>
+              <p className="text-lg font-bold leading-tight">{rentedUnits.length}</p>
+            </div>
+            <div className="rounded-lg px-2.5 py-1.5 bg-teal-50 text-teal-700">
+              <p className="text-[10px] font-semibold uppercase opacity-70 leading-tight">Companies</p>
+              <p className="text-lg font-bold leading-tight">{uniqueCompanies.size}</p>
+            </div>
+            <div className="rounded-lg px-2.5 py-1.5 bg-brand-orange/10 text-brand-orange">
+              <p className="text-[10px] font-semibold uppercase opacity-70 leading-tight">Util.</p>
+              <p className="text-lg font-bold leading-tight">{utilization}%</p>
+            </div>
+            <div className="rounded-lg px-2.5 py-1.5 bg-brand-orange text-white">
+              <p className="text-[10px] font-semibold uppercase opacity-80 leading-tight">Rev/Mo</p>
+              <p className="text-lg font-bold leading-tight">{formatCurrency(totalMonthlyRevenue)}</p>
+            </div>
+            <div className="rounded-lg px-2.5 py-1.5 border bg-white">
+              <p className="text-[10px] font-semibold uppercase text-gray-400 leading-tight">Forecast/Yr</p>
+              <p className="text-lg font-bold text-gray-900 leading-tight">{formatCurrency(annualForecast)}</p>
+            </div>
+            <div className="rounded-lg px-2.5 py-1.5 border bg-white">
+              <p className="text-[10px] font-semibold uppercase text-gray-400 leading-tight">Deposits</p>
+              <p className="text-lg font-bold text-gray-900 leading-tight">{formatCurrency(totalDeposits)}</p>
+            </div>
+            {totalPendingDep > 0 && (
+              <div className="rounded-lg px-2.5 py-1.5 border bg-white">
+                <p className="text-[10px] font-semibold uppercase text-gray-400 leading-tight">Pending</p>
+                <p className="text-lg font-bold text-orange-600 leading-tight">{formatCurrency(totalPendingDep)}</p>
+              </div>
+            )}
+            {totalAssetValue > 0 && (
+              <div className="rounded-lg px-2.5 py-1.5 border bg-white">
+                <p className="text-[10px] font-semibold uppercase text-gray-400 leading-tight">Assets</p>
+                <p className="text-lg font-bold text-gray-900 leading-tight">{formatCurrency(totalAssetValue)}</p>
+              </div>
+            )}
+            {avgContractMonths > 0 && (
+              <div className="rounded-lg px-2.5 py-1.5 border bg-white">
+                <p className="text-[10px] font-semibold uppercase text-gray-400 leading-tight">Avg Contract</p>
+                <p className="text-lg font-bold text-gray-900 leading-tight">{avgContractMonths} mo</p>
+              </div>
+            )}
+            <div className="rounded-lg px-2.5 py-1.5 border bg-white">
+              <p className="text-[10px] font-semibold uppercase text-gray-400 leading-tight">Rev/Unit</p>
+              <p className="text-lg font-bold text-gray-900 leading-tight">{rentedUnits.length > 0 ? formatCurrency(totalMonthlyRevenue / rentedUnits.length) : '—'}</p>
+            </div>
+            <div className="w-px h-8 bg-gray-200 mx-0.5" />
+            {typeBreakdown.map((t) => (
+              <div key={t.key} className="rounded-lg px-2 py-1.5 border bg-white flex items-center gap-1.5">
+                <span className="text-[10px] font-medium text-gray-600">{t.label}</span>
+                <span className="text-[10px] text-gray-400">{t.rented}/{t.total}</span>
+                <div className="w-10 h-1 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-brand-blue rounded-full" style={{ width: `${t.total > 0 ? (t.rented / t.total) * 100 : 0}%` }} />
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         )}
 
