@@ -130,7 +130,7 @@ export function GPSTrackingMap() {
   const mapContainer = useRef<HTMLDivElement>(null)
   const mapRef = useRef<mapboxgl.Map | null>(null)
   const markersRef = useRef<mapboxgl.Marker[]>([])
-  const initialFitDone = useRef(false)
+
 
   const [units, setUnits] = useState<GPSUnit[]>([])
   const [loading, setLoading] = useState(true)
@@ -138,7 +138,7 @@ export function GPSTrackingMap() {
   const [skybitzStatus, setSkybitzStatus] = useState<SkyBitzStatus | null>(
     null
   )
-  const [mapStyle, setMapStyle] = useState<'light' | 'satellite'>('satellite')
+  const [mapStyle, setMapStyle] = useState<'light' | 'satellite'>('light')
   const [mapReady, setMapReady] = useState(false)
   const [selectedUnit, setSelectedUnit] = useState<GPSUnit | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -205,19 +205,19 @@ export function GPSTrackingMap() {
     const styleUrl =
       mapStyle === 'satellite'
         ? 'mapbox://styles/mapbox/satellite-streets-v12'
-        : 'mapbox://styles/mapbox/navigation-day-v1'
+        : 'mapbox://styles/mapbox/streets-v12'
 
     // Wait for the browser to paint the container so it has a real size
     let cancelled = false
     const rafId = requestAnimationFrame(() => {
       if (cancelled || !container) return
 
-      // Default center: YARD address (Von Ormy, TX)
+      // Default center: YARD address (Von Ormy, TX) — zoom 11 shows SA metro area
       const map = new mapboxgl.Map({
         container,
         style: styleUrl,
         center: [-98.688, 29.286],
-        zoom: 9,
+        zoom: 11,
       })
 
       map.addControl(new mapboxgl.NavigationControl(), 'top-right')
@@ -239,7 +239,6 @@ export function GPSTrackingMap() {
         mapRef.current.remove()
         mapRef.current = null
       }
-      initialFitDone.current = false
       setMapReady(false)
     }
   }, [mapStyle])
@@ -284,9 +283,6 @@ export function GPSTrackingMap() {
 
     markersRef.current.forEach((m) => m.remove())
     markersRef.current = []
-
-    const bounds = new mapboxgl.LngLatBounds()
-    let hasPoints = false
 
     const groups = groupByLocation(filteredUnits)
 
@@ -392,15 +388,8 @@ export function GPSTrackingMap() {
         markersRef.current.push(marker)
       }
 
-      bounds.extend([lng, lat])
-      hasPoints = true
     }
-
-    // Only auto-fit on first load — after that, keep user's zoom/pan
-    if (hasPoints && !initialFitDone.current) {
-      initialFitDone.current = true
-      map.fitBounds(bounds, { padding: 60, maxZoom: 10 })
-    }
+    // Map stays at default YARD center/zoom — user can pan/zoom as needed
   }, [filteredUnits, mapReady])
 
   if (loading) {
@@ -748,14 +737,19 @@ function IdleUnitsTable({ units }: { units: GPSUnit[] }) {
 
   const idleUnits = units
     .filter((u) => {
-      if (!u.lastGpsTime) return false
-      const gpsTime = new Date(u.lastGpsTime).getTime()
+      // Use lastGpsTime if available, otherwise fall back to updatedAt
+      const refTime = u.lastGpsTime ?? u.updatedAt
+      if (!refTime) return false
+      const gpsTime = new Date(refTime).getTime()
       return now - gpsTime > TWENTY_FOUR_HOURS
     })
-    .map((u) => ({
-      ...u,
-      idleMs: now - new Date(u.lastGpsTime!).getTime(),
-    }))
+    .map((u) => {
+      const refTime = u.lastGpsTime ?? u.updatedAt
+      return {
+        ...u,
+        idleMs: now - new Date(refTime).getTime(),
+      }
+    })
     .sort((a, b) => b.idleMs - a.idleMs)
 
   return (
@@ -822,17 +816,17 @@ function IdleUnitsTable({ units }: { units: GPSUnit[] }) {
                       </span>
                     </td>
                     <td className="px-3 py-2 text-gray-500 text-xs">
-                      {unit.lastGpsTime
-                        ? new Date(unit.lastGpsTime).toLocaleDateString(
-                            'en-US',
-                            {
+                      {(() => {
+                        const t = unit.lastGpsTime ?? unit.updatedAt
+                        return t
+                          ? new Date(t).toLocaleDateString('en-US', {
                               month: 'short',
                               day: 'numeric',
                               hour: '2-digit',
                               minute: '2-digit',
-                            }
-                          )
-                        : '—'}
+                            })
+                          : '—'
+                      })()}
                     </td>
                   </tr>
                 )
