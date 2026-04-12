@@ -1017,9 +1017,9 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* Filters — single row */}
+        {/* Filters — responsive: inline on desktop, wraps on mobile */}
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative w-56">
+          <div className="relative flex-1 min-w-[180px] max-w-xs">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
             <input
               type="text"
@@ -2010,15 +2010,15 @@ function DashboardContent() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-2">
-          <div className="relative flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative flex-1 min-w-[180px] max-w-xs">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
             <input
               type="text"
               placeholder="Search company, contact, or email..."
               value={customerSearch}
               onChange={(e) => setCustomerSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 rounded border border-gray-300 bg-white focus:outline-none focus:ring-1 focus:ring-brand-blue/50 text-sm"
+              className="w-full pl-8 pr-3 py-1.5 rounded border border-gray-300 bg-white focus:outline-none focus:ring-1 focus:ring-brand-blue/50 text-xs"
             />
           </div>
           <select
@@ -2245,15 +2245,15 @@ function DashboardContent() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-2">
-          <div className="relative flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative flex-1 min-w-[180px] max-w-xs">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
             <input
               type="text"
               placeholder="Search invoice # or customer..."
               value={invoiceSearch}
               onChange={(e) => setInvoiceSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 rounded border border-gray-300 bg-white focus:outline-none focus:ring-1 focus:ring-brand-blue/50 text-sm"
+              className="w-full pl-8 pr-3 py-1.5 rounded border border-gray-300 bg-white focus:outline-none focus:ring-1 focus:ring-brand-blue/50 text-xs"
             />
           </div>
           <select
