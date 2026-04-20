@@ -30,7 +30,7 @@ export function Header() {
     <>
       {/* Top bar */}
       <div className="bg-gray-900 text-white text-xs">
-        <div className="mx-auto max-w-7xl px-4 py-2 flex items-center">
+        <div className="mx-auto max-w-7xl px-4 py-2 flex items-center justify-between gap-4">
           <div className="flex items-center gap-6">
             <a
               href={COMPANY.phoneHref}
@@ -46,6 +46,21 @@ export function Header() {
               <Mail className="h-3 w-3" />
               {COMPANY.email}
             </a>
+          </div>
+          <div className="flex items-center gap-3 sm:gap-4">
+            {PORTAL_LINKS.map((item) => {
+              const Icon = PORTAL_ICONS[item.icon as keyof typeof PORTAL_ICONS]
+              return (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className="flex items-center gap-1.5 hover:text-white/80 transition-colors"
+                >
+                  <Icon className="h-3 w-3" />
+                  <span>{item.label}</span>
+                </Link>
+              )
+            })}
           </div>
         </div>
       </div>
@@ -80,30 +95,6 @@ export function Header() {
                       : 'text-gray-700 hover:text-brand-blue hover:bg-brand-blue/5'
                   )}
                 >
-                  {item.label}
-                </Link>
-              )
-            })}
-
-            {/* Separator */}
-            <div className="mx-2 h-6 w-px bg-gray-200" />
-
-            {/* Portal links */}
-            {PORTAL_LINKS.map((item) => {
-              const active = isActive(item.href)
-              const Icon = PORTAL_ICONS[item.icon as keyof typeof PORTAL_ICONS]
-              return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className={cn(
-                    'flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors',
-                    active
-                      ? 'text-brand-blue bg-brand-blue/5'
-                      : 'text-gray-500 hover:text-brand-blue hover:bg-brand-blue/5'
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
                   {item.label}
                 </Link>
               )
@@ -144,31 +135,6 @@ export function Header() {
                     )}
                     onClick={closeMobile}
                   >
-                    {item.label}
-                  </Link>
-                )
-              })}
-
-              {/* Separator */}
-              <div className="my-3 border-t border-gray-200" />
-
-              {/* Portal links */}
-              {PORTAL_LINKS.map((item) => {
-                const active = isActive(item.href)
-                const Icon = PORTAL_ICONS[item.icon as keyof typeof PORTAL_ICONS]
-                return (
-                  <Link
-                    key={item.label}
-                    href={item.href}
-                    className={cn(
-                      'flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium transition-colors',
-                      active
-                        ? 'text-brand-blue bg-brand-blue/5'
-                        : 'text-gray-500 hover:text-brand-blue hover:bg-brand-blue/5'
-                    )}
-                    onClick={closeMobile}
-                  >
-                    <Icon className="h-4 w-4" />
                     {item.label}
                   </Link>
                 )
