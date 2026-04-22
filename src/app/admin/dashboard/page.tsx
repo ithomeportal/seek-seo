@@ -120,6 +120,20 @@ interface ContactSubmission {
   createdAt: string
 }
 
+interface CreditApplication {
+  id: number
+  referenceNumber: string
+  customerName: string
+  customerPhone: string | null
+  entityType: string | null
+  signatoryName: string
+  signatoryEmail: string
+  signatoryPhone: string | null
+  federalTaxId: string | null
+  status: string
+  createdAt: string
+}
+
 interface EquipmentForSale {
   id: number
   title: string
@@ -228,7 +242,7 @@ interface QBPaymentSummary {
 // Constants
 // ---------------------------------------------------------------------------
 
-type TabKey = 'overview' | 'fleet' | 'customers' | 'invoices' | 'payments' | 'gps' | 'inquiries' | 'for_sale' | 'reports'
+type TabKey = 'overview' | 'fleet' | 'customers' | 'invoices' | 'payments' | 'gps' | 'inquiries' | 'applications' | 'for_sale' | 'reports'
 
 const TABS: { key: TabKey; label: string; icon: typeof BarChart3 }[] = [
   { key: 'overview', label: 'Overview', icon: BarChart3 },
@@ -238,6 +252,7 @@ const TABS: { key: TabKey; label: string; icon: typeof BarChart3 }[] = [
   { key: 'payments', label: 'Payments', icon: CreditCard },
   { key: 'gps', label: 'GPS Tracking', icon: MapPin },
   { key: 'inquiries', label: 'Inquiries', icon: ClipboardList },
+  { key: 'applications', label: 'Applications', icon: FileText },
   { key: 'for_sale', label: 'For Sale Mgmt', icon: DollarSign },
   { key: 'reports', label: 'Reports', icon: FileText },
 ]
@@ -328,6 +343,7 @@ function DashboardContent() {
   const [stats, setStats] = useState<FleetStats | null>(null)
   const [fleet, setFleet] = useState<FleetUnit[]>([])
   const [inquiries, setInquiries] = useState<ContactSubmission[]>([])
+  const [applications, setApplications] = useState<CreditApplication[]>([])
   const [forSaleItems, setForSaleItems] = useState<EquipmentForSale[]>([])
   const [concentration, setConcentration] = useState<ConcentrationRow[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -486,6 +502,12 @@ function DashboardContent() {
             const res = await fetch('/api/admin/inquiries')
             const json = await res.json()
             if (json.success) setInquiries(json.data)
+            break
+          }
+          case 'applications': {
+            const res = await fetch('/api/admin/credit-applications')
+            const json = await res.json()
+            if (json.success) setApplications(json.data)
             break
           }
           case 'for_sale': {
@@ -2486,6 +2508,48 @@ function DashboardContent() {
     )
   }
 
+  function renderApplications() {
+    return (
+      <div className="overflow-x-auto rounded-lg border bg-white">
+        <table className="min-w-full text-sm">
+          <thead>
+            <tr className="border-b bg-gray-50 text-xs uppercase tracking-wide">
+              <th className="px-3 py-2 text-left font-medium text-gray-500">Reference</th>
+              <th className="px-3 py-2 text-left font-medium text-gray-500">Customer</th>
+              <th className="px-3 py-2 text-left font-medium text-gray-500">Entity</th>
+              <th className="px-3 py-2 text-left font-medium text-gray-500">Signatory</th>
+              <th className="px-3 py-2 text-left font-medium text-gray-500">Email</th>
+              <th className="px-3 py-2 text-left font-medium text-gray-500">Phone</th>
+              <th className="px-3 py-2 text-left font-medium text-gray-500">Status</th>
+              <th className="px-3 py-2 text-left font-medium text-gray-500">Submitted</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {applications.map((app) => (
+              <tr key={app.id} className="hover:bg-blue-50/40">
+                <td className="px-3 py-2 font-mono text-xs text-brand-orange font-semibold">{app.referenceNumber}</td>
+                <td className="px-3 py-2 font-medium text-gray-900">{app.customerName}</td>
+                <td className="px-3 py-2 text-gray-600 capitalize">{app.entityType ?? '—'}</td>
+                <td className="px-3 py-2 text-gray-700">{app.signatoryName}</td>
+                <td className="px-3 py-2 text-gray-600">
+                  <a href={`mailto:${app.signatoryEmail}`} className="text-brand-blue hover:underline">{app.signatoryEmail}</a>
+                </td>
+                <td className="px-3 py-2 text-gray-600">{app.signatoryPhone ?? app.customerPhone ?? '—'}</td>
+                <td className="px-3 py-2">
+                  {renderBadge(app.status, app.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : app.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800')}
+                </td>
+                <td className="px-3 py-2 text-gray-500 text-xs">{new Date(app.createdAt).toLocaleDateString()}</td>
+              </tr>
+            ))}
+            {applications.length === 0 && (
+              <tr><td colSpan={8} className="px-3 py-10 text-center text-gray-400">No credit applications yet.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
   const tabContent: Record<TabKey, () => React.JSX.Element> = {
     overview: renderOverview,
     fleet: renderFleetMaster,
@@ -2494,6 +2558,7 @@ function DashboardContent() {
     payments: renderPayments,
     gps: renderGPS,
     inquiries: renderInquiries,
+    applications: renderApplications,
     for_sale: renderForSale,
     reports: renderReports,
   }

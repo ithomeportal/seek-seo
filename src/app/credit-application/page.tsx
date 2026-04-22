@@ -51,24 +51,17 @@ export default function CreditApplicationPage() {
       />
 
       {/* Form Section */}
-      <section className="bg-background py-16">
+      <section className="bg-background py-12">
         <Container>
-          <div className="max-w-2xl mx-auto">
-            <div className="bg-white rounded-xl border p-8">
-              <h2 className="text-xl font-bold text-gray-900">
-                Business Information
-              </h2>
-              <p className="mt-2 text-gray-600 mb-8">
-                Please provide your business details below. All information is
-                kept confidential and used solely for credit evaluation purposes.
-              </p>
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-white rounded-xl border p-6 md:p-10 shadow-sm">
               <CreditApplicationForm />
-              <p className="mt-6 text-center text-xs text-gray-500">
-                By submitting this application, you authorize SEEK Equipment
-                Rentals to verify the information provided and conduct a credit
-                evaluation.
-              </p>
             </div>
+            <p className="mt-6 text-center text-xs text-gray-500 max-w-2xl mx-auto">
+              All information provided is kept confidential and used solely for
+              credit evaluation purposes. A copy of your completed application will
+              be emailed to the signatory address you provide.
+            </p>
           </div>
         </Container>
       </section>
