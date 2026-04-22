@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
+import Supercluster from 'supercluster'
+import type { BBox } from 'geojson'
 import {
   RefreshCw,
   MapPin,
@@ -90,37 +92,15 @@ function statusLabel(s: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-interface MarkerGroup {
-  units: GPSUnit[]
-  lat: number
-  lng: number
-}
+// Supercluster feature shape — one GeoJSON Point per tracked unit.
+type UnitFeatureProps = { unit: GPSUnit }
+type UnitFeature = GeoJSON.Feature<GeoJSON.Point, UnitFeatureProps>
 
-/**
- * Group co-located units by proximity. Units at similar lat/lng (within ~1km)
- * are grouped together to show a single cluster marker.
- */
-function groupByLocation(units: GPSUnit[]): MarkerGroup[] {
-  const groups = new Map<string, GPSUnit[]>()
-  for (const u of units) {
-    if (u.latitude === null || u.longitude === null) continue
-    const key = `${u.latitude.toFixed(2)},${u.longitude.toFixed(2)}`
-    const arr = groups.get(key) ?? []
-    arr.push(u)
-    groups.set(key, arr)
-  }
-
-  const result: MarkerGroup[] = []
-  for (const members of groups.values()) {
-    // Use centroid as group position
-    const lat =
-      members.reduce((s, u) => s + u.latitude!, 0) / members.length
-    const lng =
-      members.reduce((s, u) => s + u.longitude!, 0) / members.length
-    result.push({ units: members, lat, lng })
-  }
-  return result
-}
+// Supercluster is configured with clusterMaxZoom = 11, so at zoom >= 12
+// every unit is returned as its own (unclustered) point.
+// At zoom <= 11, close units collapse into cluster features in pixel space.
+const CLUSTER_MAX_ZOOM = 11
+const CLUSTER_RADIUS_PX = 60 // pixels; tuned for ~50 markers across TX
 
 // ---------------------------------------------------------------------------
 // Component
@@ -129,8 +109,9 @@ function groupByLocation(units: GPSUnit[]): MarkerGroup[] {
 export function GPSTrackingMap() {
   const mapContainer = useRef<HTMLDivElement>(null)
   const mapRef = useRef<mapboxgl.Map | null>(null)
-  const markersRef = useRef<mapboxgl.Marker[]>([])
-
+  // Keyed marker cache — updates positions in place instead of remove+re-add.
+  // Key format: `unit-${id}` for single-unit markers, `cluster-${clusterId}` for clusters.
+  const markersRef = useRef<Map<string, mapboxgl.Marker>>(new Map())
 
   const [units, setUnits] = useState<GPSUnit[]>([])
   const [loading, setLoading] = useState(true)
@@ -141,7 +122,6 @@ export function GPSTrackingMap() {
   const [mapStyle, setMapStyle] = useState<'light' | 'satellite'>('light')
   const [mapReady, setMapReady] = useState(false)
   const [selectedUnit, setSelectedUnit] = useState<GPSUnit | null>(null)
-  const [zoomLevel, setZoomLevel] = useState(11)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [customerFilter, setCustomerFilter] = useState<string>('all')
@@ -233,18 +213,12 @@ export function GPSTrackingMap() {
       }
     })
 
-    map.on('zoomend', () => {
-      if (!cancelled) {
-        setZoomLevel(Math.round(map.getZoom()))
-      }
-    })
-
     mapRef.current = map
 
     return () => {
       cancelled = true
       markersRef.current.forEach((m) => m.remove())
-      markersRef.current = []
+      markersRef.current.clear()
       map.remove()
       mapRef.current = null
       setMapReady(false)
@@ -329,92 +303,182 @@ export function GPSTrackingMap() {
       .addTo(map)
   }
 
-  // ------ Update markers when units, zoom, or map readiness changes ------
+  // ------ Build the Supercluster index from filtered units ------
+  const clusterIndex = useMemo(() => {
+    const index = new Supercluster<UnitFeatureProps>({
+      radius: CLUSTER_RADIUS_PX,
+      maxZoom: CLUSTER_MAX_ZOOM,
+      minPoints: 2,
+    })
+    const features: UnitFeature[] = []
+    for (const u of filteredUnits) {
+      if (u.latitude === null || u.longitude === null) continue
+      features.push({
+        type: 'Feature',
+        properties: { unit: u },
+        geometry: { type: 'Point', coordinates: [u.longitude, u.latitude] },
+      })
+    }
+    index.load(features)
+    return index
+  }, [filteredUnits])
+
+  // ------ Build a cluster marker DOM element ------
+  const createClusterMarker = useCallback(
+    (
+      map: mapboxgl.Map,
+      lng: number,
+      lat: number,
+      groupUnits: GPSUnit[],
+      clusterId: number
+    ): mapboxgl.Marker => {
+      const el = document.createElement('div')
+      el.style.cssText =
+        'position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;'
+
+      const location = groupUnits[0]?.lastLocation ?? ''
+
+      const unitListHtml = groupUnits
+        .map((u) => {
+          const color = STATUS_COLORS[u.status] ?? '#6b7280'
+          return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #f3f4f6;">
+              <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${color};flex-shrink:0;"></span>
+              <span style="font-weight:600;font-size:11px;color:#111;min-width:50px;">${u.unitNumber}</span>
+              <span style="font-size:10px;color:#666;">${TRAILER_LABELS[u.trailerType] ?? u.trailerType}</span>
+              <span style="font-size:10px;color:#999;margin-left:auto;">${statusLabel(u.status)}</span>
+            </div>`
+        })
+        .join('')
+
+      el.innerHTML = `
+          <div style="background:#1f2937;color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3);line-height:1.3;display:flex;align-items:center;gap:4px;">
+            <span style="background:#ee5519;color:#fff;font-size:10px;font-weight:800;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;">${groupUnits.length}</span>
+            <span>${location || 'units'}</span>
+          </div>
+          <div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:6px solid #1f2937;"></div>
+        `
+
+      const popup = new mapboxgl.Popup({
+        offset: 30,
+        closeButton: true,
+        maxWidth: '320px',
+      }).setHTML(`
+          <div style="font-family:system-ui;min-width:200px;max-height:300px;overflow-y:auto;">
+            <div style="font-weight:700;font-size:13px;margin-bottom:6px;color:#111;border-bottom:2px solid #ee5519;padding-bottom:4px;">
+              ${groupUnits.length} Units${location ? ` — ${location}` : ''}
+            </div>
+            ${unitListHtml}
+          </div>
+        `)
+
+      el.addEventListener('click', () => {
+        const m = mapRef.current
+        if (!m) return
+        // Ask Supercluster how deep to zoom to break this cluster apart,
+        // then fly to that zoom (capped a little above so pills become visible).
+        const expansionZoom = Math.min(
+          clusterIndex.getClusterExpansionZoom(clusterId),
+          CLUSTER_MAX_ZOOM + 2
+        )
+        m.flyTo({
+          center: [lng, lat],
+          zoom: Math.max(expansionZoom, Math.floor(m.getZoom()) + 1),
+          duration: 700,
+        })
+      })
+
+      return new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+        .setLngLat([lng, lat])
+        .setPopup(popup)
+        .addTo(map)
+    },
+    [clusterIndex]
+  )
+
+  // ------ Render markers for the current viewport+zoom from Supercluster ------
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady) return
 
-    markersRef.current.forEach((m) => m.remove())
-    markersRef.current = []
+    const render = () => {
+      const bounds = map.getBounds()
+      if (!bounds) return
+      const bbox: BBox = [
+        bounds.getWest(),
+        bounds.getSouth(),
+        bounds.getEast(),
+        bounds.getNorth(),
+      ]
+      // Supercluster expects an integer zoom. Floor so we switch to individual
+      // pills the moment zoom crosses 12, matching CLUSTER_MAX_ZOOM + 1.
+      const zoom = Math.floor(map.getZoom())
+      const clusters = clusterIndex.getClusters(bbox, zoom)
 
-    // At zoom >= 12, show every unit at its real coordinates (no clustering)
-    const useIndividualMarkers = zoomLevel >= 12
+      const nextIds = new Set<string>()
 
-    if (useIndividualMarkers) {
-      for (const unit of filteredUnits) {
-        if (unit.latitude === null || unit.longitude === null) continue
-        const marker = createUnitMarker(map, unit, unit.latitude, unit.longitude)
-        markersRef.current.push(marker)
-      }
-    } else {
-      // Clustered view for zoomed-out
-      const groups = groupByLocation(filteredUnits)
+      for (const cluster of clusters) {
+        const [lng, lat] = cluster.geometry.coordinates
+        const isCluster =
+          'cluster' in cluster.properties &&
+          (cluster.properties as { cluster?: boolean }).cluster === true
 
-      for (const group of groups) {
-        const { units: groupUnits, lat, lng } = group
-
-        if (groupUnits.length === 1) {
-          const unit = groupUnits[0]
-          const marker = createUnitMarker(map, unit, unit.latitude!, unit.longitude!)
-          markersRef.current.push(marker)
+        if (isCluster) {
+          const clusterId = (cluster as unknown as { id: number }).id
+          const count = (cluster.properties as unknown as { point_count: number })
+            .point_count
+          const id = `cluster-${clusterId}-${count}`
+          nextIds.add(id)
+          const existing = markersRef.current.get(id)
+          if (existing) {
+            existing.setLngLat([lng, lat])
+          } else {
+            const leaves = clusterIndex.getLeaves(
+              clusterId,
+              Infinity
+            ) as UnitFeature[]
+            const groupUnits = leaves.map((l) => l.properties.unit)
+            const marker = createClusterMarker(
+              map,
+              lng,
+              lat,
+              groupUnits,
+              clusterId
+            )
+            markersRef.current.set(id, marker)
+          }
         } else {
-          // Cluster marker
-          const el = document.createElement('div')
-          el.style.cssText =
-            'position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;'
+          const unit = (cluster.properties as UnitFeatureProps).unit
+          const id = `unit-${unit.id}`
+          nextIds.add(id)
+          const existing = markersRef.current.get(id)
+          if (existing) {
+            existing.setLngLat([lng, lat])
+          } else {
+            const marker = createUnitMarker(map, unit, lat, lng)
+            markersRef.current.set(id, marker)
+          }
+        }
+      }
 
-          const location = groupUnits[0].lastLocation ?? ''
-
-          const unitListHtml = groupUnits
-            .map((u) => {
-              const color = STATUS_COLORS[u.status] ?? '#6b7280'
-              return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #f3f4f6;">
-                <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${color};flex-shrink:0;"></span>
-                <span style="font-weight:600;font-size:11px;color:#111;min-width:50px;">${u.unitNumber}</span>
-                <span style="font-size:10px;color:#666;">${TRAILER_LABELS[u.trailerType] ?? u.trailerType}</span>
-                <span style="font-size:10px;color:#999;margin-left:auto;">${statusLabel(u.status)}</span>
-              </div>`
-            })
-            .join('')
-
-          el.innerHTML = `
-            <div style="background:#1f2937;color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3);line-height:1.3;display:flex;align-items:center;gap:4px;">
-              <span style="background:#ee5519;color:#fff;font-size:10px;font-weight:800;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;">${groupUnits.length}</span>
-              <span>${location || 'units'}</span>
-            </div>
-            <div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:6px solid #1f2937;"></div>
-          `
-
-          const popup = new mapboxgl.Popup({
-            offset: 30,
-            closeButton: true,
-            maxWidth: '320px',
-          }).setHTML(`
-            <div style="font-family:system-ui;min-width:200px;max-height:300px;overflow-y:auto;">
-              <div style="font-weight:700;font-size:13px;margin-bottom:6px;color:#111;border-bottom:2px solid #ee5519;padding-bottom:4px;">
-                ${groupUnits.length} Units${location ? ` — ${location}` : ''}
-              </div>
-              ${unitListHtml}
-            </div>
-          `)
-
-          el.addEventListener('click', () => {
-            if (mapRef.current) {
-              mapRef.current.flyTo({ center: [lng, lat], zoom: 13, duration: 800 })
-            }
-          })
-
-          const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
-            .setLngLat([lng, lat])
-            .setPopup(popup)
-            .addTo(map)
-
-          markersRef.current.push(marker)
+      // Drop markers that no longer belong (out of viewport, or cluster shape changed).
+      for (const [id, marker] of markersRef.current) {
+        if (!nextIds.has(id)) {
+          marker.remove()
+          markersRef.current.delete(id)
         }
       }
     }
+
+    render()
+    map.on('moveend', render)
+    map.on('zoomend', render)
+
+    return () => {
+      map.off('moveend', render)
+      map.off('zoomend', render)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredUnits, mapReady, zoomLevel])
+  }, [clusterIndex, mapReady, createClusterMarker])
 
   if (loading) {
     return (
