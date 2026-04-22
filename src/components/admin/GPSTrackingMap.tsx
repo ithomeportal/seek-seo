@@ -193,12 +193,18 @@ export function GPSTrackingMap() {
         ? 'mapbox://styles/mapbox/satellite-streets-v12'
         : 'mapbox://styles/mapbox/streets-v12'
 
-    // Default center: YARD address (Von Ormy, TX) — zoom 11 shows SA metro area
+    // Default center: YARD address (Von Ormy, TX) — zoom 11 shows SA metro area.
+    // minZoom: 6 caps how far the user can zoom out — at zoom <= 5 (continental
+    // US view) Supercluster can no longer disambiguate widely-spread TX yards
+    // in pixel space, so cluster pills fall back to showing single-unit
+    // location labels (Longview, Galveston, etc.) which look broken. The
+    // NavigationControl "−" button greys out automatically at minZoom.
     const map = new mapboxgl.Map({
       container,
       style: styleUrl,
       center: [-98.6273, 29.2685],
       zoom: 11,
+      minZoom: 6,
     })
 
     map.addControl(new mapboxgl.NavigationControl(), 'top-right')
