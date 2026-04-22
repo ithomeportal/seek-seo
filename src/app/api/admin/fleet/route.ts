@@ -5,7 +5,18 @@ import { z } from 'zod'
 export async function GET() {
   try {
     const result = await query(
-      'SELECT * FROM fleet_units ORDER BY unit_number ASC'
+      `SELECT * FROM fleet_units
+       ORDER BY
+         CASE trailer_type
+           WHEN 'sand_chassis' THEN 1
+           WHEN 'belly_dump' THEN 2
+           WHEN 'sand_hopper' THEN 3
+           WHEN 'dry_van' THEN 4
+           WHEN 'flatbed' THEN 5
+           WHEN 'tank' THEN 6
+           ELSE 99
+         END,
+         unit_number ASC`
     )
 
     const units = result.rows.map((row: Record<string, unknown>) => ({
