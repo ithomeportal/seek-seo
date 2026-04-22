@@ -3,6 +3,7 @@ import { Resend } from 'resend'
 import { creditApplicationSchema } from '@/lib/validators'
 import { query } from '@/lib/db'
 import { buildCreditApplicationPdf, entityLabel } from '@/lib/credit-application-pdf'
+import { postToTeams } from '@/lib/teams-webhook'
 
 const RECIPIENT_PRIMARY = 'rodney@seekequipment.com'
 const RECIPIENT_CC = 'emendoza@seekequipment.com'
@@ -234,6 +235,36 @@ export async function POST(request: NextRequest) {
         { filename: pdfFilename, content: pdfBase64 },
       ],
     })
+
+    // Fire-and-forget: publish a summary + PDF to the Teams chat via n8n.
+    // Non-blocking — failures are logged but do not affect the applicant response.
+    try {
+      const teamsResult = await postToTeams({
+        reference,
+        customerName: data.customerName,
+        customerPhone: data.customerPhone ?? null,
+        signatoryName: data.signatoryName,
+        signatoryEmail: data.signatoryEmail,
+        signatoryPhone: data.signatoryPhone ?? null,
+        entityType: entityLabel(data.entityType),
+        federalTaxId: data.federalTaxId ?? null,
+        submittedAt: submittedAt.toISOString(),
+        summaryHtml: summaryHtml(data, reference),
+        pdfBase64,
+        pdfFilename,
+      })
+      if (!teamsResult.ok && !teamsResult.skipped) {
+        console.warn(
+          'Teams webhook failed (non-blocking):',
+          teamsResult.message
+        )
+      }
+    } catch (err) {
+      console.warn(
+        'Teams webhook threw (non-blocking):',
+        err instanceof Error ? err.message : err
+      )
+    }
 
     return NextResponse.json({
       success: true,

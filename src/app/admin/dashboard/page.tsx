@@ -344,6 +344,9 @@ function DashboardContent() {
   const [fleet, setFleet] = useState<FleetUnit[]>([])
   const [inquiries, setInquiries] = useState<ContactSubmission[]>([])
   const [applications, setApplications] = useState<CreditApplication[]>([])
+  const [appDetail, setAppDetail] = useState<Record<string, unknown> | null>(null)
+  const [appDetailLoading, setAppDetailLoading] = useState(false)
+  const [appTeamsStatus, setAppTeamsStatus] = useState<{ kind: 'idle' | 'sending' | 'ok' | 'error'; message?: string }>({ kind: 'idle' })
   const [forSaleItems, setForSaleItems] = useState<EquipmentForSale[]>([])
   const [concentration, setConcentration] = useState<ConcentrationRow[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -2508,45 +2511,242 @@ function DashboardContent() {
     )
   }
 
+  async function openAppDetail(id: number) {
+    setAppDetailLoading(true)
+    setAppTeamsStatus({ kind: 'idle' })
+    try {
+      const res = await fetch(`/api/admin/credit-applications/${id}`)
+      const json = await res.json()
+      if (json.success) {
+        setAppDetail(json.data)
+      } else {
+        setAppDetail(null)
+      }
+    } finally {
+      setAppDetailLoading(false)
+    }
+  }
+
+  async function sendAppToTeams(id: number) {
+    setAppTeamsStatus({ kind: 'sending' })
+    try {
+      const res = await fetch(`/api/admin/credit-applications/${id}/teams`, { method: 'POST' })
+      const json = await res.json()
+      if (json.success) {
+        setAppTeamsStatus({ kind: 'ok', message: json.message ?? 'Posted to Teams' })
+      } else {
+        setAppTeamsStatus({ kind: 'error', message: json.message ?? 'Teams post failed' })
+      }
+    } catch (e) {
+      setAppTeamsStatus({ kind: 'error', message: e instanceof Error ? e.message : 'Network error' })
+    }
+  }
+
   function renderApplications() {
+    const s = (v: unknown) => (v ?? '—') as React.ReactNode
+    const bool = (v: unknown) => (v ? 'Yes' : 'No')
     return (
-      <div className="overflow-x-auto rounded-lg border bg-white">
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="border-b bg-gray-50 text-xs uppercase tracking-wide">
-              <th className="px-3 py-2 text-left font-medium text-gray-500">Reference</th>
-              <th className="px-3 py-2 text-left font-medium text-gray-500">Customer</th>
-              <th className="px-3 py-2 text-left font-medium text-gray-500">Entity</th>
-              <th className="px-3 py-2 text-left font-medium text-gray-500">Signatory</th>
-              <th className="px-3 py-2 text-left font-medium text-gray-500">Email</th>
-              <th className="px-3 py-2 text-left font-medium text-gray-500">Phone</th>
-              <th className="px-3 py-2 text-left font-medium text-gray-500">Status</th>
-              <th className="px-3 py-2 text-left font-medium text-gray-500">Submitted</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {applications.map((app) => (
-              <tr key={app.id} className="hover:bg-blue-50/40">
-                <td className="px-3 py-2 font-mono text-xs text-brand-orange font-semibold">{app.referenceNumber}</td>
-                <td className="px-3 py-2 font-medium text-gray-900">{app.customerName}</td>
-                <td className="px-3 py-2 text-gray-600 capitalize">{app.entityType ?? '—'}</td>
-                <td className="px-3 py-2 text-gray-700">{app.signatoryName}</td>
-                <td className="px-3 py-2 text-gray-600">
-                  <a href={`mailto:${app.signatoryEmail}`} className="text-brand-blue hover:underline">{app.signatoryEmail}</a>
-                </td>
-                <td className="px-3 py-2 text-gray-600">{app.signatoryPhone ?? app.customerPhone ?? '—'}</td>
-                <td className="px-3 py-2">
-                  {renderBadge(app.status, app.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : app.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800')}
-                </td>
-                <td className="px-3 py-2 text-gray-500 text-xs">{new Date(app.createdAt).toLocaleDateString()}</td>
+      <>
+        <div className="overflow-x-auto rounded-lg border bg-white">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="border-b bg-gray-50 text-xs uppercase tracking-wide">
+                <th className="px-3 py-2 text-left font-medium text-gray-500">Reference</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-500">Customer</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-500">Entity</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-500">Signatory</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-500">Email</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-500">Phone</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-500">Status</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-500">Submitted</th>
               </tr>
-            ))}
-            {applications.length === 0 && (
-              <tr><td colSpan={8} className="px-3 py-10 text-center text-gray-400">No credit applications yet.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {applications.map((app) => (
+                <tr key={app.id} className="hover:bg-blue-50/40">
+                  <td className="px-3 py-2 font-mono text-xs font-semibold">
+                    <button
+                      onClick={() => openAppDetail(app.id)}
+                      className="text-brand-orange hover:underline focus:outline-none focus:ring-2 focus:ring-brand-orange/40 rounded"
+                      title="View full application"
+                    >
+                      {app.referenceNumber}
+                    </button>
+                  </td>
+                  <td className="px-3 py-2 font-medium text-gray-900">{app.customerName}</td>
+                  <td className="px-3 py-2 text-gray-600 capitalize">{app.entityType ?? '—'}</td>
+                  <td className="px-3 py-2 text-gray-700">{app.signatoryName}</td>
+                  <td className="px-3 py-2 text-gray-600">
+                    <a href={`mailto:${app.signatoryEmail}`} className="text-brand-blue hover:underline">{app.signatoryEmail}</a>
+                  </td>
+                  <td className="px-3 py-2 text-gray-600">{app.signatoryPhone ?? app.customerPhone ?? '—'}</td>
+                  <td className="px-3 py-2">
+                    {renderBadge(app.status, app.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : app.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800')}
+                  </td>
+                  <td className="px-3 py-2 text-gray-500 text-xs">{new Date(app.createdAt).toLocaleDateString()}</td>
+                </tr>
+              ))}
+              {applications.length === 0 && (
+                <tr><td colSpan={8} className="px-3 py-10 text-center text-gray-400">No credit applications yet.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Detail modal */}
+        {(appDetail || appDetailLoading) && (
+          <div
+            className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-sm p-4 overflow-y-auto"
+            onClick={() => { setAppDetail(null); setAppTeamsStatus({ kind: 'idle' }) }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-xl shadow-2xl w-full max-w-4xl my-8 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-4">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Credit Application</h3>
+                  {appDetail && (
+                    <p className="text-xs text-gray-500 font-mono">
+                      Reference <span className="text-brand-orange font-bold">{String(appDetail.referenceNumber)}</span>
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {appDetail && (
+                    <>
+                      <a
+                        href={`/api/admin/credit-applications/${appDetail.id}/pdf`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-brand-blue text-brand-blue hover:bg-blue-50"
+                      >
+                        <FileText className="h-3.5 w-3.5" /> Download PDF
+                      </a>
+                      <button
+                        onClick={() => sendAppToTeams(Number(appDetail.id))}
+                        disabled={appTeamsStatus.kind === 'sending'}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-brand-orange text-brand-orange hover:bg-orange-50 disabled:opacity-50"
+                      >
+                        {appTeamsStatus.kind === 'sending' ? 'Sending…' : 'Send to Teams'}
+                      </button>
+                    </>
+                  )}
+                  <button
+                    onClick={() => { setAppDetail(null); setAppTeamsStatus({ kind: 'idle' }) }}
+                    className="inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-500"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+
+              {appDetailLoading && (
+                <div className="px-6 py-16 text-center text-gray-500 text-sm">Loading…</div>
+              )}
+
+              {appDetail && !appDetailLoading && (
+                <div className="px-6 py-6 space-y-6 text-sm">
+                  {appTeamsStatus.kind === 'ok' && (
+                    <div className="rounded-lg bg-green-50 text-green-800 px-3 py-2 text-xs">{appTeamsStatus.message}</div>
+                  )}
+                  {appTeamsStatus.kind === 'error' && (
+                    <div className="rounded-lg bg-red-50 text-red-800 px-3 py-2 text-xs">{appTeamsStatus.message}</div>
+                  )}
+
+                  <section>
+                    <h4 className="text-xs font-bold uppercase text-gray-500 tracking-wider mb-2 pb-1 border-b">Customer</h4>
+                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                      <div><dt className="text-xs text-gray-500">Customer Name</dt><dd className="font-medium text-gray-900">{s(appDetail.customerName)}</dd></div>
+                      <div><dt className="text-xs text-gray-500">Phone</dt><dd className="font-medium text-gray-900">{s(appDetail.customerPhone)}</dd></div>
+                      <div className="sm:col-span-2"><dt className="text-xs text-gray-500">Address</dt><dd className="font-medium text-gray-900">{[appDetail.customerStreet, appDetail.customerCity, appDetail.customerState, appDetail.customerZip].filter(Boolean).join(', ') || '—'}</dd></div>
+                    </dl>
+                  </section>
+
+                  <section>
+                    <h4 className="text-xs font-bold uppercase text-gray-500 tracking-wider mb-2 pb-1 border-b">Business</h4>
+                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                      <div><dt className="text-xs text-gray-500">Entity Type</dt><dd className="font-medium text-gray-900 capitalize">{s(appDetail.entityType)}</dd></div>
+                      <div><dt className="text-xs text-gray-500">State Formed</dt><dd className="font-medium text-gray-900">{s(appDetail.stateEntityFormed)}</dd></div>
+                      <div><dt className="text-xs text-gray-500">Business Phone</dt><dd className="font-medium text-gray-900">{s(appDetail.businessPhone)}</dd></div>
+                      <div><dt className="text-xs text-gray-500">Federal Tax ID</dt><dd className="font-medium text-gray-900">{s(appDetail.federalTaxId)}</dd></div>
+                      <div><dt className="text-xs text-gray-500">D &amp; B #</dt><dd className="font-medium text-gray-900">{s(appDetail.dnbNumber)}</dd></div>
+                      <div><dt className="text-xs text-gray-500">DL (last 4)</dt><dd className="font-medium text-gray-900">{s(appDetail.driverLicenseLast4)}</dd></div>
+                      <div><dt className="text-xs text-gray-500">Previous Business Name</dt><dd className="font-medium text-gray-900">{s(appDetail.previousBusinessName)}</dd></div>
+                      <div><dt className="text-xs text-gray-500">Bankruptcy</dt><dd className="font-medium text-gray-900">{bool(appDetail.bankruptcyFiled)}{appDetail.bankruptcyYear ? ` (${appDetail.bankruptcyYear})` : ''}</dd></div>
+                      <div className="sm:col-span-2"><dt className="text-xs text-gray-500">Partners / Members</dt><dd className="font-medium text-gray-900">{s(appDetail.partnersMembers)}</dd></div>
+                    </dl>
+                  </section>
+
+                  <section>
+                    <h4 className="text-xs font-bold uppercase text-gray-500 tracking-wider mb-2 pb-1 border-b">Signatory</h4>
+                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                      <div><dt className="text-xs text-gray-500">Name</dt><dd className="font-medium text-gray-900">{s(appDetail.signatoryName)}</dd></div>
+                      <div><dt className="text-xs text-gray-500">Title / Relationship</dt><dd className="font-medium text-gray-900">{s(appDetail.signatoryTitle)}</dd></div>
+                      <div className="sm:col-span-2"><dt className="text-xs text-gray-500">Address</dt><dd className="font-medium text-gray-900">{s(appDetail.signatoryAddress)}</dd></div>
+                      <div><dt className="text-xs text-gray-500">Phone</dt><dd className="font-medium text-gray-900">{s(appDetail.signatoryPhone)}</dd></div>
+                      <div><dt className="text-xs text-gray-500">Email</dt><dd className="font-medium text-gray-900">{s(appDetail.signatoryEmail)}</dd></div>
+                    </dl>
+                  </section>
+
+                  <section>
+                    <h4 className="text-xs font-bold uppercase text-gray-500 tracking-wider mb-2 pb-1 border-b">Banking</h4>
+                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                      <div><dt className="text-xs text-gray-500">Bank Name</dt><dd className="font-medium text-gray-900">{s(appDetail.bankName)}</dd></div>
+                      <div><dt className="text-xs text-gray-500">Contact</dt><dd className="font-medium text-gray-900">{s(appDetail.bankContactName)}</dd></div>
+                      <div className="sm:col-span-2"><dt className="text-xs text-gray-500">Address</dt><dd className="font-medium text-gray-900">{s(appDetail.bankAddress)}</dd></div>
+                      <div><dt className="text-xs text-gray-500">Account # (last 4)</dt><dd className="font-medium text-gray-900">{s(appDetail.bankAccountNumberLast4)}</dd></div>
+                      <div><dt className="text-xs text-gray-500">Bank Transit / Routing</dt><dd className="font-medium text-gray-900">{s(appDetail.bankTransit)}</dd></div>
+                    </dl>
+                  </section>
+
+                  <section>
+                    <h4 className="text-xs font-bold uppercase text-gray-500 tracking-wider mb-2 pb-1 border-b">Accounting</h4>
+                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                      <div><dt className="text-xs text-gray-500">Job #s Required</dt><dd className="font-medium text-gray-900">{bool(appDetail.jobNumbersRequired)}</dd></div>
+                      <div><dt className="text-xs text-gray-500">Tax Exempt</dt><dd className="font-medium text-gray-900">{bool(appDetail.taxExempt)}</dd></div>
+                      <div className="sm:col-span-2"><dt className="text-xs text-gray-500">Insurance Company</dt><dd className="font-medium text-gray-900">{s(appDetail.insuranceCompany)}</dd></div>
+                      <div><dt className="text-xs text-gray-500">Insurance Contact</dt><dd className="font-medium text-gray-900">{s(appDetail.insuranceContactPerson)}</dd></div>
+                      <div><dt className="text-xs text-gray-500">Insurance Phone</dt><dd className="font-medium text-gray-900">{s(appDetail.insurancePhone)}</dd></div>
+                      <div className="sm:col-span-2"><dt className="text-xs text-gray-500">Certificate of Insurance forwarded</dt><dd className="font-medium text-gray-900">{bool(appDetail.certificateForwarded)}</dd></div>
+                      <div><dt className="text-xs text-gray-500">A/P Contact</dt><dd className="font-medium text-gray-900">{s(appDetail.apContact)}</dd></div>
+                      <div><dt className="text-xs text-gray-500">A/P Email</dt><dd className="font-medium text-gray-900">{s(appDetail.apEmail)}</dd></div>
+                      <div><dt className="text-xs text-gray-500">A/P Phone</dt><dd className="font-medium text-gray-900">{s(appDetail.apPhone)}</dd></div>
+                    </dl>
+                  </section>
+
+                  <section>
+                    <h4 className="text-xs font-bold uppercase text-gray-500 tracking-wider mb-2 pb-1 border-b">Trade References</h4>
+                    {Array.isArray(appDetail.tradeReferences) && (appDetail.tradeReferences as Array<{ name?: string; phone?: string; address?: string }>).filter(r => r.name || r.phone || r.address).length > 0 ? (
+                      <table className="w-full text-xs">
+                        <thead><tr className="text-gray-500"><th className="px-2 py-1 text-left font-medium">Name</th><th className="px-2 py-1 text-left font-medium">Phone</th><th className="px-2 py-1 text-left font-medium">Address</th></tr></thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {(appDetail.tradeReferences as Array<{ name?: string; phone?: string; address?: string }>).map((r, i) => (
+                            <tr key={i}><td className="px-2 py-1 text-gray-900">{r.name || '—'}</td><td className="px-2 py-1 text-gray-700">{r.phone || '—'}</td><td className="px-2 py-1 text-gray-700">{r.address || '—'}</td></tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <p className="text-xs text-gray-500">None provided.</p>
+                    )}
+                  </section>
+
+                  <section>
+                    <h4 className="text-xs font-bold uppercase text-gray-500 tracking-wider mb-2 pb-1 border-b">Signature Confirmation</h4>
+                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                      <div><dt className="text-xs text-gray-500">Confirmed</dt><dd className="font-medium text-gray-900">{bool(appDetail.signatureConfirmed)}</dd></div>
+                      <div><dt className="text-xs text-gray-500">Typed Name</dt><dd className="font-medium text-gray-900">{s(appDetail.signatureName)}</dd></div>
+                      <div><dt className="text-xs text-gray-500">Date</dt><dd className="font-medium text-gray-900">{appDetail.signatureDate ? new Date(String(appDetail.signatureDate)).toLocaleDateString() : '—'}</dd></div>
+                      <div><dt className="text-xs text-gray-500">Submitter IP</dt><dd className="font-mono text-xs text-gray-700">{s(appDetail.submitterIp)}</dd></div>
+                      <div className="sm:col-span-2"><dt className="text-xs text-gray-500">Submitted</dt><dd className="font-medium text-gray-900">{appDetail.createdAt ? new Date(String(appDetail.createdAt)).toLocaleString() : '—'}</dd></div>
+                    </dl>
+                  </section>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </>
     )
   }
 
