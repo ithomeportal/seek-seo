@@ -193,7 +193,8 @@ export function GPSTrackingMap() {
         ? 'mapbox://styles/mapbox/satellite-streets-v12'
         : 'mapbox://styles/mapbox/streets-v12'
 
-    // Default center: YARD address (Von Ormy, TX) — zoom 11 shows SA metro area.
+    // Default center: YARD address (Von Ormy, TX) — start at minZoom (6) so the
+    // user opens at the maximum zoom-out and can only zoom IN from there.
     // minZoom: 6 caps how far the user can zoom out — at zoom <= 5 (continental
     // US view) Supercluster can no longer disambiguate widely-spread TX yards
     // in pixel space, so cluster pills fall back to showing single-unit
@@ -203,7 +204,7 @@ export function GPSTrackingMap() {
       container,
       style: styleUrl,
       center: [-98.6273, 29.2685],
-      zoom: 11,
+      zoom: 6,
       minZoom: 6,
     })
 
