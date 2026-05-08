@@ -15,6 +15,7 @@ import {
   X,
   Search,
   AlertTriangle,
+  Maximize2,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -92,15 +93,37 @@ function statusLabel(s: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
+// Relative-time string + a freshness color, used in popup headers and minimap.
+function relativeTime(iso: string | null): { label: string; color: string } {
+  if (!iso) return { label: 'No signal', color: '#dc2626' }
+  const ms = Date.now() - new Date(iso).getTime()
+  if (ms < 60_000) return { label: 'just now', color: '#059669' }
+  const min = Math.floor(ms / 60_000)
+  if (min < 60) return { label: `${min} min ago`, color: '#059669' }
+  const hr = Math.floor(min / 60)
+  if (hr < 24) return { label: `${hr} hr ago`, color: hr < 12 ? '#059669' : '#d97706' }
+  const days = Math.floor(hr / 24)
+  if (days < 7) return { label: `${days} day${days === 1 ? '' : 's'} ago`, color: '#d97706' }
+  return { label: `${days}+ days ago`, color: '#dc2626' }
+}
+
 // Supercluster feature shape — one GeoJSON Point per tracked unit.
 type UnitFeatureProps = { unit: GPSUnit }
 type UnitFeature = GeoJSON.Feature<GeoJSON.Point, UnitFeatureProps>
 
-// Supercluster is configured with clusterMaxZoom = 11, so at zoom >= 12
-// every unit is returned as its own (unclustered) point.
-// At zoom <= 11, close units collapse into cluster features in pixel space.
 const CLUSTER_MAX_ZOOM = 11
-const CLUSTER_RADIUS_PX = 60 // pixels; tuned for ~50 markers across TX
+const CLUSTER_RADIUS_PX = 50
+
+// At and below this zoom, we render compact status-colored dots / numbered
+// cluster bubbles. Labelled pills overlap badly at continental scale and were
+// the original cause of the "all units in the Gulf of Mexico" appearance.
+const COMPACT_ZOOM_THRESHOLD = 6
+
+const VIEW_PRESETS = {
+  us: { center: [-98.5, 39.8] as [number, number], zoom: 4 },
+  tx: { center: [-99.5, 31.5] as [number, number], zoom: 5.6 },
+  yard: { center: [-98.6273, 29.2685] as [number, number], zoom: 11 },
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -110,15 +133,15 @@ export function GPSTrackingMap() {
   const mapContainer = useRef<HTMLDivElement>(null)
   const mapRef = useRef<mapboxgl.Map | null>(null)
   // Keyed marker cache — updates positions in place instead of remove+re-add.
-  // Key format: `unit-${id}` for single-unit markers, `cluster-${clusterId}` for clusters.
+  // Key encodes style mode ('d' compact dot / 'p' labelled pill) so crossing
+  // the zoom threshold cleanly swaps marker types.
   const markersRef = useRef<Map<string, mapboxgl.Marker>>(new Map())
+  const didInitialFitRef = useRef(false)
 
   const [units, setUnits] = useState<GPSUnit[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [skybitzStatus, setSkybitzStatus] = useState<SkyBitzStatus | null>(
-    null
-  )
+  const [skybitzStatus, setSkybitzStatus] = useState<SkyBitzStatus | null>(null)
   const [mapStyle, setMapStyle] = useState<'light' | 'satellite'>('light')
   const [mapReady, setMapReady] = useState(false)
   const [selectedUnit, setSelectedUnit] = useState<GPSUnit | null>(null)
@@ -127,7 +150,7 @@ export function GPSTrackingMap() {
   const [customerFilter, setCustomerFilter] = useState<string>('all')
   const [customerSearch, setCustomerSearch] = useState('')
 
-  // ------ Fetch positions from DB ------
+  // ------ API ------
   const fetchPositions = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/gps/positions')
@@ -138,7 +161,6 @@ export function GPSTrackingMap() {
     }
   }, [])
 
-  // ------ Check SkyBitz connection ------
   const checkSkyBitz = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/gps/skybitz')
@@ -149,7 +171,6 @@ export function GPSTrackingMap() {
     }
   }, [])
 
-  // ------ Refresh from SkyBitz ------
   const refreshFromSkyBitz = useCallback(async () => {
     setRefreshing(true)
     try {
@@ -172,12 +193,9 @@ export function GPSTrackingMap() {
     init()
   }, [fetchPositions, checkSkyBitz])
 
-  // ------ Initialize map ------
-  // Depends on [loading, mapStyle] so it re-runs when:
-  //   - loading finishes (container appears in DOM)
-  //   - user toggles map style
+  // ------ Map init ------
+  // Re-runs when [loading, mapStyle] changes.
   useEffect(() => {
-    // Don't try to create the map while loading — container isn't in the DOM
     if (loading) return
 
     const container = mapContainer.current
@@ -193,19 +211,18 @@ export function GPSTrackingMap() {
         ? 'mapbox://styles/mapbox/satellite-streets-v12'
         : 'mapbox://styles/mapbox/streets-v12'
 
-    // Default center: YARD address (Von Ormy, TX) — start at minZoom (6) so the
-    // user opens at the maximum zoom-out and can only zoom IN from there.
-    // minZoom: 6 caps how far the user can zoom out — at zoom <= 5 (continental
-    // US view) Supercluster can no longer disambiguate widely-spread TX yards
-    // in pixel space, so cluster pills fall back to showing single-unit
-    // location labels (Longview, Galveston, etc.) which look broken. The
-    // NavigationControl "−" button greys out automatically at minZoom.
+    // Mercator projection kills the globe curvature that previously bent pills
+    // off their real coordinates at low zoom (the "Gulf of Mexico" effect).
+    // We open at continental US; the load handler then fits tight bounds to
+    // the actual GPS units the first time data is available.
     const map = new mapboxgl.Map({
       container,
       style: styleUrl,
-      center: [-98.6273, 29.2685],
-      zoom: 6,
-      minZoom: 6,
+      projection: 'mercator',
+      center: VIEW_PRESETS.us.center,
+      zoom: VIEW_PRESETS.us.zoom,
+      minZoom: 3,
+      maxZoom: 18,
     })
 
     map.addControl(new mapboxgl.NavigationControl(), 'top-right')
@@ -229,6 +246,7 @@ export function GPSTrackingMap() {
       map.remove()
       mapRef.current = null
       setMapReady(false)
+      didInitialFitRef.current = false
     }
   }, [loading, mapStyle])
 
@@ -265,35 +283,71 @@ export function GPSTrackingMap() {
   const hasActiveFilters =
     statusFilter !== 'all' || typeFilter !== 'all' || customerFilter !== 'all'
 
-  // ------ Helper: create a single-unit marker ------
-  function createUnitMarker(
-    map: mapboxgl.Map,
-    unit: GPSUnit,
-    lat: number,
-    lng: number
-  ): mapboxgl.Marker {
-    const markerColor = STATUS_COLORS[unit.status] ?? '#6b7280'
+  // ------ Fit map to a list of units ------
+  const fitToUnits = useCallback(
+    (targetUnits: GPSUnit[], duration = 800) => {
+      const map = mapRef.current
+      if (!map) return
+      const points = targetUnits.filter(
+        (u) => u.latitude !== null && u.longitude !== null
+      )
+      if (points.length === 0) {
+        map.flyTo({ ...VIEW_PRESETS.us, duration })
+        return
+      }
+      if (points.length === 1) {
+        map.flyTo({
+          center: [points[0].longitude!, points[0].latitude!],
+          zoom: 13,
+          duration,
+        })
+        return
+      }
+      const bounds = new mapboxgl.LngLatBounds()
+      points.forEach((u) => bounds.extend([u.longitude!, u.latitude!]))
+      map.fitBounds(bounds, {
+        padding: { top: 80, bottom: 80, left: 80, right: 80 },
+        duration,
+        maxZoom: 11,
+      })
+    },
+    []
+  )
 
-    const el = document.createElement('div')
-    el.style.cssText =
-      'position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;'
-    el.innerHTML = `
-      <div style="background:${markerColor};color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.3);line-height:1.3;">
-        ${unit.unitNumber}
-      </div>
-      <div style="width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid ${markerColor};"></div>
-      <div style="width:8px;height:8px;background:${markerColor};border-radius:50%;border:2px solid white;margin-top:-2px;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>
-    `
+  // ------ Initial fit-to-data once map + data are both ready ------
+  useEffect(() => {
+    if (!mapReady || didInitialFitRef.current) return
+    if (allGpsUnits.length === 0) return
+    didInitialFitRef.current = true
+    fitToUnits(allGpsUnits, 0)
+  }, [mapReady, allGpsUnits, fitToUnits])
 
-    el.addEventListener('click', () => setSelectedUnit(unit))
+  // ------ Auto-fit when filters change ------
+  useEffect(() => {
+    if (!mapReady || !didInitialFitRef.current) return
+    const target = hasActiveFilters ? filteredUnits : allGpsUnits
+    if (target.length === 0) return
+    fitToUnits(target)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter, typeFilter, customerFilter, mapReady])
 
-    const popup = new mapboxgl.Popup({ offset: 30, closeButton: true })
-      .setHTML(`
-      <div style="font-family:system-ui;min-width:180px;">
-        <div style="font-weight:700;font-size:14px;margin-bottom:4px;color:#111;">${unit.unitNumber}</div>
+  // ------ Popup HTML (shared between dot + pill markers) ------
+  function popupHtml(unit: GPSUnit): string {
+    const color = STATUS_COLORS[unit.status] ?? '#6b7280'
+    const t = unit.lastGpsTime ?? unit.updatedAt
+    const fresh = relativeTime(t)
+    return `
+      <div style="font-family:system-ui;min-width:210px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
+          <div style="font-weight:700;font-size:15px;color:#111;">${unit.unitNumber}</div>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:9999px;background:${fresh.color}1a;color:${fresh.color};white-space:nowrap;">
+            <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${fresh.color};"></span>
+            ${fresh.label}
+          </span>
+        </div>
         <div style="font-size:12px;color:#555;margin-bottom:6px;">${TRAILER_LABELS[unit.trailerType] ?? unit.trailerType}</div>
         <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
-          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${markerColor};"></span>
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};"></span>
           <span style="font-size:12px;font-weight:500;">${statusLabel(unit.status)}</span>
         </div>
         ${unit.rentedTo ? `<div style="font-size:11px;color:#666;">Rented to: <strong>${unit.rentedTo}</strong></div>` : ''}
@@ -302,7 +356,34 @@ export function GPSTrackingMap() {
           ${unit.latitude?.toFixed(4)}, ${unit.longitude?.toFixed(4)}
         </div>
       </div>
-    `)
+    `
+  }
+
+  // ------ Single-unit pill (zoom > 6) ------
+  function createUnitPill(
+    map: mapboxgl.Map,
+    unit: GPSUnit,
+    lat: number,
+    lng: number
+  ): mapboxgl.Marker {
+    const color = STATUS_COLORS[unit.status] ?? '#6b7280'
+
+    const el = document.createElement('div')
+    el.style.cssText =
+      'position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;'
+    el.innerHTML = `
+      <div style="background:${color};color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.3);line-height:1.3;">
+        ${unit.unitNumber}
+      </div>
+      <div style="width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid ${color};"></div>
+      <div style="width:8px;height:8px;background:${color};border-radius:50%;border:2px solid white;margin-top:-2px;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>
+    `
+
+    el.addEventListener('click', () => setSelectedUnit(unit))
+
+    const popup = new mapboxgl.Popup({ offset: 30, closeButton: true }).setHTML(
+      popupHtml(unit)
+    )
 
     return new mapboxgl.Marker({ element: el, anchor: 'bottom' })
       .setLngLat([lng, lat])
@@ -310,7 +391,30 @@ export function GPSTrackingMap() {
       .addTo(map)
   }
 
-  // ------ Build the Supercluster index from filtered units ------
+  // ------ Single-unit compact dot (zoom ≤ 6) ------
+  function createUnitDot(
+    map: mapboxgl.Map,
+    unit: GPSUnit,
+    lat: number,
+    lng: number
+  ): mapboxgl.Marker {
+    const color = STATUS_COLORS[unit.status] ?? '#6b7280'
+    const el = document.createElement('div')
+    el.style.cssText = `width:11px;height:11px;border-radius:50%;background:${color};border:1.5px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,0.25),0 1px 2px rgba(0,0,0,0.2);cursor:pointer;`
+    el.title = `${unit.unitNumber} — ${statusLabel(unit.status)}`
+    el.addEventListener('click', () => setSelectedUnit(unit))
+
+    const popup = new mapboxgl.Popup({ offset: 12, closeButton: true }).setHTML(
+      popupHtml(unit)
+    )
+
+    return new mapboxgl.Marker({ element: el, anchor: 'center' })
+      .setLngLat([lng, lat])
+      .setPopup(popup)
+      .addTo(map)
+  }
+
+  // ------ Cluster index ------
   const clusterIndex = useMemo(() => {
     const index = new Supercluster<UnitFeatureProps>({
       radius: CLUSTER_RADIUS_PX,
@@ -330,8 +434,8 @@ export function GPSTrackingMap() {
     return index
   }, [filteredUnits])
 
-  // ------ Build a cluster marker DOM element ------
-  const createClusterMarker = useCallback(
+  // ------ Cluster pill (zoom 7–11) — labelled with city name ------
+  const createClusterPill = useCallback(
     (
       map: mapboxgl.Map,
       lng: number,
@@ -381,8 +485,6 @@ export function GPSTrackingMap() {
       el.addEventListener('click', () => {
         const m = mapRef.current
         if (!m) return
-        // Ask Supercluster how deep to zoom to break this cluster apart,
-        // then fly to that zoom (capped a little above so pills become visible).
         const expansionZoom = Math.min(
           clusterIndex.getClusterExpansionZoom(clusterId),
           CLUSTER_MAX_ZOOM + 2
@@ -402,7 +504,48 @@ export function GPSTrackingMap() {
     [clusterIndex]
   )
 
-  // ------ Render markers for the current viewport+zoom from Supercluster ------
+  // ------ Cluster dot (zoom ≤ 6) — compact numbered bubble ------
+  const createClusterDot = useCallback(
+    (
+      map: mapboxgl.Map,
+      lng: number,
+      lat: number,
+      count: number,
+      clusterId: number
+    ): mapboxgl.Marker => {
+      const size = Math.min(16 + Math.log2(count + 1) * 4, 34)
+      const el = document.createElement('div')
+      el.style.cssText = `
+        min-width:${size}px;height:${size}px;padding:0 ${count > 9 ? 6 : 4}px;
+        border-radius:9999px;background:#1f2937;color:#fff;
+        display:flex;align-items:center;justify-content:center;
+        font-size:11px;font-weight:700;border:2px solid #fff;
+        box-shadow:0 1px 3px rgba(0,0,0,0.4);cursor:pointer;
+      `
+      el.textContent = String(count)
+
+      el.addEventListener('click', () => {
+        const m = mapRef.current
+        if (!m) return
+        const expansionZoom = Math.min(
+          clusterIndex.getClusterExpansionZoom(clusterId),
+          CLUSTER_MAX_ZOOM + 2
+        )
+        m.flyTo({
+          center: [lng, lat],
+          zoom: Math.max(expansionZoom, Math.floor(m.getZoom()) + 1),
+          duration: 700,
+        })
+      })
+
+      return new mapboxgl.Marker({ element: el, anchor: 'center' })
+        .setLngLat([lng, lat])
+        .addTo(map)
+    },
+    [clusterIndex]
+  )
+
+  // ------ Render markers per viewport+zoom ------
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReady) return
@@ -416,58 +559,58 @@ export function GPSTrackingMap() {
         bounds.getEast(),
         bounds.getNorth(),
       ]
-      // Supercluster expects an integer zoom. Floor so we switch to individual
-      // pills the moment zoom crosses 12, matching CLUSTER_MAX_ZOOM + 1.
-      const zoom = Math.floor(map.getZoom())
-      const clusters = clusterIndex.getClusters(bbox, zoom)
+      const zoomFloor = Math.floor(map.getZoom())
+      const compact = zoomFloor <= COMPACT_ZOOM_THRESHOLD
+      const clusters = clusterIndex.getClusters(bbox, zoomFloor)
 
       const nextIds = new Set<string>()
 
-      for (const cluster of clusters) {
-        const [lng, lat] = cluster.geometry.coordinates
+      for (const c of clusters) {
+        const [lng, lat] = c.geometry.coordinates
         const isCluster =
-          'cluster' in cluster.properties &&
-          (cluster.properties as { cluster?: boolean }).cluster === true
+          'cluster' in c.properties &&
+          (c.properties as { cluster?: boolean }).cluster === true
 
         if (isCluster) {
-          const clusterId = (cluster as unknown as { id: number }).id
-          const count = (cluster.properties as unknown as { point_count: number })
+          const clusterId = (c as unknown as { id: number }).id
+          const count = (c.properties as unknown as { point_count: number })
             .point_count
-          const id = `cluster-${clusterId}-${count}`
+          // Style mode in id so threshold crossings cleanly swap markers.
+          const id = `cluster-${compact ? 'd' : 'p'}-${clusterId}-${count}`
           nextIds.add(id)
           const existing = markersRef.current.get(id)
           if (existing) {
             existing.setLngLat([lng, lat])
           } else {
-            const leaves = clusterIndex.getLeaves(
-              clusterId,
-              Infinity
-            ) as UnitFeature[]
-            const groupUnits = leaves.map((l) => l.properties.unit)
-            const marker = createClusterMarker(
-              map,
-              lng,
-              lat,
-              groupUnits,
-              clusterId
-            )
-            markersRef.current.set(id, marker)
+            if (compact) {
+              const m = createClusterDot(map, lng, lat, count, clusterId)
+              markersRef.current.set(id, m)
+            } else {
+              const leaves = clusterIndex.getLeaves(
+                clusterId,
+                Infinity
+              ) as UnitFeature[]
+              const groupUnits = leaves.map((l) => l.properties.unit)
+              const m = createClusterPill(map, lng, lat, groupUnits, clusterId)
+              markersRef.current.set(id, m)
+            }
           }
         } else {
-          const unit = (cluster.properties as UnitFeatureProps).unit
-          const id = `unit-${unit.id}`
+          const unit = (c.properties as UnitFeatureProps).unit
+          const id = `unit-${compact ? 'd' : 'p'}-${unit.id}`
           nextIds.add(id)
           const existing = markersRef.current.get(id)
           if (existing) {
             existing.setLngLat([lng, lat])
           } else {
-            const marker = createUnitMarker(map, unit, lat, lng)
-            markersRef.current.set(id, marker)
+            const m = compact
+              ? createUnitDot(map, unit, lat, lng)
+              : createUnitPill(map, unit, lat, lng)
+            markersRef.current.set(id, m)
           }
         }
       }
 
-      // Drop markers that no longer belong (out of viewport, or cluster shape changed).
       for (const [id, marker] of markersRef.current) {
         if (!nextIds.has(id)) {
           marker.remove()
@@ -485,7 +628,7 @@ export function GPSTrackingMap() {
       map.off('zoomend', render)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clusterIndex, mapReady, createClusterMarker])
+  }, [clusterIndex, mapReady, createClusterPill, createClusterDot])
 
   if (loading) {
     return (
@@ -497,9 +640,8 @@ export function GPSTrackingMap() {
 
   return (
     <div className="space-y-4">
-      {/* Top row: KPI cards + clickable status pills */}
+      {/* KPI cards + status pills */}
       <div className="flex flex-col lg:flex-row gap-4">
-        {/* KPI cards */}
         <div className="flex gap-3 flex-shrink-0">
           <div className="rounded-xl border bg-white px-4 py-3 min-w-[100px]">
             <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-0.5">
@@ -528,7 +670,6 @@ export function GPSTrackingMap() {
           </div>
         </div>
 
-        {/* Status pill buttons */}
         <div className="flex flex-wrap items-center gap-2 flex-1">
           <button
             onClick={() => setStatusFilter('all')}
@@ -547,14 +688,16 @@ export function GPSTrackingMap() {
             return (
               <button
                 key={s}
-                onClick={() =>
-                  setStatusFilter(statusFilter === s ? 'all' : s)
-                }
+                onClick={() => setStatusFilter(statusFilter === s ? 'all' : s)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                   isSelected
-                    ? STATUS_SELECTED[s] ?? 'ring-2 ring-gray-400 bg-gray-100 text-gray-800'
+                    ? STATUS_SELECTED[s] ??
+                      'ring-2 ring-gray-400 bg-gray-100 text-gray-800'
                     : STATUS_RING[s]
-                      ? STATUS_RING[s].replace('ring-', 'hover:ring-1 hover:ring-') + ' bg-white border border-gray-200'
+                      ? STATUS_RING[s].replace(
+                          'ring-',
+                          'hover:ring-1 hover:ring-'
+                        ) + ' bg-white border border-gray-200'
                       : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
                 }`}
               >
@@ -567,10 +710,8 @@ export function GPSTrackingMap() {
             )
           })}
 
-          {/* Divider */}
           <div className="w-px h-6 bg-gray-200 mx-1" />
 
-          {/* Type filter pills */}
           {uniqueTypes.map((t) => {
             const count = allGpsUnits.filter((u) => u.trailerType === t).length
             if (count === 0) return null
@@ -578,9 +719,7 @@ export function GPSTrackingMap() {
             return (
               <button
                 key={t}
-                onClick={() =>
-                  setTypeFilter(typeFilter === t ? 'all' : t)
-                }
+                onClick={() => setTypeFilter(typeFilter === t ? 'all' : t)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                   isSelected
                     ? 'ring-2 ring-brand-blue bg-blue-50 text-brand-blue'
@@ -594,10 +733,9 @@ export function GPSTrackingMap() {
         </div>
       </div>
 
-      {/* Customer search + map controls row */}
-      <div className="flex items-center gap-3">
-        {/* Customer search */}
-        <div className="relative flex-1 max-w-xs">
+      {/* Toolbar: customer search + view presets + map controls */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px] max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="text"
@@ -664,7 +802,45 @@ export function GPSTrackingMap() {
           </span>
         )}
 
-        <div className="ml-auto flex items-center gap-2">
+        {/* View presets */}
+        <div className="ml-auto flex items-center gap-1.5 flex-wrap">
+          <span className="text-xs text-gray-400 mr-1">View:</span>
+          <button
+            onClick={() =>
+              fitToUnits(hasActiveFilters ? filteredUnits : allGpsUnits)
+            }
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-brand-blue/10 text-brand-blue hover:bg-brand-blue/20 transition-colors"
+            title="Fit map to currently displayed units"
+          >
+            <Maximize2 className="h-3.5 w-3.5" /> Fit all
+          </button>
+          <button
+            onClick={() =>
+              mapRef.current?.flyTo({ ...VIEW_PRESETS.us, duration: 700 })
+            }
+            className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            US
+          </button>
+          <button
+            onClick={() =>
+              mapRef.current?.flyTo({ ...VIEW_PRESETS.tx, duration: 700 })
+            }
+            className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            Texas
+          </button>
+          <button
+            onClick={() =>
+              mapRef.current?.flyTo({ ...VIEW_PRESETS.yard, duration: 700 })
+            }
+            className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            Yard
+          </button>
+
+          <div className="w-px h-6 bg-gray-200 mx-1" />
+
           <button
             onClick={() =>
               setMapStyle((s) => (s === 'light' ? 'satellite' : 'light'))
@@ -694,18 +870,19 @@ export function GPSTrackingMap() {
         </div>
       </div>
 
-      {/* Map */}
-      <div className="rounded-xl border bg-white overflow-hidden shadow-sm">
-        <div
-          ref={mapContainer}
-          className="w-full"
-          style={{ height: '540px' }}
-        />
+      {/* Map + minimap overlay + counter */}
+      <div className="relative rounded-xl border bg-white overflow-hidden shadow-sm">
+        <div ref={mapContainer} className="w-full" style={{ height: '560px' }} />
+        {mapReady && mapRef.current && (
+          <MapMinimap mainMap={mapRef.current} units={allGpsUnits} />
+        )}
+        <div className="absolute top-2 left-2 z-10 bg-white/90 backdrop-blur rounded-md px-2.5 py-1 text-[11px] font-medium text-gray-700 shadow-sm pointer-events-none">
+          {filteredUnits.length} unit{filteredUnits.length === 1 ? '' : 's'} on map
+        </div>
       </div>
 
-      {/* Two-column layout: Unit list + Idle units */}
+      {/* Two-column: filtered units + idle units */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Left column: Unit list */}
         {filteredUnits.length > 0 && (
           <div className="rounded-xl border bg-white overflow-hidden">
             <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
@@ -807,10 +984,168 @@ export function GPSTrackingMap() {
           </div>
         )}
 
-        {/* Right column: Idle units (no movement > 24hrs) */}
         <IdleUnitsTable units={allGpsUnits} />
       </div>
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Minimap — locked overview map with viewport indicator rectangle
+// ---------------------------------------------------------------------------
+
+function MapMinimap({
+  mainMap,
+  units,
+}: {
+  mainMap: mapboxgl.Map
+  units: GPSUnit[]
+}) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const minimapRef = useRef<mapboxgl.Map | null>(null)
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    if (!containerRef.current) return
+    const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN
+    if (!token) return
+
+    mapboxgl.accessToken = token
+
+    const minimap = new mapboxgl.Map({
+      container: containerRef.current,
+      style: 'mapbox://styles/mapbox/light-v11',
+      projection: 'mercator',
+      center: VIEW_PRESETS.us.center,
+      zoom: 2.6,
+      interactive: false,
+      attributionControl: false,
+    })
+
+    minimap.on('load', () => {
+      setReady(true)
+      minimap.resize()
+    })
+    minimapRef.current = minimap
+
+    return () => {
+      minimap.remove()
+      minimapRef.current = null
+      setReady(false)
+    }
+  }, [])
+
+  // Push unit dots onto the minimap.
+  useEffect(() => {
+    const minimap = minimapRef.current
+    if (!minimap || !ready) return
+
+    const data: GeoJSON.FeatureCollection = {
+      type: 'FeatureCollection',
+      features: units
+        .filter((u) => u.latitude !== null && u.longitude !== null)
+        .map((u) => ({
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [u.longitude!, u.latitude!],
+          },
+          properties: {},
+        })),
+    }
+
+    const existing = minimap.getSource('mini-units') as
+      | mapboxgl.GeoJSONSource
+      | undefined
+    if (existing) {
+      existing.setData(data)
+    } else {
+      minimap.addSource('mini-units', { type: 'geojson', data })
+      minimap.addLayer({
+        id: 'mini-units-circles',
+        type: 'circle',
+        source: 'mini-units',
+        paint: {
+          'circle-radius': 2.4,
+          'circle-color': '#ee5519',
+          'circle-stroke-width': 0.5,
+          'circle-stroke-color': '#fff',
+        },
+      })
+    }
+  }, [units, ready])
+
+  // Mirror main map's viewport as a translucent rectangle.
+  useEffect(() => {
+    const minimap = minimapRef.current
+    if (!minimap || !ready) return
+
+    const update = () => {
+      const bounds = mainMap.getBounds()
+      if (!bounds) return
+      const sw = bounds.getSouthWest()
+      const ne = bounds.getNorthEast()
+
+      const data: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            geometry: {
+              type: 'Polygon',
+              coordinates: [
+                [
+                  [sw.lng, sw.lat],
+                  [ne.lng, sw.lat],
+                  [ne.lng, ne.lat],
+                  [sw.lng, ne.lat],
+                  [sw.lng, sw.lat],
+                ],
+              ],
+            },
+            properties: {},
+          },
+        ],
+      }
+
+      const existing = minimap.getSource('mini-viewport') as
+        | mapboxgl.GeoJSONSource
+        | undefined
+      if (existing) {
+        existing.setData(data)
+      } else {
+        minimap.addSource('mini-viewport', { type: 'geojson', data })
+        minimap.addLayer({
+          id: 'mini-viewport-fill',
+          type: 'fill',
+          source: 'mini-viewport',
+          paint: { 'fill-color': '#35668d', 'fill-opacity': 0.18 },
+        })
+        minimap.addLayer({
+          id: 'mini-viewport-line',
+          type: 'line',
+          source: 'mini-viewport',
+          paint: { 'line-color': '#35668d', 'line-width': 1.5 },
+        })
+      }
+    }
+
+    update()
+    mainMap.on('move', update)
+    mainMap.on('zoom', update)
+
+    return () => {
+      mainMap.off('move', update)
+      mainMap.off('zoom', update)
+    }
+  }, [mainMap, ready])
+
+  return (
+    <div
+      ref={containerRef}
+      className="absolute bottom-3 left-3 w-44 h-28 rounded-lg border-2 border-white shadow-lg overflow-hidden z-10 pointer-events-none"
+      aria-label="Map overview"
+    />
   )
 }
 
@@ -832,7 +1167,6 @@ function IdleUnitsTable({ units }: { units: GPSUnit[] }) {
 
   const idleUnits = units
     .filter((u) => {
-      // Use lastGpsTime if available, otherwise fall back to updatedAt
       const refTime = u.lastGpsTime ?? u.updatedAt
       if (!refTime) return false
       const gpsTime = new Date(refTime).getTime()
@@ -854,7 +1188,9 @@ function IdleUnitsTable({ units }: { units: GPSUnit[] }) {
         <h3 className="font-semibold text-gray-900 text-sm">
           Idle Units ({idleUnits.length})
         </h3>
-        <span className="text-xs text-gray-500 ml-auto">No movement &gt;24h</span>
+        <span className="text-xs text-gray-500 ml-auto">
+          No movement &gt;24h
+        </span>
       </div>
       <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
         {idleUnits.length === 0 ? (
