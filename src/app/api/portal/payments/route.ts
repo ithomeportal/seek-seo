@@ -3,13 +3,10 @@ import { query } from '@/lib/db'
 import { qbQuery } from '@/lib/qb-db'
 import { readPortalSession } from '@/lib/portal-auth'
 
-interface QBInvoiceRow {
-  doc_number: string | null
+interface QBPaymentRow {
   txn_date: string | null
-  due_date: string | null
   total_amt: string | null
-  balance: string | null
-  status: string | null
+  payment_method: string | null
 }
 
 export async function GET() {
@@ -35,31 +32,22 @@ export async function GET() {
   }
 
   try {
-    const result = await qbQuery<QBInvoiceRow>(
-      `SELECT doc_number, txn_date, due_date, total_amt, balance, status
-         FROM qb_invoices
+    const result = await qbQuery<QBPaymentRow>(
+      `SELECT txn_date, total_amt, payment_method
+         FROM qb_payments
         WHERE LOWER(customer_name) = LOWER($1)
         ORDER BY txn_date DESC NULLS LAST
         LIMIT 200`,
       [qbDisplayName]
     )
 
-    const invoices = result.rows.map((r) => {
-      const total = parseFloat(r.total_amt ?? '0') || 0
-      const balance = parseFloat(r.balance ?? '0') || 0
-      return {
-        docNumber: r.doc_number ?? '',
-        txnDate: r.txn_date,
-        dueDate: r.due_date,
-        totalAmount: total,
-        balance,
-        amountPaid: Math.max(0, total - balance),
-        status: balance > 0 ? 'open' : 'paid',
-        qbStatus: r.status,
-      }
-    })
+    const payments = result.rows.map((r) => ({
+      txnDate: r.txn_date,
+      amount: parseFloat(r.total_amt ?? '0') || 0,
+      paymentMethod: r.payment_method,
+    }))
 
-    return NextResponse.json({ success: true, data: invoices })
+    return NextResponse.json({ success: true, data: payments })
   } catch {
     return NextResponse.json({ success: true, data: [] })
   }
