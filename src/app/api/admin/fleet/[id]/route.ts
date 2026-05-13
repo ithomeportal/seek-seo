@@ -21,7 +21,15 @@ const updateUnitSchema = z.object({
   purchasingCost: z.number().min(0).nullable().optional(),
   tireType: z.string().nullable().optional(),
   status: z
-    .enum(['available', 'rented', 'damaged', 'for_sale', 'maintenance', 'sold'])
+    .enum([
+      'available',
+      'rented',
+      'damaged',
+      'for_sale',
+      'maintenance',
+      'sold',
+      'make_ready',
+    ])
     .optional(),
   rentedTo: z.string().nullable().optional(),
   rentedToContact: z.string().nullable().optional(),
@@ -30,6 +38,9 @@ const updateUnitSchema = z.object({
   pendingDeposit: z.number().min(0).nullable().optional(),
   rentStartDate: z.string().nullable().optional(),
   rentDueDay: z.string().nullable().optional(),
+  rentEndDate: z.string().nullable().optional(),
+  plateNumber: z.string().max(32).nullable().optional(),
+  plateExpiration: z.string().nullable().optional(),
   skybitzDeviceId: z.string().nullable().optional(),
   imageUrl: z.string().url().nullable().optional().or(z.literal('')),
   notes: z.string().nullable().optional(),
@@ -86,6 +97,9 @@ export async function PUT(
       pendingDeposit: 'pending_deposit',
       rentStartDate: 'rent_start_date',
       rentDueDay: 'rent_due_day',
+      rentEndDate: 'rent_end_date',
+      plateNumber: 'plate_number',
+      plateExpiration: 'plate_expiration',
       skybitzDeviceId: 'skybitz_device_id',
       imageUrl: 'image_url',
       notes: 'notes',

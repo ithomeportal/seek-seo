@@ -58,6 +58,7 @@ export async function GET() {
           'depositTotal', deposit_total,
           'pendingDeposit', pending_deposit,
           'rentStartDate', rent_start_date,
+          'rentEndDate', rent_end_date,
           'rentDueDay', rent_due_day,
           'vin', vin
         ) ORDER BY unit_number)::text AS unit_details
@@ -79,6 +80,7 @@ export async function GET() {
         depositTotal: number | null
         pendingDeposit: number | null
         rentStartDate: string | null
+        rentEndDate: string | null
         rentDueDay: string | null
         vin: string | null
       }>
@@ -110,6 +112,7 @@ export async function GET() {
           'depositTotal', deposit_total,
           'pendingDeposit', pending_deposit,
           'rentStartDate', rent_start_date,
+          'rentEndDate', rent_end_date,
           'rentDueDay', rent_due_day,
           'vin', vin
         ) ORDER BY unit_number)::text AS unit_details

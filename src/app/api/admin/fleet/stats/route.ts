@@ -15,6 +15,7 @@ export async function GET() {
     let rented = 0
     let damaged = 0
     let maintenance = 0
+    let makeReady = 0
     let forSale = 0
     let sold = 0
     let expectedMonthlyRevenue = 0
@@ -37,6 +38,10 @@ export async function GET() {
           break
         case 'maintenance':
           maintenance = count
+          total += count
+          break
+        case 'make_ready':
+          makeReady = count
           total += count
           break
         case 'for_sale':
@@ -118,6 +123,7 @@ export async function GET() {
         rented,
         damaged,
         maintenance,
+        makeReady,
         forSale,
         sold,
         expectedMonthlyRevenue,

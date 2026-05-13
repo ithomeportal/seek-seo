@@ -60,6 +60,7 @@ interface FleetStats {
   rented: number
   damaged: number
   maintenance: number
+  makeReady: number
   forSale: number
   sold: number
   expectedMonthlyRevenue: number
@@ -89,6 +90,9 @@ interface FleetUnit {
   pendingDeposit: string | null
   rentStartDate: string | null
   rentDueDay: string | null
+  rentEndDate: string | null
+  plateNumber: string | null
+  plateExpiration: string | null
   skybitzDeviceId: string | null
   lastLatitude: string | null
   lastLongitude: string | null
@@ -164,6 +168,7 @@ interface CustomerUnit {
   depositTotal: number | null
   pendingDeposit: number | null
   rentStartDate: string | null
+  rentEndDate: string | null
   rentDueDay: string | null
   vin: string | null
 }
@@ -272,7 +277,18 @@ const STATUS_COLORS: Record<string, string> = {
   damaged: 'bg-red-100 text-red-800',
   for_sale: 'bg-purple-100 text-purple-800',
   maintenance: 'bg-yellow-100 text-yellow-800',
+  make_ready: 'bg-orange-100 text-orange-800',
   sold: 'bg-gray-200 text-gray-600',
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  available: 'Available',
+  rented: 'Rented',
+  damaged: 'Damaged',
+  for_sale: 'For Sale',
+  maintenance: 'Maintenance',
+  make_ready: 'Make Ready',
+  sold: 'Sold',
 }
 
 const INQUIRY_TYPE_COLORS: Record<string, string> = {
@@ -301,6 +317,31 @@ function formatDate(iso: string): string {
     day: 'numeric',
     year: 'numeric',
   })
+}
+
+function daysUntil(iso: string | null): number | null {
+  if (!iso) return null
+  const target = new Date(iso)
+  if (Number.isNaN(target.getTime())) return null
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  target.setHours(0, 0, 0, 0)
+  return Math.round((target.getTime() - today.getTime()) / 86_400_000)
+}
+
+function renderDaysRemaining(iso: string | null) {
+  const d = daysUntil(iso)
+  if (d === null) return <span className="text-gray-300">—</span>
+  if (d < 0) {
+    return <span className="text-red-600 font-medium">Expired {Math.abs(d)}d ago</span>
+  }
+  if (d <= 30) {
+    return <span className="text-red-600 font-medium">{d}d</span>
+  }
+  if (d <= 90) {
+    return <span className="text-amber-600">{d}d</span>
+  }
+  return <span className="text-gray-500">{d}d</span>
 }
 
 function statusLabel(s: string): string {
@@ -387,6 +428,8 @@ function DashboardContent() {
     skybitzDeviceId: '',
     imageUrl: '',
     notes: '',
+    plateNumber: '',
+    plateExpiration: '',
   })
 
   // Edit Unit modal
@@ -410,10 +453,13 @@ function DashboardContent() {
     depositTotal: '',
     pendingDeposit: '',
     rentStartDate: '',
+    rentEndDate: '',
     rentDueDay: '',
     skybitzDeviceId: '',
     imageUrl: '',
     notes: '',
+    plateNumber: '',
+    plateExpiration: '',
   })
 
   // Sort state (must be before guard/early-return)
@@ -590,6 +636,8 @@ function DashboardContent() {
         skybitzDeviceId: addUnitForm.skybitzDeviceId.trim() || null,
         imageUrl: addUnitForm.imageUrl.trim() || null,
         notes: addUnitForm.notes.trim() || null,
+        plateNumber: addUnitForm.plateNumber.trim() || null,
+        plateExpiration: addUnitForm.plateExpiration || null,
       }
 
       const res = await fetch('/api/admin/fleet', {
@@ -619,6 +667,8 @@ function DashboardContent() {
         skybitzDeviceId: '',
         imageUrl: '',
         notes: '',
+        plateNumber: '',
+        plateExpiration: '',
       })
 
       // Refresh fleet data
@@ -672,10 +722,15 @@ function DashboardContent() {
       rentStartDate: unit.rentStartDate
         ? unit.rentStartDate.split('T')[0]
         : '',
+      rentEndDate: unit.rentEndDate ? unit.rentEndDate.split('T')[0] : '',
       rentDueDay: unit.rentDueDay ?? '',
       skybitzDeviceId: unit.skybitzDeviceId ?? '',
       imageUrl: unit.imageUrl ?? '',
       notes: unit.notes ?? '',
+      plateNumber: unit.plateNumber ?? '',
+      plateExpiration: unit.plateExpiration
+        ? unit.plateExpiration.split('T')[0]
+        : '',
     })
     setEditUnit(unit)
     fetchUnitDocs(unit.id)
@@ -710,10 +765,13 @@ function DashboardContent() {
           ? parseFloat(editUnitForm.pendingDeposit)
           : null,
         rentStartDate: editUnitForm.rentStartDate || null,
+        rentEndDate: editUnitForm.rentEndDate || null,
         rentDueDay: editUnitForm.rentDueDay.trim() || null,
         skybitzDeviceId: editUnitForm.skybitzDeviceId.trim() || null,
         imageUrl: editUnitForm.imageUrl.trim() || null,
         notes: editUnitForm.notes.trim() || null,
+        plateNumber: editUnitForm.plateNumber.trim() || null,
+        plateExpiration: editUnitForm.plateExpiration || null,
       }
 
       const res = await fetch(`/api/admin/fleet/${editUnit.id}`, {
@@ -818,6 +876,7 @@ function DashboardContent() {
       { label: 'Rented', value: stats.rented, color: 'bg-blue-50 text-blue-700' },
       { label: 'Damaged', value: stats.damaged, color: 'bg-red-50 text-red-700' },
       { label: 'Maint.', value: stats.maintenance, color: 'bg-yellow-50 text-yellow-700' },
+      ...(stats.makeReady > 0 ? [{ label: 'Make Ready', value: stats.makeReady, color: 'bg-orange-50 text-orange-700' }] : []),
       ...(stats.sold > 0 ? [{ label: 'Sold', value: stats.sold, color: 'bg-gray-100 text-gray-500' }] : []),
     ]
 
@@ -927,6 +986,7 @@ function DashboardContent() {
     const activeFleet = fleet.filter((u) => u.status !== 'sold')
     const rentedUnits = activeFleet.filter((u) => u.status === 'rented')
     const availableUnits = activeFleet.filter((u) => u.status === 'available')
+    const makeReadyUnits = activeFleet.filter((u) => u.status === 'make_ready')
     const uniqueTypes = new Set(activeFleet.map((u) => u.trailerType))
     const uniqueCompanies = new Set(rentedUnits.map((u) => u.rentedTo).filter(Boolean))
     const totalMonthlyRevenue = rentedUnits.reduce(
@@ -987,6 +1047,12 @@ function DashboardContent() {
               <p className="text-[10px] font-semibold uppercase opacity-70 leading-tight">Rented</p>
               <p className="text-lg font-bold leading-tight">{rentedUnits.length}</p>
             </div>
+            {makeReadyUnits.length > 0 && (
+              <div className="rounded-lg px-2.5 py-1.5 bg-orange-100 text-orange-800">
+                <p className="text-[10px] font-semibold uppercase opacity-70 leading-tight">Make Ready</p>
+                <p className="text-lg font-bold leading-tight">{makeReadyUnits.length}</p>
+              </div>
+            )}
             <div className="rounded-lg px-2.5 py-1.5 bg-teal-50 text-teal-700">
               <p className="text-[10px] font-semibold uppercase opacity-70 leading-tight">Companies</p>
               <p className="text-lg font-bold leading-tight">{uniqueCompanies.size}</p>
@@ -1075,6 +1141,7 @@ function DashboardContent() {
             <option value="rented">Rented</option>
             <option value="damaged">Damaged</option>
             <option value="maintenance">Maintenance</option>
+            <option value="make_ready">Make Ready</option>
           </select>
           <button
             onClick={() => setShowHistoricalSales(!showHistoricalSales)}
@@ -1282,6 +1349,7 @@ function DashboardContent() {
                       <option value="rented">Rented</option>
                       <option value="damaged">Damaged</option>
                       <option value="maintenance">Maintenance</option>
+                      <option value="make_ready">Make Ready</option>
                       <option value="sold">Sold</option>
                     </select>
                   </div>
@@ -1298,6 +1366,39 @@ function DashboardContent() {
                       }
                       className={inputClass}
                       placeholder="GPS tracker ID"
+                    />
+                  </div>
+                </div>
+
+                {/* Row 5b: Plate + Plate Expiration */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelClass}>Plate</label>
+                    <input
+                      type="text"
+                      value={addUnitForm.plateNumber}
+                      onChange={(e) =>
+                        setAddUnitForm({
+                          ...addUnitForm,
+                          plateNumber: e.target.value,
+                        })
+                      }
+                      className={inputClass}
+                      placeholder="e.g. 566-0275"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Plate Expiration</label>
+                    <input
+                      type="date"
+                      value={addUnitForm.plateExpiration}
+                      onChange={(e) =>
+                        setAddUnitForm({
+                          ...addUnitForm,
+                          plateExpiration: e.target.value,
+                        })
+                      }
+                      className={inputClass}
                     />
                   </div>
                 </div>
@@ -1482,6 +1583,7 @@ function DashboardContent() {
                       <option value="rented">Rented</option>
                       <option value="damaged">Damaged</option>
                       <option value="maintenance">Maintenance</option>
+                      <option value="make_ready">Make Ready</option>
                       <option value="sold">Sold</option>
                     </select>
                   </div>
@@ -1571,7 +1673,7 @@ function DashboardContent() {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div className="grid grid-cols-3 gap-4 mt-4">
                     <div>
                       <label className={labelClass}>Rent Start Date</label>
                       <input
@@ -1581,6 +1683,20 @@ function DashboardContent() {
                           setEditUnitForm({
                             ...editUnitForm,
                             rentStartDate: e.target.value,
+                          })
+                        }
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Rent End Date</label>
+                      <input
+                        type="date"
+                        value={editUnitForm.rentEndDate}
+                        onChange={(e) =>
+                          setEditUnitForm({
+                            ...editUnitForm,
+                            rentEndDate: e.target.value,
                           })
                         }
                         className={inputClass}
@@ -1599,6 +1715,37 @@ function DashboardContent() {
                         }
                         className={inputClass}
                         placeholder="e.g. 1st, 15th"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div>
+                      <label className={labelClass}>Plate</label>
+                      <input
+                        type="text"
+                        value={editUnitForm.plateNumber}
+                        onChange={(e) =>
+                          setEditUnitForm({
+                            ...editUnitForm,
+                            plateNumber: e.target.value,
+                          })
+                        }
+                        className={inputClass}
+                        placeholder="e.g. 566-0275"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Plate Expiration</label>
+                      <input
+                        type="date"
+                        value={editUnitForm.plateExpiration}
+                        onChange={(e) =>
+                          setEditUnitForm({
+                            ...editUnitForm,
+                            plateExpiration: e.target.value,
+                          })
+                        }
+                        className={inputClass}
                       />
                     </div>
                   </div>
@@ -1771,6 +1918,9 @@ function DashboardContent() {
                 {renderSortHeader("Type", "trailerType")}
                 {renderSortHeader("Year/Make/Model", "year")}
                 {renderSortHeader("VIN", "vin")}
+                {renderSortHeader("Plate", "plateNumber")}
+                {renderSortHeader("Plate Exp.", "plateExpiration")}
+                {renderSortHeader("Days Left", "plateDaysLeft", "right")}
                 {renderSortHeader("Status", "status")}
                 {renderSortHeader("Rented To", "rentedTo")}
                 {renderSortHeader("Rate", "rentalRate", "right")}
@@ -1785,6 +1935,9 @@ function DashboardContent() {
                   case 'trailerType': return u.trailerType
                   case 'year': return u.year
                   case 'vin': return u.vin
+                  case 'plateNumber': return u.plateNumber
+                  case 'plateExpiration': return u.plateExpiration
+                  case 'plateDaysLeft': return daysUntil(u.plateExpiration)
                   case 'status': return u.status
                   case 'rentedTo': return u.rentedTo
                   case 'rentalRate': return u.rentalRate ? parseFloat(u.rentalRate) : null
@@ -1801,8 +1954,17 @@ function DashboardContent() {
                     {[unit.year, unit.make, unit.model].filter(Boolean).join(' ') || '—'}
                   </td>
                   <td className="px-2.5 py-1.5 text-gray-400 font-mono text-xs">{unit.vin ?? '—'}</td>
+                  <td className="px-2.5 py-1.5 text-gray-700 font-mono text-xs whitespace-nowrap">
+                    {unit.plateNumber ?? <span className="text-gray-300">—</span>}
+                  </td>
+                  <td className="px-2.5 py-1.5 text-gray-600 whitespace-nowrap">
+                    {unit.plateExpiration ? formatDate(unit.plateExpiration) : <span className="text-gray-300">—</span>}
+                  </td>
+                  <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap">
+                    {renderDaysRemaining(unit.plateExpiration)}
+                  </td>
                   <td className="px-2.5 py-1.5">
-                    {renderBadge(unit.status, STATUS_COLORS[unit.status] ?? 'bg-gray-100 text-gray-800')}
+                    {renderBadge(STATUS_LABELS[unit.status] ?? unit.status, STATUS_COLORS[unit.status] ?? 'bg-gray-100 text-gray-800')}
                   </td>
                   <td className="px-2.5 py-1.5">
                     {unit.rentedTo ? (() => {
@@ -1847,7 +2009,7 @@ function DashboardContent() {
                 </tr>
               ))}
               {filteredFleet.length === 0 && (
-                <tr><td colSpan={9} className="px-3 py-8 text-center text-gray-400">No units match your filters.</td></tr>
+                <tr><td colSpan={12} className="px-3 py-8 text-center text-gray-400">No units match your filters.</td></tr>
               )}
             </tbody>
           </table>
@@ -2155,6 +2317,7 @@ function DashboardContent() {
                               <th className="px-2 py-1 text-right font-medium text-gray-500">Deposit</th>
                               <th className="px-2 py-1 text-right font-medium text-gray-500">Pending</th>
                               <th className="px-2 py-1 text-left font-medium text-gray-500">Start</th>
+                              <th className="px-2 py-1 text-left font-medium text-gray-500">End Date</th>
                               <th className="px-2 py-1 text-left font-medium text-gray-500">Due</th>
                             </tr>
                           </thead>
@@ -2170,6 +2333,7 @@ function DashboardContent() {
                                   {unit.pendingDeposit ? <span className="text-orange-600 font-medium">{formatCurrency(unit.pendingDeposit)}</span> : <span className="text-gray-300">—</span>}
                                 </td>
                                 <td className="px-2 py-1 text-gray-400 text-xs">{unit.rentStartDate ? formatDate(unit.rentStartDate) : '—'}</td>
+                                <td className="px-2 py-1 text-gray-400 text-xs">{unit.rentEndDate ? formatDate(unit.rentEndDate) : '—'}</td>
                                 <td className="px-2 py-1 text-gray-400 text-xs">{unit.rentDueDay ?? '—'}</td>
                               </tr>
                             ))}
@@ -2180,7 +2344,7 @@ function DashboardContent() {
                               <td className="px-2 py-1 text-right text-gray-900">{formatCurrency(customer.totalMonthlyRent)}</td>
                               <td className="px-2 py-1 text-right text-gray-900">{formatCurrency(customer.totalDeposits)}</td>
                               <td className="px-2 py-1 text-right text-orange-600">{customer.totalPendingDeposits > 0 ? formatCurrency(customer.totalPendingDeposits) : '—'}</td>
-                              <td colSpan={2} />
+                              <td colSpan={3} />
                             </tr>
                           </tfoot>
                         </table>

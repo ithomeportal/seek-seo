@@ -37,6 +37,9 @@ export async function GET() {
       pendingDeposit: row.pending_deposit,
       rentStartDate: row.rent_start_date,
       rentDueDay: row.rent_due_day,
+      rentEndDate: row.rent_end_date,
+      plateNumber: row.plate_number,
+      plateExpiration: row.plate_expiration,
       skybitzDeviceId: row.skybitz_device_id,
       lastLatitude: row.last_latitude,
       lastLongitude: row.last_longitude,
@@ -72,8 +75,19 @@ const createUnitSchema = z.object({
   purchasingCost: z.number().min(0).nullable().optional(),
   tireType: z.string().nullable().optional(),
   status: z
-    .enum(['available', 'rented', 'damaged', 'for_sale', 'maintenance', 'sold'])
+    .enum([
+      'available',
+      'rented',
+      'damaged',
+      'for_sale',
+      'maintenance',
+      'sold',
+      'make_ready',
+    ])
     .default('available'),
+  plateNumber: z.string().max(32).nullable().optional(),
+  plateExpiration: z.string().nullable().optional(),
+  rentEndDate: z.string().nullable().optional(),
   skybitzDeviceId: z.string().nullable().optional(),
   imageUrl: z.string().url().nullable().optional().or(z.literal('')),
   notes: z.string().nullable().optional(),
@@ -100,8 +114,12 @@ export async function POST(request: NextRequest) {
       `INSERT INTO fleet_units (
         unit_number, trailer_type, year, make, model, vin,
         purchasing_cost, tire_type, status, skybitz_device_id,
-        image_url, notes, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
+        image_url, notes, plate_number, plate_expiration, rent_end_date,
+        created_at, updated_at
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+        NOW(), NOW()
+      )
       RETURNING id`,
       [
         d.unitNumber,
@@ -116,6 +134,9 @@ export async function POST(request: NextRequest) {
         d.skybitzDeviceId || null,
         d.imageUrl || null,
         d.notes || null,
+        d.plateNumber || null,
+        d.plateExpiration || null,
+        d.rentEndDate || null,
       ]
     )
 
