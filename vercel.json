@@ -38,5 +38,11 @@
     { "source": "/wp-includes/:path*", "destination": "/", "permanent": true },
     { "source": "/xmlrpc.php", "destination": "/", "permanent": true },
     { "source": "/wp-json/:path*", "destination": "/", "permanent": true }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/onboarding-reminders",
+      "schedule": "0 * * * *"
+    }
   ]
 }

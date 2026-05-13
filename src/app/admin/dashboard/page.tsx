@@ -34,6 +34,7 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import { GPSTrackingMap } from '@/components/admin/GPSTrackingMap'
+import OnboardingApplicationsTab from '@/components/admin/OnboardingApplicationsTab'
 import { UploadButton } from '@/lib/uploadthing'
 
 // ---------------------------------------------------------------------------
@@ -247,7 +248,7 @@ interface QBPaymentSummary {
 // Constants
 // ---------------------------------------------------------------------------
 
-type TabKey = 'overview' | 'fleet' | 'customers' | 'invoices' | 'payments' | 'gps' | 'inquiries' | 'applications' | 'for_sale' | 'reports'
+type TabKey = 'overview' | 'fleet' | 'customers' | 'invoices' | 'payments' | 'gps' | 'inquiries' | 'applications' | 'onboarding' | 'for_sale' | 'reports'
 
 const TABS: { key: TabKey; label: string; icon: typeof BarChart3 }[] = [
   { key: 'overview', label: 'Overview', icon: BarChart3 },
@@ -258,6 +259,7 @@ const TABS: { key: TabKey; label: string; icon: typeof BarChart3 }[] = [
   { key: 'gps', label: 'GPS Tracking', icon: MapPin },
   { key: 'inquiries', label: 'Inquiries', icon: ClipboardList },
   { key: 'applications', label: 'Applications', icon: FileText },
+  { key: 'onboarding', label: 'Onboarding', icon: ClipboardList },
   { key: 'for_sale', label: 'For Sale Mgmt', icon: DollarSign },
   { key: 'reports', label: 'Reports', icon: FileText },
 ]
@@ -360,6 +362,7 @@ function DashboardContent() {
 
   // Auth
   const [authenticated, setAuthenticated] = useState(false)
+  const [adminEmail, setAdminEmail] = useState('admin')
 
   // Sidebar
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -478,6 +481,7 @@ function DashboardContent() {
       return
     }
     setAuthenticated(true)
+    setAdminEmail(sessionStorage.getItem('seek_admin_email') ?? 'admin')
   }, [router])
 
   // ------ Data fetching ------
@@ -2914,6 +2918,10 @@ function DashboardContent() {
     )
   }
 
+  function renderOnboarding() {
+    return <OnboardingApplicationsTab adminEmail={adminEmail} />
+  }
+
   const tabContent: Record<TabKey, () => React.JSX.Element> = {
     overview: renderOverview,
     fleet: renderFleetMaster,
@@ -2923,6 +2931,7 @@ function DashboardContent() {
     gps: renderGPS,
     inquiries: renderInquiries,
     applications: renderApplications,
+    onboarding: renderOnboarding,
     for_sale: renderForSale,
     reports: renderReports,
   }

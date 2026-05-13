@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { COMPANY } from '@/lib/constants'
 import { cn } from '@/lib/utils'
+import OnboardingFlow from '@/components/portal/OnboardingFlow'
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                             */
@@ -688,22 +689,9 @@ function Dashboard({ me, onLogout }: { me: MeResponse; onLogout: () => void }) {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8">
-        {!me.hasExistingAccount && (
-          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 p-4 text-sm">
-            <p className="font-semibold mb-1">Welcome to the SEEK Customer Portal</p>
-            <p>
-              We don&apos;t have a rental record linked to this email yet. Once SEEK
-              links your account, your rentals, invoices, and payment history will
-              appear here automatically. Contact us at{' '}
-              <a href={COMPANY.phoneHref} className="font-medium underline">
-                {COMPANY.phone}
-              </a>{' '}
-              to get started.
-            </p>
-          </div>
-        )}
-
-        {loading ? (
+        {!me.hasExistingAccount ? (
+          <OnboardingFlow me={{ email: me.email, customer: null }} />
+        ) : loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-orange border-t-transparent" />
           </div>

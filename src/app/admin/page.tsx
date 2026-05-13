@@ -66,6 +66,7 @@ export default function AdminLoginPage() {
 
       if (json.valid) {
         sessionStorage.setItem('seek_admin_auth', 'true')
+        sessionStorage.setItem('seek_admin_email', email.trim().toLowerCase())
         router.push('/admin/dashboard')
       } else {
         setError('Invalid or expired code. Please try again.')
