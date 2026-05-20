@@ -35,6 +35,7 @@ import {
 } from 'lucide-react'
 import { GPSTrackingMap } from '@/components/admin/GPSTrackingMap'
 import OnboardingApplicationsTab from '@/components/admin/OnboardingApplicationsTab'
+import DepreciationTab from '@/components/admin/DepreciationTab'
 import { UploadButton } from '@/lib/uploadthing'
 
 // ---------------------------------------------------------------------------
@@ -62,6 +63,7 @@ interface FleetStats {
   damaged: number
   maintenance: number
   makeReady: number
+  returnInspection: number
   forSale: number
   sold: number
   expectedMonthlyRevenue: number
@@ -94,6 +96,10 @@ interface FleetUnit {
   rentEndDate: string | null
   plateNumber: string | null
   plateExpiration: string | null
+  soldDate: string | null
+  salePrice: string | null
+  saleBuyer: string | null
+  saleNotes: string | null
   skybitzDeviceId: string | null
   lastLatitude: string | null
   lastLongitude: string | null
@@ -248,7 +254,7 @@ interface QBPaymentSummary {
 // Constants
 // ---------------------------------------------------------------------------
 
-type TabKey = 'overview' | 'fleet' | 'customers' | 'invoices' | 'payments' | 'gps' | 'inquiries' | 'applications' | 'onboarding' | 'for_sale' | 'reports'
+type TabKey = 'overview' | 'fleet' | 'customers' | 'invoices' | 'payments' | 'gps' | 'inquiries' | 'applications' | 'onboarding' | 'for_sale' | 'depreciation' | 'reports'
 
 const TABS: { key: TabKey; label: string; icon: typeof BarChart3 }[] = [
   { key: 'overview', label: 'Overview', icon: BarChart3 },
@@ -261,6 +267,7 @@ const TABS: { key: TabKey; label: string; icon: typeof BarChart3 }[] = [
   { key: 'applications', label: 'Applications', icon: FileText },
   { key: 'onboarding', label: 'Onboarding', icon: ClipboardList },
   { key: 'for_sale', label: 'For Sale Mgmt', icon: DollarSign },
+  { key: 'depreciation', label: 'Depreciation', icon: BarChart3 },
   { key: 'reports', label: 'Reports', icon: FileText },
 ]
 
@@ -280,6 +287,7 @@ const STATUS_COLORS: Record<string, string> = {
   for_sale: 'bg-purple-100 text-purple-800',
   maintenance: 'bg-yellow-100 text-yellow-800',
   make_ready: 'bg-orange-100 text-orange-800',
+  return_inspection: 'bg-cyan-100 text-cyan-800',
   sold: 'bg-gray-200 text-gray-600',
 }
 
@@ -290,6 +298,7 @@ const STATUS_LABELS: Record<string, string> = {
   for_sale: 'For Sale',
   maintenance: 'Maintenance',
   make_ready: 'Make Ready',
+  return_inspection: 'Return/Inspection',
   sold: 'Sold',
 }
 
@@ -433,6 +442,10 @@ function DashboardContent() {
     notes: '',
     plateNumber: '',
     plateExpiration: '',
+    soldDate: '',
+    salePrice: '',
+    saleBuyer: '',
+    saleNotes: '',
   })
 
   // Edit Unit modal
@@ -463,6 +476,10 @@ function DashboardContent() {
     notes: '',
     plateNumber: '',
     plateExpiration: '',
+    soldDate: '',
+    salePrice: '',
+    saleBuyer: '',
+    saleNotes: '',
   })
 
   // Sort state (must be before guard/early-return)
@@ -642,6 +659,10 @@ function DashboardContent() {
         notes: addUnitForm.notes.trim() || null,
         plateNumber: addUnitForm.plateNumber.trim() || null,
         plateExpiration: addUnitForm.plateExpiration || null,
+        soldDate: addUnitForm.soldDate || null,
+        salePrice: addUnitForm.salePrice ? parseFloat(addUnitForm.salePrice) : null,
+        saleBuyer: addUnitForm.saleBuyer.trim() || null,
+        saleNotes: addUnitForm.saleNotes.trim() || null,
       }
 
       const res = await fetch('/api/admin/fleet', {
@@ -673,6 +694,10 @@ function DashboardContent() {
         notes: '',
         plateNumber: '',
         plateExpiration: '',
+        soldDate: '',
+        salePrice: '',
+        saleBuyer: '',
+        saleNotes: '',
       })
 
       // Refresh fleet data
@@ -735,6 +760,10 @@ function DashboardContent() {
       plateExpiration: unit.plateExpiration
         ? unit.plateExpiration.split('T')[0]
         : '',
+      soldDate: unit.soldDate ? unit.soldDate.split('T')[0] : '',
+      salePrice: unit.salePrice ?? '',
+      saleBuyer: unit.saleBuyer ?? '',
+      saleNotes: unit.saleNotes ?? '',
     })
     setEditUnit(unit)
     fetchUnitDocs(unit.id)
@@ -776,6 +805,10 @@ function DashboardContent() {
         notes: editUnitForm.notes.trim() || null,
         plateNumber: editUnitForm.plateNumber.trim() || null,
         plateExpiration: editUnitForm.plateExpiration || null,
+        soldDate: editUnitForm.soldDate || null,
+        salePrice: editUnitForm.salePrice ? parseFloat(editUnitForm.salePrice) : null,
+        saleBuyer: editUnitForm.saleBuyer.trim() || null,
+        saleNotes: editUnitForm.saleNotes.trim() || null,
       }
 
       const res = await fetch(`/api/admin/fleet/${editUnit.id}`, {
@@ -881,6 +914,7 @@ function DashboardContent() {
       { label: 'Damaged', value: stats.damaged, color: 'bg-red-50 text-red-700' },
       { label: 'Maint.', value: stats.maintenance, color: 'bg-yellow-50 text-yellow-700' },
       ...(stats.makeReady > 0 ? [{ label: 'Make Ready', value: stats.makeReady, color: 'bg-orange-50 text-orange-700' }] : []),
+      ...(stats.returnInspection > 0 ? [{ label: 'Return/Insp.', value: stats.returnInspection, color: 'bg-cyan-50 text-cyan-700' }] : []),
       ...(stats.sold > 0 ? [{ label: 'Sold', value: stats.sold, color: 'bg-gray-100 text-gray-500' }] : []),
     ]
 
@@ -991,6 +1025,7 @@ function DashboardContent() {
     const rentedUnits = activeFleet.filter((u) => u.status === 'rented')
     const availableUnits = activeFleet.filter((u) => u.status === 'available')
     const makeReadyUnits = activeFleet.filter((u) => u.status === 'make_ready')
+    const returnInspectionUnits = activeFleet.filter((u) => u.status === 'return_inspection')
     const uniqueTypes = new Set(activeFleet.map((u) => u.trailerType))
     const uniqueCompanies = new Set(rentedUnits.map((u) => u.rentedTo).filter(Boolean))
     const totalMonthlyRevenue = rentedUnits.reduce(
@@ -1057,6 +1092,12 @@ function DashboardContent() {
                 <p className="text-lg font-bold leading-tight">{makeReadyUnits.length}</p>
               </div>
             )}
+            {returnInspectionUnits.length > 0 && (
+              <div className="rounded-lg px-2.5 py-1.5 bg-cyan-100 text-cyan-800">
+                <p className="text-[10px] font-semibold uppercase opacity-70 leading-tight">Return/Insp.</p>
+                <p className="text-lg font-bold leading-tight">{returnInspectionUnits.length}</p>
+              </div>
+            )}
             <div className="rounded-lg px-2.5 py-1.5 bg-teal-50 text-teal-700">
               <p className="text-[10px] font-semibold uppercase opacity-70 leading-tight">Companies</p>
               <p className="text-lg font-bold leading-tight">{uniqueCompanies.size}</p>
@@ -1112,8 +1153,8 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* Filters — responsive: inline on desktop, wraps on mobile */}
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Filters — sticky on scroll so Bruno can keep filtering through long tables */}
+        <div className="sticky top-0 z-20 -mx-1 px-1 py-1.5 bg-white/95 backdrop-blur border-b border-gray-200 shadow-sm flex items-center gap-2 flex-wrap">
           <div className="relative flex-1 min-w-[180px] max-w-xs">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
             <input
@@ -1146,6 +1187,7 @@ function DashboardContent() {
             <option value="damaged">Damaged</option>
             <option value="maintenance">Maintenance</option>
             <option value="make_ready">Make Ready</option>
+            <option value="return_inspection">Return/Inspection</option>
           </select>
           <button
             onClick={() => setShowHistoricalSales(!showHistoricalSales)}
@@ -1354,6 +1396,7 @@ function DashboardContent() {
                       <option value="damaged">Damaged</option>
                       <option value="maintenance">Maintenance</option>
                       <option value="make_ready">Make Ready</option>
+                      <option value="return_inspection">Return/Inspection</option>
                       <option value="sold">Sold</option>
                     </select>
                   </div>
@@ -1392,7 +1435,7 @@ function DashboardContent() {
                     />
                   </div>
                   <div>
-                    <label className={labelClass}>Plate Expiration</label>
+                    <label className={labelClass}>Date Expiration</label>
                     <input
                       type="date"
                       value={addUnitForm.plateExpiration}
@@ -1406,6 +1449,55 @@ function DashboardContent() {
                     />
                   </div>
                 </div>
+
+                {/* Sale info — only shown when status indicates sale */}
+                {(addUnitForm.status === 'sold' || addUnitForm.status === 'for_sale') && (
+                  <div className="space-y-3 rounded border border-gray-200 bg-gray-50 p-3">
+                    <p className="text-xs font-semibold uppercase text-gray-500">Sale Information</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className={labelClass}>Sold Date</label>
+                        <input
+                          type="date"
+                          value={addUnitForm.soldDate}
+                          onChange={(e) => setAddUnitForm({ ...addUnitForm, soldDate: e.target.value })}
+                          className={inputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className={labelClass}>Sale Price</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={addUnitForm.salePrice}
+                          onChange={(e) => setAddUnitForm({ ...addUnitForm, salePrice: e.target.value })}
+                          className={inputClass}
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className={labelClass}>Buyer</label>
+                      <input
+                        type="text"
+                        value={addUnitForm.saleBuyer}
+                        onChange={(e) => setAddUnitForm({ ...addUnitForm, saleBuyer: e.target.value })}
+                        className={inputClass}
+                        placeholder="Buyer name"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Sale Notes</label>
+                      <textarea
+                        value={addUnitForm.saleNotes}
+                        onChange={(e) => setAddUnitForm({ ...addUnitForm, saleNotes: e.target.value })}
+                        className={inputClass}
+                        rows={2}
+                        placeholder="Net proceeds, fees, payment method, etc."
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* Row 6: Documents note */}
                 <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2">
@@ -1588,6 +1680,7 @@ function DashboardContent() {
                       <option value="damaged">Damaged</option>
                       <option value="maintenance">Maintenance</option>
                       <option value="make_ready">Make Ready</option>
+                      <option value="return_inspection">Return/Inspection</option>
                       <option value="sold">Sold</option>
                     </select>
                   </div>
@@ -1739,7 +1832,7 @@ function DashboardContent() {
                       />
                     </div>
                     <div>
-                      <label className={labelClass}>Plate Expiration</label>
+                      <label className={labelClass}>Date Expiration</label>
                       <input
                         type="date"
                         value={editUnitForm.plateExpiration}
@@ -1754,6 +1847,55 @@ function DashboardContent() {
                     </div>
                   </div>
                 </div>
+
+                {/* Sale Information — only when status is sold or for_sale */}
+                {(editUnitForm.status === 'sold' || editUnitForm.status === 'for_sale') && (
+                  <div className="border-t pt-4 space-y-3">
+                    <p className="text-sm font-semibold text-gray-700">Sale Information</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className={labelClass}>Sold Date</label>
+                        <input
+                          type="date"
+                          value={editUnitForm.soldDate}
+                          onChange={(e) => setEditUnitForm({ ...editUnitForm, soldDate: e.target.value })}
+                          className={inputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className={labelClass}>Sale Price</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={editUnitForm.salePrice}
+                          onChange={(e) => setEditUnitForm({ ...editUnitForm, salePrice: e.target.value })}
+                          className={inputClass}
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className={labelClass}>Buyer</label>
+                      <input
+                        type="text"
+                        value={editUnitForm.saleBuyer}
+                        onChange={(e) => setEditUnitForm({ ...editUnitForm, saleBuyer: e.target.value })}
+                        className={inputClass}
+                        placeholder="Buyer name"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Sale Notes</label>
+                      <textarea
+                        value={editUnitForm.saleNotes}
+                        onChange={(e) => setEditUnitForm({ ...editUnitForm, saleNotes: e.target.value })}
+                        className={inputClass}
+                        rows={2}
+                        placeholder="Net proceeds, fees, payment method, etc."
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* Additional fields */}
                 <div className="border-t pt-4">
@@ -1923,12 +2065,14 @@ function DashboardContent() {
                 {renderSortHeader("Year/Make/Model", "year")}
                 {renderSortHeader("VIN", "vin")}
                 {renderSortHeader("Plate", "plateNumber")}
-                {renderSortHeader("Plate Exp.", "plateExpiration")}
+                {renderSortHeader("Date Expiration", "plateExpiration")}
                 {renderSortHeader("Days Left", "plateDaysLeft", "right")}
                 {renderSortHeader("Status", "status")}
                 {renderSortHeader("Rented To", "rentedTo")}
                 {renderSortHeader("Rate", "rentalRate", "right")}
                 {renderSortHeader("Deposit", "depositTotal", "right")}
+                {renderSortHeader("Sold Date", "soldDate")}
+                {renderSortHeader("Sale Price", "salePrice", "right")}
                 <th className="px-2.5 py-2 w-12"></th>
               </tr>
             </thead>
@@ -1946,6 +2090,8 @@ function DashboardContent() {
                   case 'rentedTo': return u.rentedTo
                   case 'rentalRate': return u.rentalRate ? parseFloat(u.rentalRate) : null
                   case 'depositTotal': return u.depositTotal ? parseFloat(u.depositTotal) : null
+                  case 'soldDate': return u.soldDate
+                  case 'salePrice': return u.salePrice ? parseFloat(u.salePrice) : null
                   default: return null
                 }
               }).map((unit) => (
@@ -2002,6 +2148,12 @@ function DashboardContent() {
                   <td className="px-2.5 py-1.5 text-right text-gray-600 tabular-nums">
                     {unit.depositTotal ? formatCurrency(parseFloat(unit.depositTotal)) : '—'}
                   </td>
+                  <td className="px-2.5 py-1.5 text-gray-600 whitespace-nowrap">
+                    {unit.soldDate ? formatDate(unit.soldDate) : <span className="text-gray-300">—</span>}
+                  </td>
+                  <td className="px-2.5 py-1.5 text-right text-gray-700 tabular-nums whitespace-nowrap">
+                    {unit.salePrice ? formatCurrency(parseFloat(unit.salePrice)) : <span className="text-gray-300">—</span>}
+                  </td>
                   <td className="px-2.5 py-1.5 text-center">
                     <button
                       onClick={() => openEditUnit(unit)}
@@ -2013,7 +2165,7 @@ function DashboardContent() {
                 </tr>
               ))}
               {filteredFleet.length === 0 && (
-                <tr><td colSpan={12} className="px-3 py-8 text-center text-gray-400">No units match your filters.</td></tr>
+                <tr><td colSpan={14} className="px-3 py-8 text-center text-gray-400">No units match your filters.</td></tr>
               )}
             </tbody>
           </table>
@@ -2922,6 +3074,10 @@ function DashboardContent() {
     return <OnboardingApplicationsTab adminEmail={adminEmail} />
   }
 
+  function renderDepreciation() {
+    return <DepreciationTab />
+  }
+
   const tabContent: Record<TabKey, () => React.JSX.Element> = {
     overview: renderOverview,
     fleet: renderFleetMaster,
@@ -2933,6 +3089,7 @@ function DashboardContent() {
     applications: renderApplications,
     onboarding: renderOnboarding,
     for_sale: renderForSale,
+    depreciation: renderDepreciation,
     reports: renderReports,
   }
 

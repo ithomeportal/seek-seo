@@ -16,6 +16,7 @@ export async function GET() {
     let damaged = 0
     let maintenance = 0
     let makeReady = 0
+    let returnInspection = 0
     let forSale = 0
     let sold = 0
     let expectedMonthlyRevenue = 0
@@ -42,6 +43,10 @@ export async function GET() {
           break
         case 'make_ready':
           makeReady = count
+          total += count
+          break
+        case 'return_inspection':
+          returnInspection = count
           total += count
           break
         case 'for_sale':
@@ -124,6 +129,7 @@ export async function GET() {
         damaged,
         maintenance,
         makeReady,
+        returnInspection,
         forSale,
         sold,
         expectedMonthlyRevenue,

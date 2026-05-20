@@ -40,6 +40,10 @@ export async function GET() {
       rentEndDate: row.rent_end_date,
       plateNumber: row.plate_number,
       plateExpiration: row.plate_expiration,
+      soldDate: row.sold_date,
+      salePrice: row.sale_price,
+      saleBuyer: row.sale_buyer,
+      saleNotes: row.sale_notes,
       skybitzDeviceId: row.skybitz_device_id,
       lastLatitude: row.last_latitude,
       lastLongitude: row.last_longitude,
@@ -83,11 +87,16 @@ const createUnitSchema = z.object({
       'maintenance',
       'sold',
       'make_ready',
+      'return_inspection',
     ])
     .default('available'),
   plateNumber: z.string().max(32).nullable().optional(),
   plateExpiration: z.string().nullable().optional(),
   rentEndDate: z.string().nullable().optional(),
+  soldDate: z.string().nullable().optional(),
+  salePrice: z.number().min(0).nullable().optional(),
+  saleBuyer: z.string().nullable().optional(),
+  saleNotes: z.string().nullable().optional(),
   skybitzDeviceId: z.string().nullable().optional(),
   imageUrl: z.string().url().nullable().optional().or(z.literal('')),
   notes: z.string().nullable().optional(),
@@ -115,9 +124,11 @@ export async function POST(request: NextRequest) {
         unit_number, trailer_type, year, make, model, vin,
         purchasing_cost, tire_type, status, skybitz_device_id,
         image_url, notes, plate_number, plate_expiration, rent_end_date,
+        sold_date, sale_price, sale_buyer, sale_notes,
         created_at, updated_at
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+        $16, $17, $18, $19,
         NOW(), NOW()
       )
       RETURNING id`,
@@ -137,6 +148,10 @@ export async function POST(request: NextRequest) {
         d.plateNumber || null,
         d.plateExpiration || null,
         d.rentEndDate || null,
+        d.soldDate || null,
+        d.salePrice ?? null,
+        d.saleBuyer || null,
+        d.saleNotes || null,
       ]
     )
 
