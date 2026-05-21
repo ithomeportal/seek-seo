@@ -344,15 +344,15 @@ function renderDaysRemaining(iso: string | null) {
   const d = daysUntil(iso)
   if (d === null) return <span className="text-gray-300">—</span>
   if (d < 0) {
-    return <span className="text-red-600 font-medium">Expired {Math.abs(d)}d ago</span>
+    return <span className="text-red-600 font-medium">Expired {Math.abs(d).toLocaleString()}d ago</span>
   }
   if (d <= 30) {
-    return <span className="text-red-600 font-medium">{d}d</span>
+    return <span className="text-red-600 font-medium">{d.toLocaleString()}d</span>
   }
   if (d <= 90) {
-    return <span className="text-amber-600">{d}d</span>
+    return <span className="text-amber-600">{d.toLocaleString()}d</span>
   }
-  return <span className="text-gray-500">{d}d</span>
+  return <span className="text-gray-500">{d.toLocaleString()}d</span>
 }
 
 function statusLabel(s: string): string {
@@ -2879,6 +2879,7 @@ function DashboardContent() {
                 <th className="px-3 py-2 text-left font-medium text-gray-500">Phone</th>
                 <th className="px-3 py-2 text-left font-medium text-gray-500">Status</th>
                 <th className="px-3 py-2 text-left font-medium text-gray-500">Submitted</th>
+                <th className="px-3 py-2 text-left font-medium text-gray-500">PDF</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -2904,10 +2905,22 @@ function DashboardContent() {
                     {renderBadge(app.status, app.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : app.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800')}
                   </td>
                   <td className="px-3 py-2 text-gray-500 text-xs">{new Date(app.createdAt).toLocaleDateString()}</td>
+                  <td className="px-3 py-2">
+                    <a
+                      href={`/api/admin/credit-applications/${app.id}/pdf`}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md border border-brand-blue text-brand-blue hover:bg-blue-50"
+                      title="View signed credit application PDF"
+                    >
+                      <FileText className="h-3.5 w-3.5" /> View PDF
+                    </a>
+                  </td>
                 </tr>
               ))}
               {applications.length === 0 && (
-                <tr><td colSpan={8} className="px-3 py-10 text-center text-gray-400">No credit applications yet.</td></tr>
+                <tr><td colSpan={9} className="px-3 py-10 text-center text-gray-400">No credit applications yet.</td></tr>
               )}
             </tbody>
           </table>
