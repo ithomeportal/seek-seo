@@ -36,6 +36,7 @@ import {
 import { GPSTrackingMap } from '@/components/admin/GPSTrackingMap'
 import OnboardingApplicationsTab from '@/components/admin/OnboardingApplicationsTab'
 import DepreciationTab from '@/components/admin/DepreciationTab'
+import FmcsaSearchTab from '@/components/admin/FmcsaSearchTab'
 import { UploadButton } from '@/lib/uploadthing'
 
 // ---------------------------------------------------------------------------
@@ -254,7 +255,7 @@ interface QBPaymentSummary {
 // Constants
 // ---------------------------------------------------------------------------
 
-type TabKey = 'overview' | 'fleet' | 'customers' | 'invoices' | 'payments' | 'gps' | 'inquiries' | 'applications' | 'onboarding' | 'for_sale' | 'depreciation' | 'reports'
+type TabKey = 'overview' | 'fleet' | 'customers' | 'invoices' | 'payments' | 'gps' | 'inquiries' | 'applications' | 'onboarding' | 'for_sale' | 'depreciation' | 'reports' | 'fmcsa'
 
 const TABS: { key: TabKey; label: string; icon: typeof BarChart3 }[] = [
   { key: 'overview', label: 'Overview', icon: BarChart3 },
@@ -269,6 +270,7 @@ const TABS: { key: TabKey; label: string; icon: typeof BarChart3 }[] = [
   { key: 'for_sale', label: 'For Sale Mgmt', icon: DollarSign },
   { key: 'depreciation', label: 'Depreciation', icon: BarChart3 },
   { key: 'reports', label: 'Reports', icon: FileText },
+  { key: 'fmcsa', label: 'FMCSA Search', icon: Search },
 ]
 
 const TRAILER_TYPE_LABELS: Record<string, string> = {
@@ -3087,6 +3089,10 @@ function DashboardContent() {
     return <DepreciationTab />
   }
 
+  function renderFmcsa() {
+    return <FmcsaSearchTab />
+  }
+
   const tabContent: Record<TabKey, () => React.JSX.Element> = {
     overview: renderOverview,
     fleet: renderFleetMaster,
@@ -3100,6 +3106,7 @@ function DashboardContent() {
     for_sale: renderForSale,
     depreciation: renderDepreciation,
     reports: renderReports,
+    fmcsa: renderFmcsa,
   }
 
   const currentTabLabel =

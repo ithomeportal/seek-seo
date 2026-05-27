@@ -103,8 +103,27 @@ export const creditApplicationSchema = z.object({
   honeypot: z.string().max(0).optional(),
 })
 
+export const fmcsaSearchSchema = z.object({
+  state: z.string().length(2).optional(),
+  zip: z.string().regex(/^\d{5}$/).optional(),
+  radiusMiles: z.number().int().min(1).max(500).optional(),
+  minPowerUnits: z.number().int().min(0).max(100000).optional(),
+  maxPowerUnits: z.number().int().min(0).max(100000).optional(),
+  cargo: z.array(z.string().max(60)).max(40).optional(),
+  nameTokens: z.array(z.string().max(80)).max(20).optional(),
+  onlyActive: z.boolean().optional(),
+  hmOnly: z.boolean().optional(),
+  hasContactOnly: z.boolean().optional(),
+  recentMcs150Only: z.boolean().optional(),
+  page: z.number().int().min(1).max(100000).optional(),
+  pageSize: z.number().int().min(1).max(500).optional(),
+  sortBy: z.enum(['powerUnits', 'legalName', 'phyState', 'phyCity']).optional(),
+  sortOrder: z.enum(['asc', 'desc']).optional(),
+})
+
 export type ContactFormData = z.infer<typeof contactSchema>
 export type QuoteFormData = z.infer<typeof quoteSchema>
 export type CreditApplicationFormData = z.infer<typeof creditApplicationSchema>
 export type TradeReference = z.infer<typeof tradeReferenceSchema>
 export type NewsletterFormData = z.infer<typeof newsletterSchema>
+export type FmcsaSearchFilters = z.infer<typeof fmcsaSearchSchema>
