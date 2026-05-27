@@ -2871,7 +2871,6 @@ function DashboardContent() {
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b bg-gray-50 text-xs uppercase tracking-wide">
-                <th className="px-3 py-2 text-left font-medium text-gray-500">Reference</th>
                 <th className="px-3 py-2 text-left font-medium text-gray-500">Customer</th>
                 <th className="px-3 py-2 text-left font-medium text-gray-500">Entity</th>
                 <th className="px-3 py-2 text-left font-medium text-gray-500">Signatory</th>
@@ -2885,16 +2884,15 @@ function DashboardContent() {
             <tbody className="divide-y divide-gray-100">
               {applications.map((app) => (
                 <tr key={app.id} className="hover:bg-blue-50/40">
-                  <td className="px-3 py-2 font-mono text-xs font-semibold">
+                  <td className="px-3 py-2 font-medium text-gray-900">
                     <button
                       onClick={() => openAppDetail(app.id)}
-                      className="text-brand-orange hover:underline focus:outline-none focus:ring-2 focus:ring-brand-orange/40 rounded"
+                      className="text-left text-brand-orange hover:underline focus:outline-none focus:ring-2 focus:ring-brand-orange/40 rounded"
                       title="View full application"
                     >
-                      {app.referenceNumber}
+                      {app.customerName}
                     </button>
                   </td>
-                  <td className="px-3 py-2 font-medium text-gray-900">{app.customerName}</td>
                   <td className="px-3 py-2 text-gray-600 capitalize">{app.entityType ?? '—'}</td>
                   <td className="px-3 py-2 text-gray-700">{app.signatoryName}</td>
                   <td className="px-3 py-2 text-gray-600">
@@ -2920,7 +2918,7 @@ function DashboardContent() {
                 </tr>
               ))}
               {applications.length === 0 && (
-                <tr><td colSpan={9} className="px-3 py-10 text-center text-gray-400">No credit applications yet.</td></tr>
+                <tr><td colSpan={8} className="px-3 py-10 text-center text-gray-400">No credit applications yet.</td></tr>
               )}
             </tbody>
           </table>
@@ -2940,9 +2938,7 @@ function DashboardContent() {
                 <div>
                   <h3 className="text-lg font-bold text-gray-900">Credit Application</h3>
                   {appDetail && (
-                    <p className="text-xs text-gray-500 font-mono">
-                      Reference <span className="text-brand-orange font-bold">{String(appDetail.referenceNumber)}</span>
-                    </p>
+                    <p className="text-xs text-gray-500">{String(appDetail.customerName ?? '')}</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2">

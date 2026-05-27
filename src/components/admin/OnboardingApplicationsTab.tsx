@@ -243,7 +243,6 @@ export default function OnboardingApplicationsTab({
           <table className="w-full text-xs">
             <thead className="bg-gray-50">
               <tr className="border-b">
-                <th className="px-3 py-2 text-left font-semibold text-gray-700">Reference</th>
                 <th className="px-3 py-2 text-left font-semibold text-gray-700">Company / Email</th>
                 <th className="px-3 py-2 text-left font-semibold text-gray-700">Status</th>
                 <th className="px-3 py-2 text-left font-semibold text-gray-700">Progress</th>
@@ -320,7 +319,6 @@ function FragmentRow({
         className="border-b hover:bg-gray-50 transition-colors cursor-pointer"
         onClick={onToggle}
       >
-        <td className="px-3 py-2 font-mono text-[11px]">{app.reference}</td>
         <td className="px-3 py-2">
           <p className="font-medium text-gray-900">{app.companyName || '—'}</p>
           <p className="text-[11px] text-gray-500">{app.email}</p>
@@ -352,7 +350,7 @@ function FragmentRow({
       </tr>
       {isExpanded && (
         <tr className="bg-gray-50/60">
-          <td colSpan={6} className="px-3 py-4">
+          <td colSpan={5} className="px-3 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Left: applicant info */}
               <div>
