@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { CheckCircle2 } from 'lucide-react'
 import { contactSchema, type ContactFormData } from '@/lib/validators'
 import { Button } from '@/components/ui/Button'
+import { HumanCheck } from '@/components/forms/HumanCheck'
 import { cn } from '@/lib/utils'
 
 type FormErrors = Partial<Record<keyof ContactFormData, string>>
@@ -15,6 +16,8 @@ const initialFormData: ContactFormData = {
   company: '',
   message: '',
   honeypot: '',
+  captchaToken: '',
+  captchaAnswer: '',
 }
 
 export function ContactForm() {
@@ -22,6 +25,7 @@ export function ContactForm() {
   const [errors, setErrors] = useState<FormErrors>({})
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
   const [serverMessage, setServerMessage] = useState('')
+  const [captchaRefresh, setCaptchaRefresh] = useState(0)
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -51,6 +55,11 @@ export function ContactForm() {
       return
     }
 
+    if (!String(formData.captchaAnswer ?? '').trim()) {
+      setErrors({ captchaAnswer: 'Please answer the verification question' })
+      return
+    }
+
     setStatus('submitting')
 
     try {
@@ -60,8 +69,15 @@ export function ContactForm() {
         body: JSON.stringify(result.data),
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to submit form')
+      const json = await response.json().catch(() => ({}))
+
+      if (!response.ok || json?.success === false) {
+        // Most likely a failed/expired verification — refresh the challenge.
+        setCaptchaRefresh((n) => n + 1)
+        setFormData((prev) => ({ ...prev, captchaAnswer: '', captchaToken: '' }))
+        setStatus('error')
+        setServerMessage(json?.message || 'Something went wrong. Please try again or call us directly.')
+        return
       }
 
       setStatus('success')
@@ -186,6 +202,17 @@ export function ContactForm() {
         />
         {errors.message && <p className="mt-1 text-sm text-red-500">{errors.message}</p>}
       </div>
+
+      <HumanCheck
+        answer={String(formData.captchaAnswer ?? '')}
+        onAnswerChange={(v) => {
+          setFormData((prev) => ({ ...prev, captchaAnswer: v }))
+          if (errors.captchaAnswer) setErrors((prev) => ({ ...prev, captchaAnswer: undefined }))
+        }}
+        onToken={(t) => setFormData((prev) => ({ ...prev, captchaToken: t }))}
+        error={errors.captchaAnswer}
+        refreshKey={captchaRefresh}
+      />
 
       {serverMessage && status === 'error' && (
         <div className="rounded-lg px-4 py-3 text-sm font-medium bg-red-50 text-red-800">

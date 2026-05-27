@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { quoteSchema } from '@/lib/validators'
+import { verifyChallenge } from '@/lib/captcha'
 import { query } from '@/lib/db'
 
 export async function POST(request: Request) {
@@ -10,6 +11,14 @@ export async function POST(request: Request) {
     // Check honeypot
     if (data.honeypot) {
       return NextResponse.json({ success: true }) // silently ignore spam
+    }
+
+    // Human-verification math challenge (server-validated; bots posting blind fail here)
+    if (!verifyChallenge(data.captchaToken, data.captchaAnswer)) {
+      return NextResponse.json(
+        { success: false, message: 'Verification failed. Please re-check the sum and try again.' },
+        { status: 400 }
+      )
     }
 
     // Save to database

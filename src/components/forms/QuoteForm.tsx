@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { HumanCheck } from '@/components/forms/HumanCheck'
 import { cn } from '@/lib/utils'
 
 const trailerTypeOptions = [
@@ -25,6 +26,8 @@ const initialFormData = {
   trailerType: '',
   details: '',
   honeypot: '',
+  captchaToken: '',
+  captchaAnswer: '',
 }
 
 type FormErrors = Partial<Record<string, string>>
@@ -34,6 +37,7 @@ export function QuoteForm() {
   const [errors, setErrors] = useState<FormErrors>({})
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
   const [serverMessage, setServerMessage] = useState('')
+  const [captchaRefresh, setCaptchaRefresh] = useState(0)
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -54,6 +58,7 @@ export function QuoteForm() {
     if (!formData.name.trim()) fieldErrors.name = 'Name is required'
     if (!formData.email.trim()) fieldErrors.email = 'Email is required'
     if (!formData.details.trim()) fieldErrors.details = 'Project details are required'
+    if (!String(formData.captchaAnswer ?? '').trim()) fieldErrors.captchaAnswer = 'Please answer the verification question'
     if (formData.honeypot) return
 
     if (Object.keys(fieldErrors).length > 0) {
@@ -70,8 +75,14 @@ export function QuoteForm() {
         body: JSON.stringify(formData),
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to submit form')
+      const json = await response.json().catch(() => ({}))
+
+      if (!response.ok || json?.success === false) {
+        setCaptchaRefresh((n) => n + 1)
+        setFormData((prev) => ({ ...prev, captchaAnswer: '', captchaToken: '' }))
+        setStatus('error')
+        setServerMessage(json?.message || 'Something went wrong. Please try again or call us directly.')
+        return
       }
 
       setStatus('success')
@@ -218,6 +229,17 @@ export function QuoteForm() {
         />
         {errors.details && <p className="mt-1 text-sm text-red-500">{errors.details}</p>}
       </div>
+
+      <HumanCheck
+        answer={String(formData.captchaAnswer ?? '')}
+        onAnswerChange={(v) => {
+          setFormData((prev) => ({ ...prev, captchaAnswer: v }))
+          if (errors.captchaAnswer) setErrors((prev) => ({ ...prev, captchaAnswer: undefined }))
+        }}
+        onToken={(t) => setFormData((prev) => ({ ...prev, captchaToken: t }))}
+        error={errors.captchaAnswer}
+        refreshKey={captchaRefresh}
+      />
 
       {serverMessage && status === 'error' && (
         <div className="rounded-lg px-4 py-3 text-sm font-medium bg-red-50 text-red-800">

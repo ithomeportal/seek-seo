@@ -7,6 +7,8 @@ export const contactSchema = z.object({
   company: z.string().optional(),
   message: z.string().min(10, 'Message must be at least 10 characters'),
   honeypot: z.string().max(0).optional(),
+  captchaToken: z.string().min(1, 'Please complete the verification').optional(),
+  captchaAnswer: z.union([z.number(), z.string()]).optional(),
 })
 
 export const quoteSchema = z.object({
@@ -37,6 +39,8 @@ export const quoteSchema = z.object({
   startDate: z.string().optional(),
   details: z.string().optional(),
   honeypot: z.string().max(0).optional(),
+  captchaToken: z.string().min(1, 'Please complete the verification').optional(),
+  captchaAnswer: z.union([z.number(), z.string()]).optional(),
 })
 
 export const newsletterSchema = z.object({
