@@ -130,6 +130,11 @@ interface ContactSubmission {
   type: string
   status: string
   createdAt: string
+  trailerType?: string | null
+  quantity?: number | string | null
+  duration?: string | null
+  startDate?: string | null
+  updatedAt?: string | null
 }
 
 interface CreditApplication {
@@ -398,6 +403,7 @@ function DashboardContent() {
   const [stats, setStats] = useState<FleetStats | null>(null)
   const [fleet, setFleet] = useState<FleetUnit[]>([])
   const [inquiries, setInquiries] = useState<ContactSubmission[]>([])
+  const [inquiryDetail, setInquiryDetail] = useState<ContactSubmission | null>(null)
   const [applications, setApplications] = useState<CreditApplication[]>([])
   const [appDetail, setAppDetail] = useState<Record<string, unknown> | null>(null)
   const [appDetailLoading, setAppDetailLoading] = useState(false)
@@ -2190,47 +2196,115 @@ function DashboardContent() {
     }
 
     return (
-      <div className="overflow-x-auto rounded-lg border bg-white">
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="border-b bg-gray-50">
-              {renderSortHeader("Name", "inqName")}
-              {renderSortHeader("Email", "inqEmail")}
-              {renderSortHeader("Company", "inqCompany")}
-              {renderSortHeader("Message", "inqMessage")}
-              {renderSortHeader("Type", "inqType")}
-              {renderSortHeader("Status", "inqStatus")}
-              {renderSortHeader("Date", "inqDate")}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {genericSort(inquiries, (inq) => {
-              switch (sortKey) {
-                case 'inqName': return inq.name
-                case 'inqEmail': return inq.email
-                case 'inqCompany': return inq.company
-                case 'inqType': return inq.type
-                case 'inqStatus': return inq.status
-                case 'inqDate': return inq.createdAt
-                default: return null
-              }
-            }).map((inq) => (
-              <tr key={inq.id} className="hover:bg-blue-50/40">
-                <td className="px-2.5 py-1.5 font-medium text-gray-900 whitespace-nowrap">{inq.name}</td>
-                <td className="px-2.5 py-1.5 text-gray-600 whitespace-nowrap">{inq.email}</td>
-                <td className="px-2.5 py-1.5 text-gray-600 whitespace-nowrap">{inq.company ?? '—'}</td>
-                <td className="px-2.5 py-1.5 text-gray-500 max-w-[200px] truncate">{inq.message}</td>
-                <td className="px-2.5 py-1.5">{renderBadge(inq.type, INQUIRY_TYPE_COLORS[inq.type] ?? 'bg-gray-100 text-gray-800')}</td>
-                <td className="px-2.5 py-1.5">{renderBadge(inq.status, INQUIRY_STATUS_COLORS[inq.status] ?? 'bg-gray-100 text-gray-800')}</td>
-                <td className="px-2.5 py-1.5 text-gray-400 whitespace-nowrap text-xs">{formatDate(inq.createdAt)}</td>
+      <>
+        <div className="overflow-x-auto rounded-lg border bg-white">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="border-b bg-gray-50">
+                {renderSortHeader("ID", "inqId")}
+                {renderSortHeader("Name", "inqName")}
+                {renderSortHeader("Email", "inqEmail")}
+                {renderSortHeader("Company", "inqCompany")}
+                {renderSortHeader("Message", "inqMessage")}
+                {renderSortHeader("Type", "inqType")}
+                {renderSortHeader("Status", "inqStatus")}
+                {renderSortHeader("Date", "inqDate")}
               </tr>
-            ))}
-            {inquiries.length === 0 && (
-              <tr><td colSpan={7} className="px-3 py-8 text-center text-gray-400">No inquiries found.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {genericSort(inquiries, (inq) => {
+                switch (sortKey) {
+                  case 'inqId': return inq.id
+                  case 'inqName': return inq.name
+                  case 'inqEmail': return inq.email
+                  case 'inqCompany': return inq.company
+                  case 'inqType': return inq.type
+                  case 'inqStatus': return inq.status
+                  case 'inqDate': return inq.createdAt
+                  default: return null
+                }
+              }).map((inq) => (
+                <tr
+                  key={inq.id}
+                  className="hover:bg-blue-50/40 cursor-pointer"
+                  onClick={() => setInquiryDetail(inq)}
+                  title="View full inquiry"
+                >
+                  <td className="px-2.5 py-1.5 font-mono text-xs text-brand-blue font-semibold whitespace-nowrap">#{inq.id}</td>
+                  <td className="px-2.5 py-1.5 font-medium text-gray-900 whitespace-nowrap">{inq.name}</td>
+                  <td className="px-2.5 py-1.5 text-gray-600 whitespace-nowrap">{inq.email}</td>
+                  <td className="px-2.5 py-1.5 text-gray-600 whitespace-nowrap">{inq.company ?? '—'}</td>
+                  <td className="px-2.5 py-1.5 text-gray-500 max-w-[200px] truncate">{inq.message}</td>
+                  <td className="px-2.5 py-1.5">{renderBadge(inq.type, INQUIRY_TYPE_COLORS[inq.type] ?? 'bg-gray-100 text-gray-800')}</td>
+                  <td className="px-2.5 py-1.5">{renderBadge(inq.status, INQUIRY_STATUS_COLORS[inq.status] ?? 'bg-gray-100 text-gray-800')}</td>
+                  <td className="px-2.5 py-1.5 text-gray-400 whitespace-nowrap text-xs">{formatDate(inq.createdAt)}</td>
+                </tr>
+              ))}
+              {inquiries.length === 0 && (
+                <tr><td colSpan={8} className="px-3 py-8 text-center text-gray-400">No inquiries found.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Detail modal */}
+        {inquiryDetail && (
+          <div
+            className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-sm p-4 overflow-y-auto"
+            onClick={() => setInquiryDetail(null)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-xl shadow-2xl w-full max-w-2xl my-8 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-4">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Inquiry</h3>
+                  <p className="text-xs text-gray-500 font-mono">
+                    ID <span className="text-brand-blue font-bold">#{inquiryDetail.id}</span>
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {renderBadge(inquiryDetail.type, INQUIRY_TYPE_COLORS[inquiryDetail.type] ?? 'bg-gray-100 text-gray-800')}
+                  {renderBadge(inquiryDetail.status, INQUIRY_STATUS_COLORS[inquiryDetail.status] ?? 'bg-gray-100 text-gray-800')}
+                  <button
+                    onClick={() => setInquiryDetail(null)}
+                    className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                    aria-label="Close"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="px-6 py-5 space-y-5">
+                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+                  <div><dt className="text-xs text-gray-500">Name</dt><dd className="font-medium text-gray-900">{inquiryDetail.name}</dd></div>
+                  <div><dt className="text-xs text-gray-500">Company</dt><dd className="font-medium text-gray-900">{inquiryDetail.company || '—'}</dd></div>
+                  <div>
+                    <dt className="text-xs text-gray-500">Email</dt>
+                    <dd className="font-medium"><a href={`mailto:${inquiryDetail.email}`} className="text-brand-blue hover:underline">{inquiryDetail.email}</a></dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-gray-500">Phone</dt>
+                    <dd className="font-medium text-gray-900">{inquiryDetail.phone ? <a href={`tel:${inquiryDetail.phone}`} className="text-brand-blue hover:underline">{inquiryDetail.phone}</a> : '—'}</dd>
+                  </div>
+                  {inquiryDetail.trailerType && <div><dt className="text-xs text-gray-500">Trailer Type</dt><dd className="font-medium text-gray-900 capitalize">{TRAILER_TYPE_LABELS[String(inquiryDetail.trailerType)] ?? inquiryDetail.trailerType}</dd></div>}
+                  {inquiryDetail.quantity != null && inquiryDetail.quantity !== '' && <div><dt className="text-xs text-gray-500">Quantity</dt><dd className="font-medium text-gray-900">{inquiryDetail.quantity}</dd></div>}
+                  {inquiryDetail.duration && <div><dt className="text-xs text-gray-500">Duration</dt><dd className="font-medium text-gray-900">{inquiryDetail.duration}</dd></div>}
+                  {inquiryDetail.startDate && <div><dt className="text-xs text-gray-500">Start Date</dt><dd className="font-medium text-gray-900">{formatDate(inquiryDetail.startDate)}</dd></div>}
+                  <div><dt className="text-xs text-gray-500">Submitted</dt><dd className="font-medium text-gray-900">{formatDate(inquiryDetail.createdAt)}</dd></div>
+                </dl>
+
+                <div>
+                  <dt className="text-xs text-gray-500 mb-1">Message</dt>
+                  <dd className="whitespace-pre-wrap rounded-lg border bg-gray-50 px-4 py-3 text-sm text-gray-800">{inquiryDetail.message || '—'}</dd>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
     )
   }
 
