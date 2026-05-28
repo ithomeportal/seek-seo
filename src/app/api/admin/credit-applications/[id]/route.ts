@@ -1,6 +1,70 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 
+const ALLOWED_STATUSES = ['pending', 'reviewing', 'approved', 'declined'] as const
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+  const numericId = Number(id)
+  if (!Number.isInteger(numericId) || numericId <= 0) {
+    return NextResponse.json(
+      { success: false, message: 'Invalid id' },
+      { status: 400 }
+    )
+  }
+
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json(
+      { success: false, message: 'Invalid JSON body' },
+      { status: 400 }
+    )
+  }
+
+  const status = (body as { status?: unknown }).status
+  if (typeof status !== 'string' || !ALLOWED_STATUSES.includes(status as (typeof ALLOWED_STATUSES)[number])) {
+    return NextResponse.json(
+      { success: false, message: `status must be one of: ${ALLOWED_STATUSES.join(', ')}` },
+      { status: 400 }
+    )
+  }
+
+  try {
+    const result = await query(
+      `UPDATE credit_applications
+       SET status = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING id, status, updated_at`,
+      [status, numericId]
+    )
+    if (result.rows.length === 0) {
+      return NextResponse.json(
+        { success: false, message: 'Not found' },
+        { status: 404 }
+      )
+    }
+    const row = result.rows[0] as Record<string, unknown>
+    return NextResponse.json({
+      success: true,
+      data: { id: row.id, status: row.status, updatedAt: row.updated_at },
+    })
+  } catch (error) {
+    console.error(
+      'Admin credit-application status update error:',
+      error instanceof Error ? error.message : error
+    )
+    return NextResponse.json(
+      { success: false, message: 'Failed to update status' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }

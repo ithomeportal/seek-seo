@@ -166,13 +166,6 @@ interface EquipmentForSale {
   createdAt: string
 }
 
-interface ConcentrationRow {
-  customer: string
-  unitCount: number
-  monthlyRevenue: number
-  percentOfFleet: number
-}
-
 interface CustomerUnit {
   unitNumber: string
   trailerType: string
@@ -260,7 +253,7 @@ interface QBPaymentSummary {
 // Constants
 // ---------------------------------------------------------------------------
 
-type TabKey = 'overview' | 'fleet' | 'customers' | 'invoices' | 'payments' | 'gps' | 'inquiries' | 'applications' | 'onboarding' | 'for_sale' | 'depreciation' | 'reports' | 'fmcsa'
+type TabKey = 'overview' | 'fleet' | 'customers' | 'invoices' | 'payments' | 'gps' | 'inquiries' | 'applications' | 'onboarding' | 'for_sale' | 'depreciation' | 'fmcsa'
 
 const TABS: { key: TabKey; label: string; icon: typeof BarChart3 }[] = [
   { key: 'overview', label: 'Overview', icon: BarChart3 },
@@ -274,7 +267,6 @@ const TABS: { key: TabKey; label: string; icon: typeof BarChart3 }[] = [
   { key: 'onboarding', label: 'Onboarding', icon: ClipboardList },
   { key: 'for_sale', label: 'For Sale Mgmt', icon: DollarSign },
   { key: 'depreciation', label: 'Depreciation', icon: BarChart3 },
-  { key: 'reports', label: 'Reports', icon: FileText },
   { key: 'fmcsa', label: 'FMCSA Search', icon: Search },
 ]
 
@@ -408,8 +400,8 @@ function DashboardContent() {
   const [appDetail, setAppDetail] = useState<Record<string, unknown> | null>(null)
   const [appDetailLoading, setAppDetailLoading] = useState(false)
   const [appTeamsStatus, setAppTeamsStatus] = useState<{ kind: 'idle' | 'sending' | 'ok' | 'error'; message?: string }>({ kind: 'idle' })
+  const [appStatusSaving, setAppStatusSaving] = useState<number | null>(null)
   const [forSaleItems, setForSaleItems] = useState<EquipmentForSale[]>([])
-  const [concentration, setConcentration] = useState<ConcentrationRow[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [customerSummary, setCustomerSummary] = useState<CustomerSummary | null>(null)
   const [qbInvoices, setQbInvoices] = useState<QBInvoice[]>([])
@@ -592,12 +584,6 @@ function DashboardContent() {
             const res = await fetch('/api/admin/for-sale')
             const json = await res.json()
             if (json.success) setForSaleItems(json.data)
-            break
-          }
-          case 'reports': {
-            const res = await fetch('/api/admin/fleet/concentration')
-            const json = await res.json()
-            if (json.success) setConcentration(json.data)
             break
           }
           case 'gps':
@@ -1149,15 +1135,19 @@ function DashboardContent() {
               <p className="text-lg font-bold text-gray-900 leading-tight">{rentedUnits.length > 0 ? formatCurrency(totalMonthlyRevenue / rentedUnits.length) : '—'}</p>
             </div>
             <div className="w-px h-8 bg-gray-200 mx-0.5" />
-            {typeBreakdown.map((t) => (
-              <div key={t.key} className="rounded-lg px-2 py-1.5 border bg-white flex items-center gap-1.5">
-                <span className="text-[10px] font-medium text-gray-600">{t.label}</span>
-                <span className="text-[10px] text-gray-400">{t.rented}/{t.total}</span>
-                <div className="w-10 h-1 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-brand-blue rounded-full" style={{ width: `${t.total > 0 ? (t.rented / t.total) * 100 : 0}%` }} />
+            {typeBreakdown.map((t) => {
+              const pct = t.total > 0 ? Math.round((t.rented / t.total) * 100) : 0
+              return (
+                <div key={t.key} className="rounded-lg px-2 py-1.5 border bg-white flex items-center gap-1.5">
+                  <span className="text-[10px] font-medium text-gray-600">{t.label}</span>
+                  <span className="text-[10px] text-gray-400">{t.rented}/{t.total}</span>
+                  <div className="w-10 h-1 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-brand-blue rounded-full" style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="text-[10px] font-semibold text-brand-blue tabular-nums">{pct}%</span>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
 
@@ -2850,63 +2840,6 @@ function DashboardContent() {
     )
   }
 
-  function renderReports() {
-    if (concentration.length === 0 && loading) {
-      return (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-brand-blue" />
-        </div>
-      )
-    }
-
-    const totalRevenue = concentration.reduce((sum, row) => sum + row.monthlyRevenue, 0)
-
-    return (
-      <div className="rounded-lg border bg-white overflow-hidden">
-        <div className="px-3 py-2 border-b bg-gray-50">
-          <h3 className="text-xs font-bold uppercase text-gray-400 tracking-wider">Customer Concentration</h3>
-        </div>
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="border-b bg-gray-50/50">
-              {renderSortHeader("Customer", "concCustomer")}
-              {renderSortHeader("Units", "concUnits", "right")}
-              {renderSortHeader("% Fleet", "concFleet", "right")}
-              {renderSortHeader("Revenue/Mo", "concRevenue", "right")}
-              {renderSortHeader("% Revenue", "concRevPct", "right")}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {genericSort(concentration, (row) => {
-              switch (sortKey) {
-                case 'concCustomer': return row.customer
-                case 'concUnits': return row.unitCount
-                case 'concFleet': return row.percentOfFleet
-                case 'concRevenue': return row.monthlyRevenue
-                case 'concRevPct': return totalRevenue > 0 ? row.monthlyRevenue / totalRevenue : 0
-                default: return null
-              }
-            }).map((row) => {
-              const revenuePercent = totalRevenue > 0 ? ((row.monthlyRevenue / totalRevenue) * 100).toFixed(1) : '0.0'
-              return (
-                <tr key={row.customer} className="hover:bg-blue-50/40">
-                  <td className="px-2.5 py-1.5 font-medium text-gray-900">{row.customer}</td>
-                  <td className="px-2.5 py-1.5 text-right text-gray-600">{row.unitCount}</td>
-                  <td className="px-2.5 py-1.5 text-right text-gray-600">{row.percentOfFleet}%</td>
-                  <td className="px-2.5 py-1.5 text-right text-gray-600">{formatCurrency(row.monthlyRevenue)}</td>
-                  <td className="px-2.5 py-1.5 text-right text-gray-600">{revenuePercent}%</td>
-                </tr>
-              )
-            })}
-            {concentration.length === 0 && (
-              <tr><td colSpan={5} className="px-3 py-8 text-center text-gray-400">No concentration data.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    )
-  }
-
   async function openAppDetail(id: number) {
     setAppDetailLoading(true)
     setAppTeamsStatus({ kind: 'idle' })
@@ -2920,6 +2853,30 @@ function DashboardContent() {
       }
     } finally {
       setAppDetailLoading(false)
+    }
+  }
+
+  async function updateAppStatus(id: number, status: string) {
+    const previous = applications
+    // Optimistic immutable update
+    setApplications((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)))
+    setAppStatusSaving(id)
+    try {
+      const res = await fetch(`/api/admin/credit-applications/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      const json = await res.json()
+      if (!json.success) {
+        setApplications(previous) // rollback
+      } else {
+        setAppDetail((prev) => (prev && prev.id === id ? { ...prev, status } : prev))
+      }
+    } catch {
+      setApplications(previous) // rollback on network error
+    } finally {
+      setAppStatusSaving(null)
     }
   }
 
@@ -2976,7 +2933,28 @@ function DashboardContent() {
                   </td>
                   <td className="px-3 py-2 text-gray-600">{app.signatoryPhone ?? app.customerPhone ?? '—'}</td>
                   <td className="px-3 py-2">
-                    {renderBadge(app.status, app.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : app.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800')}
+                    <div className="flex items-center gap-1.5">
+                      <select
+                        value={app.status}
+                        disabled={appStatusSaving === app.id}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => updateAppStatus(app.id, e.target.value)}
+                        className={`rounded-md border px-2 py-1 text-xs font-semibold capitalize focus:outline-none focus:ring-2 focus:ring-brand-blue/40 disabled:opacity-50 ${
+                          app.status === 'pending' ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                            : app.status === 'reviewing' ? 'bg-blue-100 text-blue-800 border-blue-200'
+                            : app.status === 'approved' ? 'bg-green-100 text-green-800 border-green-200'
+                            : app.status === 'declined' ? 'bg-red-100 text-red-800 border-red-200'
+                            : 'bg-gray-100 text-gray-800 border-gray-200'
+                        }`}
+                        title="Change application status"
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="reviewing">Reviewing</option>
+                        <option value="approved">Approved</option>
+                        <option value="declined">Declined</option>
+                      </select>
+                      {appStatusSaving === app.id && <Loader2 className="h-3.5 w-3.5 animate-spin text-brand-blue" />}
+                    </div>
                   </td>
                   <td className="px-3 py-2 text-gray-500 text-xs">{new Date(app.createdAt).toLocaleDateString()}</td>
                   <td className="px-3 py-2">
@@ -3179,7 +3157,6 @@ function DashboardContent() {
     onboarding: renderOnboarding,
     for_sale: renderForSale,
     depreciation: renderDepreciation,
-    reports: renderReports,
     fmcsa: renderFmcsa,
   }
 
