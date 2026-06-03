@@ -5,11 +5,11 @@ module.exports = {
   robotsTxtOptions: {
     policies: [
       { userAgent: '*', allow: '/' },
-      { userAgent: '*', disallow: ['/api/', '/admin/'] },
+      { userAgent: '*', disallow: ['/api/', '/admin/', '/crm/'] },
     ],
     additionalSitemaps: [],
   },
-  exclude: ['/rentalagree', '/rentalapp', '/ach', '/apple-icon.png', '/icon.svg'],
+  exclude: ['/rentalagree', '/rentalapp', '/ach', '/crm', '/apple-icon.png', '/icon.svg'],
   changefreq: 'weekly',
   priority: 0.7,
   transform: async (config, path) => {

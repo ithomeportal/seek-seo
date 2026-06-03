@@ -6,6 +6,7 @@ Allow: /
 User-agent: *
 Disallow: /api/
 Disallow: /admin/
+Disallow: /crm/
 
 # Host
 Host: https://seekequipment.com

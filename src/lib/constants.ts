@@ -36,6 +36,7 @@ export const NAV_ITEMS = [
 export const PORTAL_LINKS = [
   { label: 'Client Portal', href: '/client-portal', icon: 'User' },
   { label: 'Management', href: '/admin', icon: 'Settings' },
+  { label: 'CRM', href: '/crm', icon: 'Briefcase' },
 ] as const
 
 export const BRAND = {

@@ -4,13 +4,14 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { Phone, Mail, Menu, X, User, Settings } from 'lucide-react'
+import { Phone, Mail, Menu, X, User, Settings, Briefcase } from 'lucide-react'
 import { COMPANY, NAV_ITEMS, PORTAL_LINKS } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 
 const PORTAL_ICONS = {
   User,
   Settings,
+  Briefcase,
 } as const
 
 export function Header() {

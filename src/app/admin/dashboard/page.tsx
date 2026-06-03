@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useState, useEffect, useCallback, Suspense, Fragment } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import {
@@ -32,11 +32,22 @@ import {
   CreditCard,
   Clock,
   AlertCircle,
+  Briefcase,
+  Inbox,
+  Upload,
+  Archive,
 } from 'lucide-react'
 import { GPSTrackingMap } from '@/components/admin/GPSTrackingMap'
 import OnboardingApplicationsTab from '@/components/admin/OnboardingApplicationsTab'
 import DepreciationTab from '@/components/admin/DepreciationTab'
 import FmcsaSearchTab from '@/components/admin/FmcsaSearchTab'
+import CrmDashboardTab from '@/components/admin/crm/CrmDashboardTab'
+import CrmLeadsTab from '@/components/admin/crm/CrmLeadsTab'
+import CrmDealsTab from '@/components/admin/crm/CrmDealsTab'
+import CrmFollowUpsTab from '@/components/admin/crm/CrmFollowUpsTab'
+import CrmReportsTab from '@/components/admin/crm/CrmReportsTab'
+import CrmImportTab from '@/components/admin/crm/CrmImportTab'
+import CrmArchiveTab from '@/components/admin/crm/CrmArchiveTab'
 import { UploadButton } from '@/lib/uploadthing'
 
 // ---------------------------------------------------------------------------
@@ -253,9 +264,9 @@ interface QBPaymentSummary {
 // Constants
 // ---------------------------------------------------------------------------
 
-type TabKey = 'overview' | 'fleet' | 'customers' | 'invoices' | 'payments' | 'gps' | 'inquiries' | 'applications' | 'onboarding' | 'for_sale' | 'depreciation' | 'fmcsa'
+type TabKey = 'overview' | 'fleet' | 'customers' | 'invoices' | 'payments' | 'gps' | 'inquiries' | 'applications' | 'onboarding' | 'for_sale' | 'depreciation' | 'fmcsa' | 'crm' | 'crm_leads' | 'crm_deals' | 'crm_followups' | 'crm_reports' | 'crm_import' | 'crm_archive'
 
-const TABS: { key: TabKey; label: string; icon: typeof BarChart3 }[] = [
+const TABS: { key: TabKey; label: string; icon: typeof BarChart3; section?: string }[] = [
   { key: 'overview', label: 'Overview', icon: BarChart3 },
   { key: 'fleet', label: 'Fleet Master', icon: Truck },
   { key: 'customers', label: 'Customers', icon: Users },
@@ -268,6 +279,13 @@ const TABS: { key: TabKey; label: string; icon: typeof BarChart3 }[] = [
   { key: 'for_sale', label: 'For Sale Mgmt', icon: DollarSign },
   { key: 'depreciation', label: 'Depreciation', icon: BarChart3 },
   { key: 'fmcsa', label: 'FMCSA Search', icon: Search },
+  { key: 'crm', label: 'CRM Dashboard', icon: Briefcase, section: 'CRM' },
+  { key: 'crm_leads', label: 'Leads', icon: Users, section: 'CRM' },
+  { key: 'crm_deals', label: 'Deals', icon: DollarSign, section: 'CRM' },
+  { key: 'crm_followups', label: 'Follow-ups', icon: Inbox, section: 'CRM' },
+  { key: 'crm_reports', label: 'Reports', icon: BarChart3, section: 'CRM' },
+  { key: 'crm_import', label: 'Import', icon: Upload, section: 'CRM' },
+  { key: 'crm_archive', label: 'Archive', icon: Archive, section: 'CRM' },
 ]
 
 const TRAILER_TYPE_LABELS: Record<string, string> = {
@@ -3158,6 +3176,13 @@ function DashboardContent() {
     for_sale: renderForSale,
     depreciation: renderDepreciation,
     fmcsa: renderFmcsa,
+    crm: () => <CrmDashboardTab />,
+    crm_leads: () => <CrmLeadsTab />,
+    crm_deals: () => <CrmDealsTab />,
+    crm_followups: () => <CrmFollowUpsTab />,
+    crm_reports: () => <CrmReportsTab />,
+    crm_import: () => <CrmImportTab />,
+    crm_archive: () => <CrmArchiveTab />,
   }
 
   const currentTabLabel =
@@ -3199,23 +3224,33 @@ function DashboardContent() {
 
         {/* Nav */}
         <nav className="flex-1 py-2 space-y-0.5 overflow-y-auto">
-          {TABS.map((tab) => {
+          {TABS.map((tab, i) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.key
+            const showSectionHeader = tab.section && tab.section !== TABS[i - 1]?.section
             return (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-2.5 w-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                  isActive
-                    ? 'bg-brand-orange/90 text-white'
-                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                }`}
-                title={tab.label}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                {sidebarOpen && <span>{tab.label}</span>}
-              </button>
+              <Fragment key={tab.key}>
+                {showSectionHeader &&
+                  (sidebarOpen ? (
+                    <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500 border-t border-gray-700/50 mt-2">
+                      {tab.section}
+                    </div>
+                  ) : (
+                    <div className="my-2 mx-2 border-t border-gray-700/50" />
+                  ))}
+                <button
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`flex items-center gap-2.5 w-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    isActive
+                      ? 'bg-brand-orange/90 text-white'
+                      : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                  }`}
+                  title={tab.label}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {sidebarOpen && <span>{tab.label}</span>}
+                </button>
+              </Fragment>
             )
           })}
         </nav>

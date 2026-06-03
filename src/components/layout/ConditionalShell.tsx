@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation'
 import { Header } from './Header'
 import { Footer } from './Footer'
 
-const EXCLUDED_PREFIXES = ['/admin', '/client-portal']
+const EXCLUDED_PREFIXES = ['/admin', '/client-portal', '/crm']
 
 export function ConditionalShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
