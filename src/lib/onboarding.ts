@@ -1,6 +1,8 @@
 import { Resend } from 'resend'
 import { query } from '@/lib/db'
 
+// 'approved' | 'declined' | 'bundle_started' are legacy values from the old
+// admin-gated e-sign flow — no longer written, kept so old rows still type-check.
 export type OnboardingStatus =
   | 'created'
   | 'dl_submitted'
@@ -169,25 +171,47 @@ export async function createApplication(email: string): Promise<OnboardingApplic
   throw new Error('Could not generate a unique application reference after 5 attempts.')
 }
 
-export function bundleProgress(app: OnboardingApplication): {
+export function sectionProgress(app: OnboardingApplication): {
+  dl: boolean
   ach: boolean
   lease: boolean
-  guaranty: boolean
   completed: number
   total: number
   isComplete: boolean
 } {
+  const dl = app.dlUploadedAt !== null
   const ach = app.achAuthorizedAt !== null
   const lease = app.leaseSignedAt !== null
-  const guaranty = app.guarantySignedAt !== null
-  const completed = [ach, lease, guaranty].filter(Boolean).length
-  return { ach, lease, guaranty, completed, total: 3, isComplete: completed === 3 }
+  const completed = [dl, ach, lease].filter(Boolean).length
+  return { dl, ach, lease, completed, total: 3, isComplete: completed === 3 }
+}
+
+/** Shape of an application as exposed to the signed-in portal user. */
+export function publicView(app: OnboardingApplication) {
+  const progress = sectionProgress(app)
+  return {
+    id: app.id,
+    reference: app.reference,
+    status: app.status,
+    companyName: app.companyName,
+    contactFirstName: app.contactFirstName,
+    contactLastName: app.contactLastName,
+    phone: app.phone,
+    dlUploadedAt: app.dlUploadedAt,
+    dlFilename: app.dlFilename,
+    achAuthorizedAt: app.achAuthorizedAt,
+    leaseSignedAt: app.leaseSignedAt,
+    guarantySignedAt: app.guarantySignedAt,
+    completedAt: app.completedAt,
+    createdAt: app.createdAt,
+    progress,
+  }
 }
 
 export async function maybeMarkCompleted(email: string): Promise<OnboardingApplication | null> {
   const app = await getApplicationByEmail(email)
   if (!app) return null
-  const progress = bundleProgress(app)
+  const progress = sectionProgress(app)
   if (progress.isComplete && app.status !== 'completed') {
     await query(
       `UPDATE customer_onboarding_applications
@@ -220,7 +244,7 @@ async function notifySeekOfCompletion(
       html: `
         <div style="font-family: Arial, sans-serif; padding: 24px;">
           <h2 style="color: #35668d;">Onboarding Complete</h2>
-          <p>${companyName ?? email} has signed all required documents.</p>
+          <p>${companyName ?? email} has completed all onboarding sections (driver's license, ACH authorization, lease agreement &amp; guaranty).</p>
           <ul>
             <li><strong>Reference:</strong> ${reference}</li>
             <li><strong>Email:</strong> ${email}</li>
@@ -234,41 +258,3 @@ async function notifySeekOfCompletion(
   }
 }
 
-export async function sendSignedDocumentEmail(opts: {
-  email: string
-  reference: string
-  docName: string
-  signedName: string
-  pdfBytes: Uint8Array
-  filename: string
-}): Promise<void> {
-  const resendKey = process.env.RESEND_API_KEY
-  if (!resendKey) return
-  const resend = new Resend(resendKey)
-  try {
-    await resend.emails.send({
-      from: 'SEEK Equipment <noreply@unilinkportal.com>',
-      to: opts.email,
-      cc: 'rodney@seekequipment.com',
-      subject: `Signed ${opts.docName} — SEEK Equipment (${opts.reference})`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 540px; margin: 0 auto; padding: 24px;">
-          <h2 style="color: #35668d;">Your ${opts.docName} has been signed</h2>
-          <p>Thank you, ${opts.signedName}. Your signed ${opts.docName} is attached for your records.</p>
-          <p><strong>Reference:</strong> ${opts.reference}</p>
-          <p>A copy has also been sent to SEEK Equipment. You can view the status of your application at any time by logging back into the customer portal.</p>
-          <hr style="border:none; border-top:1px solid #e5e7eb; margin: 20px 0;" />
-          <p style="color:#9ca3af; font-size:12px;">SEEK Equipment Rentals &bull; info@seekequipment.com &bull; (210) 802-0000</p>
-        </div>
-      `,
-      attachments: [
-        {
-          filename: opts.filename,
-          content: Buffer.from(opts.pdfBytes),
-        },
-      ],
-    })
-  } catch {
-    // Best effort
-  }
-}

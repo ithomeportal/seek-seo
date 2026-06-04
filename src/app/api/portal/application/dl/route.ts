@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { query } from '@/lib/db'
 import { readPortalSession } from '@/lib/portal-auth'
-import { getApplicationByEmail } from '@/lib/onboarding'
+import { getApplicationByEmail, maybeMarkCompleted } from '@/lib/onboarding'
 
 export async function POST(request: Request) {
   const session = await readPortalSession()
@@ -37,25 +37,21 @@ export async function POST(request: Request) {
       { status: 400 }
     )
   }
-  if (app.status !== 'created' && app.status !== 'dl_submitted') {
-    return NextResponse.json(
-      { success: false, message: 'Driver license cannot be changed at this stage.' },
-      { status: 400 }
-    )
-  }
-
   await query(
     `UPDATE customer_onboarding_applications
         SET dl_url = $1,
             dl_filename = $2,
             dl_uploaded_at = NOW(),
-            status = 'dl_submitted',
+            status = CASE WHEN status = 'created' THEN 'dl_submitted' ELSE status END,
             updated_at = NOW()
       WHERE id = $3`,
     [url, filename || null, app.id]
   )
 
-  await notifySeekOfNewApplication(app.reference, session.email, app.companyName)
+  if (!app.dlUploadedAt) {
+    await notifySeekOfNewApplication(app.reference, session.email, app.companyName)
+  }
+  await maybeMarkCompleted(session.email)
 
   return NextResponse.json({ success: true })
 }
@@ -77,7 +73,7 @@ async function notifySeekOfNewApplication(
       html: `
         <div style="font-family: Arial, sans-serif; padding: 24px;">
           <h2 style="color: #35668d;">New Onboarding Application</h2>
-          <p>A new customer has submitted Phase 1 of the onboarding flow and is awaiting review.</p>
+          <p>A new customer has uploaded their driver's license in the onboarding portal.</p>
           <ul>
             <li><strong>Reference:</strong> ${reference}</li>
             <li><strong>Email:</strong> ${email}</li>

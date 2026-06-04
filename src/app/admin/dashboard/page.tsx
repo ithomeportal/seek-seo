@@ -388,7 +388,6 @@ function DashboardContent() {
 
   // Auth
   const [authenticated, setAuthenticated] = useState(false)
-  const [adminEmail, setAdminEmail] = useState('admin')
 
   // Sidebar
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -516,7 +515,6 @@ function DashboardContent() {
       return
     }
     setAuthenticated(true)
-    setAdminEmail(sessionStorage.getItem('seek_admin_email') ?? 'admin')
   }, [router])
 
   // ------ Data fetching ------
@@ -3152,7 +3150,7 @@ function DashboardContent() {
   }
 
   function renderOnboarding() {
-    return <OnboardingApplicationsTab adminEmail={adminEmail} />
+    return <OnboardingApplicationsTab />
   }
 
   function renderDepreciation() {

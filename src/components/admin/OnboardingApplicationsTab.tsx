@@ -2,9 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import {
-  CheckCircle2,
   Clock,
-  XCircle,
   Eye,
   ChevronDown,
   ChevronUp,
@@ -12,7 +10,6 @@ import {
   FileText,
   IdCard,
   Landmark,
-  ShieldCheck,
   FileSignature,
   AlertCircle,
 } from 'lucide-react'
@@ -28,13 +25,8 @@ interface OnboardingApp {
   phone: string | null
   dlUrl: string | null
   dlUploadedAt: string | null
-  reviewedBy: string | null
-  reviewedAt: string | null
-  declineReason: string | null
-  achBankName: string | null
-  achAccountLast4: string | null
+  achAuthorizedName: string | null
   achAuthorizedAt: string | null
-  achVoidedCheckUrl: string | null
   leaseSignedAt: string | null
   leaseSignedName: string | null
   guarantySignedAt: string | null
@@ -42,9 +34,9 @@ interface OnboardingApp {
   completedAt: string | null
   createdAt: string
   progress: {
+    dl: boolean
     ach: boolean
     lease: boolean
-    guaranty: boolean
     completed: number
     total: number
     isComplete: boolean
@@ -53,27 +45,25 @@ interface OnboardingApp {
 
 interface Summary {
   total: number
-  awaitingReview: number
-  approved: number
+  inProgress: number
   completed: number
-  declined: number
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  created: 'Created',
-  dl_submitted: 'Awaiting review',
-  approved: 'Approved',
-  declined: 'Declined',
-  bundle_started: 'Bundle in progress',
+  created: 'In progress',
+  dl_submitted: 'In progress',
+  approved: 'In progress',
+  bundle_started: 'In progress',
+  declined: 'Declined (legacy)',
   completed: 'Completed',
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  created: 'bg-gray-100 text-gray-700',
+  created: 'bg-amber-100 text-amber-800',
   dl_submitted: 'bg-amber-100 text-amber-800',
-  approved: 'bg-blue-100 text-blue-800',
+  approved: 'bg-amber-100 text-amber-800',
+  bundle_started: 'bg-amber-100 text-amber-800',
   declined: 'bg-red-100 text-red-700',
-  bundle_started: 'bg-purple-100 text-purple-800',
   completed: 'bg-green-100 text-green-800',
 }
 
@@ -84,25 +74,17 @@ function formatDate(iso: string | null): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-export default function OnboardingApplicationsTab({
-  adminEmail,
-}: {
-  adminEmail: string
-}) {
+export default function OnboardingApplicationsTab() {
   const [apps, setApps] = useState<OnboardingApp[]>([])
   const [summary, setSummary] = useState<Summary>({
     total: 0,
-    awaitingReview: 0,
-    approved: 0,
+    inProgress: 0,
     completed: 0,
-    declined: 0,
   })
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState<number | null>(null)
   const [filter, setFilter] = useState<string>('all')
-  const [actionLoading, setActionLoading] = useState<number | null>(null)
   const [error, setError] = useState('')
-  const [declineReason, setDeclineReason] = useState('')
 
   const fetchApps = useCallback(async () => {
     setLoading(true)
@@ -125,77 +107,26 @@ export default function OnboardingApplicationsTab({
     fetchApps()
   }, [fetchApps])
 
-  async function handleApprove(id: number) {
-    setActionLoading(id)
-    setError('')
-    try {
-      const res = await fetch(`/api/admin/onboarding-applications/${id}/approve`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reviewedBy: adminEmail }),
-      })
-      const data = await res.json()
-      if (!res.ok || !data.success) {
-        setError(data.message || 'Approve failed')
-        return
-      }
-      await fetchApps()
-    } finally {
-      setActionLoading(null)
-    }
-  }
-
-  async function handleDecline(id: number) {
-    if (!declineReason.trim()) {
-      setError('Please enter a decline reason before declining.')
-      return
-    }
-    setActionLoading(id)
-    setError('')
-    try {
-      const res = await fetch(`/api/admin/onboarding-applications/${id}/decline`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reviewedBy: adminEmail, reason: declineReason.trim() }),
-      })
-      const data = await res.json()
-      if (!res.ok || !data.success) {
-        setError(data.message || 'Decline failed')
-        return
-      }
-      setDeclineReason('')
-      await fetchApps()
-    } finally {
-      setActionLoading(null)
-    }
-  }
-
-  const filtered = apps.filter((a) => (filter === 'all' ? true : a.status === filter))
+  const filtered = apps.filter((a) => {
+    if (filter === 'all') return true
+    if (filter === 'completed') return a.status === 'completed'
+    return a.status !== 'completed'
+  })
 
   return (
     <>
       {/* KPI cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
+      <div className="grid grid-cols-3 gap-3 mb-4">
         <KpiCard label="Total" value={summary.total} color="bg-gray-100 text-gray-700" />
         <KpiCard
-          label="Awaiting Review"
-          value={summary.awaitingReview}
+          label="In Progress"
+          value={summary.inProgress}
           color="bg-amber-100 text-amber-800"
-        />
-        <KpiCard
-          label="Approved"
-          value={summary.approved}
-          color="bg-blue-100 text-blue-800"
         />
         <KpiCard
           label="Completed"
           value={summary.completed}
           color="bg-green-100 text-green-800"
-        />
-        <KpiCard
-          label="Declined"
-          value={summary.declined}
-          color="bg-red-100 text-red-800"
         />
       </div>
 
@@ -208,11 +139,8 @@ export default function OnboardingApplicationsTab({
           className="text-xs rounded border border-gray-300 px-2 py-1 bg-white"
         >
           <option value="all">All ({apps.length})</option>
-          <option value="dl_submitted">Awaiting review ({summary.awaitingReview})</option>
-          <option value="approved">Approved</option>
-          <option value="bundle_started">Bundle in progress</option>
-          <option value="completed">Completed</option>
-          <option value="declined">Declined</option>
+          <option value="in_progress">In progress ({summary.inProgress})</option>
+          <option value="completed">Completed ({summary.completed})</option>
         </select>
         <button
           onClick={fetchApps}
@@ -246,8 +174,8 @@ export default function OnboardingApplicationsTab({
                 <th className="px-3 py-2 text-left font-semibold text-gray-700">Company / Email</th>
                 <th className="px-3 py-2 text-left font-semibold text-gray-700">Status</th>
                 <th className="px-3 py-2 text-left font-semibold text-gray-700">Progress</th>
-                <th className="px-3 py-2 text-left font-semibold text-gray-700">Submitted</th>
-                <th className="px-3 py-2 text-right font-semibold text-gray-700">Actions</th>
+                <th className="px-3 py-2 text-left font-semibold text-gray-700">Started</th>
+                <th className="px-3 py-2 text-right font-semibold text-gray-700">Details</th>
               </tr>
             </thead>
             <tbody>
@@ -256,16 +184,7 @@ export default function OnboardingApplicationsTab({
                   key={app.id}
                   app={app}
                   isExpanded={expanded === app.id}
-                  onToggle={() => {
-                    setExpanded((prev) => (prev === app.id ? null : app.id))
-                    setDeclineReason('')
-                    setError('')
-                  }}
-                  onApprove={() => handleApprove(app.id)}
-                  onDecline={() => handleDecline(app.id)}
-                  actionLoading={actionLoading === app.id}
-                  declineReason={declineReason}
-                  setDeclineReason={setDeclineReason}
+                  onToggle={() => setExpanded((prev) => (prev === app.id ? null : app.id))}
                 />
               ))}
             </tbody>
@@ -297,22 +216,11 @@ function FragmentRow({
   app,
   isExpanded,
   onToggle,
-  onApprove,
-  onDecline,
-  actionLoading,
-  declineReason,
-  setDeclineReason,
 }: {
   app: OnboardingApp
   isExpanded: boolean
   onToggle: () => void
-  onApprove: () => void
-  onDecline: () => void
-  actionLoading: boolean
-  declineReason: string
-  setDeclineReason: (s: string) => void
 }) {
-  const canReview = app.status === 'dl_submitted'
   return (
     <>
       <tr
@@ -365,133 +273,44 @@ function FragmentRow({
                   }
                 />
                 <DetailRow label="Phone" value={app.phone} />
-                <DetailRow label="Created" value={formatDate(app.createdAt)} />
+                <DetailRow label="Started" value={formatDate(app.createdAt)} />
               </div>
 
-              {/* Right: documents */}
+              {/* Right: document sections */}
               <div>
                 <h4 className="text-xs font-bold text-gray-700 uppercase mb-2">Documents</h4>
                 <DocRow
                   icon={IdCard}
                   label="Driver's License"
-                  signedLabel={
+                  doneLabel={
                     app.dlUploadedAt ? `Uploaded ${formatDate(app.dlUploadedAt)}` : null
                   }
                   url={app.dlUrl}
                 />
                 <DocRow
                   icon={Landmark}
-                  label="ACH Authorization"
-                  signedLabel={
+                  label="ACH Authorization (JotForm)"
+                  doneLabel={
                     app.achAuthorizedAt
-                      ? `${app.achBankName} ****${app.achAccountLast4} • ${formatDate(
-                          app.achAuthorizedAt
-                        )}`
+                      ? `Submitted ${formatDate(app.achAuthorizedAt)}`
                       : null
                   }
-                  url={
-                    app.achAuthorizedAt
-                      ? `/api/admin/onboarding-applications/${app.id}/pdf/ach`
-                      : null
-                  }
+                  url={null}
                 />
                 <DocRow
                   icon={FileSignature}
-                  label="Equipment Rental Agreement"
-                  signedLabel={
-                    app.leaseSignedAt
-                      ? `${app.leaseSignedName} • ${formatDate(app.leaseSignedAt)}`
-                      : null
+                  label="Lease Agreement & Guaranty (JotForm)"
+                  doneLabel={
+                    app.leaseSignedAt ? `Submitted ${formatDate(app.leaseSignedAt)}` : null
                   }
-                  url={
-                    app.leaseSignedAt
-                      ? `/api/admin/onboarding-applications/${app.id}/pdf/lease`
-                      : null
-                  }
+                  url={null}
                 />
-                <DocRow
-                  icon={ShieldCheck}
-                  label="Personal Guaranty"
-                  signedLabel={
-                    app.guarantySignedAt
-                      ? `${app.guarantySignedName} • ${formatDate(app.guarantySignedAt)}`
-                      : null
-                  }
-                  url={
-                    app.guarantySignedAt
-                      ? `/api/admin/onboarding-applications/${app.id}/pdf/guaranty`
-                      : null
-                  }
-                />
-                <DocRow
-                  icon={Landmark}
-                  label="Voided Check"
-                  signedLabel={app.achVoidedCheckUrl ? 'Uploaded' : null}
-                  url={app.achVoidedCheckUrl}
-                />
-              </div>
-            </div>
-
-            {/* Decision panel */}
-            {canReview && (
-              <div className="mt-4 pt-4 border-t bg-amber-50/40 -mx-3 -mb-4 px-3 pb-4 rounded-b">
-                <h4 className="text-xs font-bold text-amber-900 uppercase mb-2">
-                  Review decision
-                </h4>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onApprove()
-                    }}
-                    disabled={actionLoading}
-                    className="inline-flex items-center justify-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-4 py-2 rounded transition-colors disabled:opacity-60"
-                  >
-                    {actionLoading ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="h-3 w-3" />
-                    )}
-                    Approve & unlock document bundle
-                  </button>
-                  <div className="flex-1 flex gap-2 min-w-0">
-                    <input
-                      type="text"
-                      placeholder="Decline reason (required)"
-                      value={declineReason}
-                      onChange={(e) => setDeclineReason(e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="flex-1 text-xs rounded border border-gray-300 px-2 py-1.5 min-w-0"
-                    />
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onDecline()
-                      }}
-                      disabled={actionLoading || !declineReason.trim()}
-                      className="inline-flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1.5 rounded transition-colors disabled:opacity-60 shrink-0"
-                    >
-                      {actionLoading ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <XCircle className="h-3 w-3" />
-                      )}
-                      Decline
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {app.status === 'declined' && app.declineReason && (
-              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded text-xs">
-                <p className="font-semibold text-red-800 mb-1">Declined</p>
-                <p className="text-red-700">
-                  Reason: {app.declineReason} • Reviewed{' '}
-                  {formatDate(app.reviewedAt)} by {app.reviewedBy ?? '—'}
+                <p className="text-[10px] text-gray-400 mt-2">
+                  ACH and Lease completions are customer-confirmed; signed copies arrive via
+                  JotForm notifications.
                 </p>
               </div>
-            )}
+            </div>
 
             {app.status === 'completed' && (
               <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded text-xs">
@@ -518,12 +337,12 @@ function DetailRow({ label, value }: { label: string; value: string | null }) {
 function DocRow({
   icon: Icon,
   label,
-  signedLabel,
+  doneLabel,
   url,
 }: {
   icon: React.ComponentType<{ className?: string }>
   label: string
-  signedLabel: string | null
+  doneLabel: string | null
   url: string | null
 }) {
   return (
@@ -531,10 +350,10 @@ function DocRow({
       <Icon className="h-3.5 w-3.5 text-gray-400 shrink-0" />
       <div className="flex-1 min-w-0">
         <p className="text-gray-700">{label}</p>
-        {signedLabel ? (
-          <p className="text-[10px] text-gray-500 truncate">{signedLabel}</p>
+        {doneLabel ? (
+          <p className="text-[10px] text-gray-500 truncate">{doneLabel}</p>
         ) : (
-          <p className="text-[10px] text-gray-400 italic">Not yet signed</p>
+          <p className="text-[10px] text-gray-400 italic">Not yet submitted</p>
         )}
       </div>
       {url ? (

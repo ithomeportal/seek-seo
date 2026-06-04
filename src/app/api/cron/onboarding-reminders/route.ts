@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { query } from '@/lib/db'
-import { rowToApplication, type OnboardingApplicationRow, type OnboardingApplication } from '@/lib/onboarding'
+import {
+  rowToApplication,
+  sectionProgress,
+  type OnboardingApplicationRow,
+  type OnboardingApplication,
+} from '@/lib/onboarding'
 
-type ReminderKind =
-  | 'dl_not_uploaded'
-  | 'bundle_not_started'
-  | 'bundle_partial'
-  | 'recurring_72h'
+type ReminderKind = 'dl_not_uploaded' | 'docs_incomplete' | 'recurring_72h'
 
 const PORTAL_URL = 'https://www.seekequipment.com/client-portal'
 
@@ -19,55 +20,34 @@ function ageHours(date: string | null): number {
 }
 
 function pickReminder(app: OnboardingApplication): ReminderKind | null {
-  const lastSent = ageHours(app.updatedAt) // proxy floor — we compare specific timestamps below
   const sinceLastReminder = ageHours((app as unknown as { lastReminderSentAt?: string }).lastReminderSentAt ?? null)
+  const progress = sectionProgress(app)
+  if (progress.isComplete) return null
 
-  // Status-driven primary reminders
-  if (app.status === 'created' || app.status === 'dl_submitted') {
-    // We treat "dl not uploaded" + "started not submitted" as one combined reminder.
-    if (app.status === 'created' && ageHours(app.createdAt) >= 48 && sinceLastReminder >= 24) {
-      return 'dl_not_uploaded'
-    }
-    // App is "in progress" of DL upload but somehow stalled — covered by recurring rule below.
+  // Hasn't uploaded a DL yet and the application is going stale.
+  if (!progress.dl && ageHours(app.createdAt) >= 48 && sinceLastReminder >= 24) {
+    return 'dl_not_uploaded'
   }
 
-  if (app.status === 'approved') {
-    if (ageHours(app.reviewedAt) >= 48 && sinceLastReminder >= 24) {
-      return 'bundle_not_started'
-    }
+  // Made some progress but stalled on the remaining document sections.
+  if (progress.completed > 0 && ageHours(app.updatedAt) >= 24 && sinceLastReminder >= 24) {
+    return 'docs_incomplete'
   }
 
-  if (app.status === 'bundle_started') {
-    // Some docs done, some not. Use updated_at as a proxy for last activity.
-    if (ageHours(app.updatedAt) >= 24 && sinceLastReminder >= 24) {
-      return 'bundle_partial'
-    }
-  }
-
-  // Recurring 72h reminder for any incomplete state (not declined, not completed)
-  const incomplete =
-    app.status === 'created' ||
-    app.status === 'dl_submitted' ||
-    app.status === 'approved' ||
-    app.status === 'bundle_started'
-  if (incomplete && sinceLastReminder >= 72) {
+  // Recurring 72h catch-all for any incomplete application.
+  if (sinceLastReminder >= 72) {
     return 'recurring_72h'
   }
 
-  // Suppress unused linter warning
-  void lastSent
   return null
 }
 
 function describeMissing(app: OnboardingApplication): string[] {
+  const progress = sectionProgress(app)
   const missing: string[] = []
-  if (app.status === 'created' || app.status === 'dl_submitted') {
-    if (!app.dlUploadedAt) missing.push('Driver’s License photo')
-    return missing
-  }
-  if (!app.achAuthorizedAt) missing.push('ACH Authorization')
-  if (!app.leaseSignedAt) missing.push('Equipment Rental Agreement')
-  if (!app.guarantySignedAt) missing.push('Personal Guaranty')
+  if (!progress.dl) missing.push('Driver’s License photo')
+  if (!progress.ach) missing.push('ACH Debits Authorization')
+  if (!progress.lease) missing.push('Lease Agreement & Guaranty to Pay')
   return missing
 }
 
@@ -75,10 +55,8 @@ function reminderSubject(kind: ReminderKind, reference: string): string {
   switch (kind) {
     case 'dl_not_uploaded':
       return `Reminder: Upload your Driver’s License to start your SEEK application (${reference})`
-    case 'bundle_not_started':
-      return `Reminder: Your SEEK Equipment documents are ready to sign (${reference})`
-    case 'bundle_partial':
-      return `Reminder: A few SEEK documents are still pending your signature (${reference})`
+    case 'docs_incomplete':
+      return `Reminder: A few SEEK documents are still pending (${reference})`
     case 'recurring_72h':
       return `Reminder: Your SEEK Equipment onboarding is incomplete (${reference})`
   }
@@ -92,11 +70,9 @@ function reminderHtml(
   const intro = (() => {
     switch (kind) {
       case 'dl_not_uploaded':
-        return 'It looks like you started a SEEK Equipment application but haven’t uploaded your Driver’s License yet. Once we have it on file, we can review and approve your account.'
-      case 'bundle_not_started':
-        return 'Your application has been approved! The last step is to sign three short documents in your portal so we can finalize your account.'
-      case 'bundle_partial':
-        return 'You’re almost done — just a couple of documents left to sign.'
+        return 'It looks like you started a SEEK Equipment application but haven’t uploaded your Driver’s License yet. Sign back into the portal to finish your document checklist.'
+      case 'docs_incomplete':
+        return 'You’re almost done — just a few items left on your document checklist.'
       case 'recurring_72h':
         return 'We’re keeping your SEEK Equipment onboarding open so you can pick it up whenever you’re ready. Here’s what’s still outstanding:'
     }
@@ -148,7 +124,7 @@ export async function GET(request: Request) {
 
   const result = await query<OnboardingApplicationRow>(
     `SELECT * FROM customer_onboarding_applications
-      WHERE status IN ('created','dl_submitted','approved','bundle_started')
+      WHERE status NOT IN ('completed','declined')
       ORDER BY created_at ASC
       LIMIT 500`
   )

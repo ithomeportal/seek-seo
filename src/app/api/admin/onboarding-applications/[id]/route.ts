@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { bundleProgress, getApplicationById } from '@/lib/onboarding'
+import { sectionProgress, getApplicationById } from '@/lib/onboarding'
 
 export async function GET(
   _req: Request,
@@ -22,6 +22,6 @@ export async function GET(
   }
   return NextResponse.json({
     success: true,
-    data: { ...app, progress: bundleProgress(app) },
+    data: { ...app, progress: sectionProgress(app) },
   })
 }
