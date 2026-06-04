@@ -17,12 +17,16 @@ function last4(value: string | undefined | null): string | null {
 }
 
 async function generateReference(): Promise<string> {
+  // MAX of the numeric suffix, NOT COUNT(*): deleting a row must never
+  // make the generator reissue an existing reference (unique constraint).
   const year = new Date().getUTCFullYear()
   const result = await query(
-    `SELECT COUNT(*)::int AS count FROM credit_applications WHERE reference_number LIKE $1`,
-    [`CA-${year}-%`]
+    `SELECT COALESCE(MAX(SPLIT_PART(reference_number, '-', 3)::int), 0) AS max
+     FROM credit_applications
+     WHERE reference_number ~ $1`,
+    [`^CA-${year}-[0-9]+$`]
   )
-  const next = (result.rows[0]?.count ?? 0) + 1
+  const next = (result.rows[0]?.max ?? 0) + 1
   return `CA-${year}-${String(next).padStart(4, '0')}`
 }
 
@@ -93,6 +97,98 @@ function applicantAckHtml(
   `
 }
 
+const UNIQUE_VIOLATION = '23505'
+const MAX_REFERENCE_ATTEMPTS = 3
+
+/**
+ * Generates a reference and inserts the application, retrying with a fresh
+ * reference if a concurrent submission grabbed the same number.
+ * Returns the reference that was actually persisted.
+ */
+async function persistApplication(
+  data: ReturnType<typeof creditApplicationSchema.parse>,
+  ip: string | null
+): Promise<string> {
+  for (let attempt = 1; ; attempt++) {
+    const reference = await generateReference()
+    try {
+      await query(
+        `INSERT INTO credit_applications (
+          reference_number, customer_name, customer_street, customer_city, customer_state, customer_zip, customer_phone,
+          entity_type, previous_business_name, state_entity_formed, business_phone,
+          bankruptcy_filed, bankruptcy_year, federal_tax_id, dnb_number, driver_license_last4, partners_members,
+          signatory_name, signatory_title, signatory_address, signatory_phone, signatory_email,
+          bank_name, bank_contact_name, bank_address, bank_account_number_last4, bank_transit,
+          job_numbers_required, tax_exempt, insurance_company, insurance_contact_person, insurance_phone, certificate_forwarded,
+          ap_contact, ap_email, ap_phone, trade_references,
+          signature_confirmed, signature_name, signature_date, submitter_ip
+        ) VALUES (
+          $1,$2,$3,$4,$5,$6,$7,
+          $8,$9,$10,$11,
+          $12,$13,$14,$15,$16,$17,
+          $18,$19,$20,$21,$22,
+          $23,$24,$25,$26,$27,
+          $28,$29,$30,$31,$32,$33,
+          $34,$35,$36,$37,
+          $38,$39,$40,$41
+        )`,
+        [
+          reference,
+          data.customerName,
+          data.customerStreet || null,
+          data.customerCity || null,
+          data.customerState || null,
+          data.customerZip || null,
+          data.customerPhone,
+          data.entityType,
+          data.previousBusinessName || null,
+          data.stateEntityFormed || null,
+          data.businessPhone || null,
+          data.bankruptcyFiled,
+          data.bankruptcyYear || null,
+          data.federalTaxId || null,
+          data.dnbNumber || null,
+          last4(data.driverLicense),
+          data.partnersMembers || null,
+          data.signatoryName,
+          data.signatoryTitle || null,
+          data.signatoryAddress || null,
+          data.signatoryPhone || null,
+          data.signatoryEmail,
+          data.bankName || null,
+          data.bankContactName || null,
+          data.bankAddress || null,
+          last4(data.bankAccountNumber),
+          data.bankTransit || null,
+          data.jobNumbersRequired,
+          data.taxExempt,
+          data.insuranceCompany || null,
+          data.insuranceContactPerson || null,
+          data.insurancePhone || null,
+          data.certificateForwarded,
+          data.apContact || null,
+          data.apEmail || null,
+          data.apPhone || null,
+          JSON.stringify(data.tradeReferences ?? []),
+          Boolean(data.signatureConfirmed),
+          data.signatureName,
+          data.signatureDate,
+          ip,
+        ]
+      )
+      return reference
+    } catch (err) {
+      const code = (err as { code?: string })?.code
+      if (code !== UNIQUE_VIOLATION || attempt >= MAX_REFERENCE_ATTEMPTS) {
+        throw err
+      }
+      console.warn(
+        `Credit application reference ${reference} collided (attempt ${attempt}), retrying`
+      )
+    }
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -116,12 +212,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, message: 'OK' })
     }
 
-    const reference = await generateReference()
     const submittedAt = new Date()
     const ip =
       request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
       request.headers.get('x-real-ip') ??
       null
+
+    // Persist first (do NOT store raw SSN/DL/account numbers; keep last4 only).
+    // Retry on unique violation so two concurrent submissions can't collide
+    // on the same reference number.
+    const reference = await persistApplication(data, ip)
 
     // Build PDF
     const pdfBytes = await buildCreditApplicationPdf({
@@ -132,72 +232,6 @@ export async function POST(request: NextRequest) {
     })
     const pdfBase64 = Buffer.from(pdfBytes).toString('base64')
     const pdfFilename = `credit-application-${reference}.pdf`
-
-    // Persist (do NOT store raw SSN/DL/account numbers; keep last4 only)
-    await query(
-      `INSERT INTO credit_applications (
-        reference_number, customer_name, customer_street, customer_city, customer_state, customer_zip, customer_phone,
-        entity_type, previous_business_name, state_entity_formed, business_phone,
-        bankruptcy_filed, bankruptcy_year, federal_tax_id, dnb_number, driver_license_last4, partners_members,
-        signatory_name, signatory_title, signatory_address, signatory_phone, signatory_email,
-        bank_name, bank_contact_name, bank_address, bank_account_number_last4, bank_transit,
-        job_numbers_required, tax_exempt, insurance_company, insurance_contact_person, insurance_phone, certificate_forwarded,
-        ap_contact, ap_email, ap_phone, trade_references,
-        signature_confirmed, signature_name, signature_date, submitter_ip
-      ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,
-        $8,$9,$10,$11,
-        $12,$13,$14,$15,$16,$17,
-        $18,$19,$20,$21,$22,
-        $23,$24,$25,$26,$27,
-        $28,$29,$30,$31,$32,$33,
-        $34,$35,$36,$37,
-        $38,$39,$40,$41
-      )`,
-      [
-        reference,
-        data.customerName,
-        data.customerStreet || null,
-        data.customerCity || null,
-        data.customerState || null,
-        data.customerZip || null,
-        data.customerPhone,
-        data.entityType,
-        data.previousBusinessName || null,
-        data.stateEntityFormed || null,
-        data.businessPhone || null,
-        data.bankruptcyFiled,
-        data.bankruptcyYear || null,
-        data.federalTaxId || null,
-        data.dnbNumber || null,
-        last4(data.driverLicense),
-        data.partnersMembers || null,
-        data.signatoryName,
-        data.signatoryTitle || null,
-        data.signatoryAddress || null,
-        data.signatoryPhone || null,
-        data.signatoryEmail,
-        data.bankName || null,
-        data.bankContactName || null,
-        data.bankAddress || null,
-        last4(data.bankAccountNumber),
-        data.bankTransit || null,
-        data.jobNumbersRequired,
-        data.taxExempt,
-        data.insuranceCompany || null,
-        data.insuranceContactPerson || null,
-        data.insurancePhone || null,
-        data.certificateForwarded,
-        data.apContact || null,
-        data.apEmail || null,
-        data.apPhone || null,
-        JSON.stringify(data.tradeReferences ?? []),
-        Boolean(data.signatureConfirmed),
-        data.signatureName,
-        data.signatureDate,
-        ip,
-      ]
-    )
 
     // Email via Resend
     const resendKey = process.env.RESEND_API_KEY
