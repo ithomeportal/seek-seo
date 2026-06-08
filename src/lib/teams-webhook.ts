@@ -37,9 +37,21 @@ export interface TeamsPostResult {
   message?: string
 }
 
-export async function postToTeams(
-  payload: TeamsCreditApplicationPayload
-): Promise<TeamsPostResult> {
+/** Onboarding document relay (ACH / lease & guaranty signed PDFs). */
+export interface TeamsOnboardingDocumentPayload {
+  kind: 'onboarding-document'
+  documentType: 'ach' | 'lease'
+  documentLabel: string
+  reference: string
+  companyName: string | null
+  applicantEmail: string
+  submittedAt: string // ISO
+  summaryHtml: string
+  pdfBase64: string
+  pdfFilename: string
+}
+
+async function postToWebhook(payload: unknown): Promise<TeamsPostResult> {
   const url = process.env.TEAMS_WEBHOOK_URL
   if (!url) {
     return { ok: false, skipped: true, message: 'TEAMS_WEBHOOK_URL not set' }
@@ -79,4 +91,16 @@ export async function postToTeams(
           : 'Unknown error posting to Teams webhook',
     }
   }
+}
+
+export async function postToTeams(
+  payload: TeamsCreditApplicationPayload
+): Promise<TeamsPostResult> {
+  return postToWebhook(payload)
+}
+
+export async function postOnboardingDocumentToTeams(
+  payload: TeamsOnboardingDocumentPayload
+): Promise<TeamsPostResult> {
+  return postToWebhook(payload)
 }

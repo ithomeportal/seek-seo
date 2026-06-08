@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   AlertCircle,
   CheckCircle2,
-  ExternalLink,
   FileSignature,
   IdCard,
   Landmark,
@@ -14,6 +13,8 @@ import {
 import { COMPANY } from '@/lib/constants'
 import { UploadButton } from '@/lib/uploadthing'
 import { cn } from '@/lib/utils'
+import { AchForm } from '@/components/portal/onboarding/AchForm'
+import { LeaseGuarantyForm } from '@/components/portal/onboarding/LeaseGuarantyForm'
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                             */
@@ -58,11 +59,6 @@ interface MeResponse {
 }
 
 type SectionKey = 'dl' | 'ach' | 'lease' | 'profile'
-
-const JOTFORM_ACH_URL =
-  'https://unilink.jotform.com/sign/241086530827053/invite/01hvsbcrbnc4e70dac26813945?signEmbed=1'
-const JOTFORM_LEASE_URL =
-  'https://unilink.jotform.com/sign/260556428744060/invite/01kje0xazg743258f9ef5cd542?signEmbed=1'
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                           */
@@ -305,104 +301,6 @@ function DriversLicenseSection({
 }
 
 /* ------------------------------------------------------------------ */
-/*  Section: JotForm document (ACH / Lease & Guaranty)                */
-/* ------------------------------------------------------------------ */
-
-function JotformDocumentSection({
-  doc,
-  title,
-  description,
-  iframeSrc,
-  completedAt,
-  onComplete,
-}: {
-  doc: 'ach' | 'lease'
-  title: string
-  description: string
-  iframeSrc: string
-  completedAt: string | null
-  onComplete: (doc: 'ach' | 'lease') => Promise<void>
-}) {
-  const [confirming, setConfirming] = useState(false)
-  const [error, setError] = useState('')
-
-  async function confirm() {
-    setError('')
-    setConfirming(true)
-    try {
-      await onComplete(doc)
-    } catch {
-      setError('Could not save your confirmation. Please try again.')
-    } finally {
-      setConfirming(false)
-    }
-  }
-
-  return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-      <p className="text-sm text-gray-600">{description}</p>
-
-      {completedAt ? (
-        <div className="flex items-start gap-2 bg-green-50 text-green-800 rounded-lg p-3 text-sm">
-          <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
-          <div>
-            <p className="font-medium">Document submitted</p>
-            <p className="text-xs">Completed {formatDate(completedAt)}</p>
-          </div>
-        </div>
-      ) : (
-        <div className="flex items-start gap-2 bg-amber-50 text-amber-800 rounded-lg p-3 text-sm">
-          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-          <span>
-            Fill out and sign the document below. Once you&apos;ve submitted it, confirm with
-            the button underneath.
-          </span>
-        </div>
-      )}
-
-      {error && <ErrorBanner message={error} />}
-
-      <div className="rounded-xl border overflow-hidden bg-white">
-        <iframe
-          title={title}
-          src={iframeSrc}
-          className="w-full border-0 h-[70vh] min-h-[480px]"
-          allow="geolocation; microphone; camera; fullscreen"
-        />
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
-        {!completedAt && (
-          <button
-            type="button"
-            onClick={confirm}
-            disabled={confirming}
-            className="inline-flex items-center gap-2 bg-brand-orange hover:bg-brand-orange/90 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-60"
-          >
-            {confirming ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <CheckCircle2 className="h-4 w-4" />
-            )}
-            I&apos;ve completed and submitted this document
-          </button>
-        )}
-        <a
-          href={iframeSrc.replace('?signEmbed=1', '')}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-sm text-brand-blue font-medium hover:underline"
-        >
-          <ExternalLink className="h-3.5 w-3.5" />
-          Open in a new tab
-        </a>
-      </div>
-    </div>
-  )
-}
-
-/* ------------------------------------------------------------------ */
 /*  Section: Profile                                                  */
 /* ------------------------------------------------------------------ */
 
@@ -504,49 +402,6 @@ function OnboardingMenu({
     return 'profile'
   })
 
-  const markComplete = useCallback(
-    async (doc: 'ach' | 'lease') => {
-      const res = await fetch('/api/portal/application/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ doc }),
-      })
-      const data = await res.json()
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || 'Could not save completion')
-      }
-      await refresh()
-    },
-    [refresh]
-  )
-
-  // Best-effort: JotForm posts messages on submission; treat any submit-like
-  // event from a JotForm origin as completion of the currently open section.
-  useEffect(() => {
-    if (active !== 'ach' && active !== 'lease') return
-    if (sectionDone(app, active)) return
-
-    function onMessage(event: MessageEvent) {
-      let hostname = ''
-      try {
-        hostname = new URL(event.origin).hostname
-      } catch {
-        return
-      }
-      if (!/(^|\.)jotform\.com$/.test(hostname)) return
-      const raw =
-        typeof event.data === 'string' ? event.data : JSON.stringify(event.data ?? '')
-      if (/submission|submit-?(success|completed)|sign(ed|-completed)/i.test(raw)) {
-        void markComplete(active as 'ach' | 'lease').catch(() => {
-          // Manual confirm button remains the fallback
-        })
-      }
-    }
-
-    window.addEventListener('message', onMessage)
-    return () => window.removeEventListener('message', onMessage)
-  }, [active, app, markComplete])
-
   const navItem = (
     key: SectionKey,
     label: string,
@@ -618,23 +473,13 @@ function OnboardingMenu({
         <div className="min-w-0 bg-white rounded-2xl border shadow-sm p-6">
           {active === 'dl' && <DriversLicenseSection app={app} onChanged={refresh} />}
           {active === 'ach' && (
-            <JotformDocumentSection
-              doc="ach"
-              title="ACH Debits Authorization"
-              description="Authorize SEEK Equipment to debit your bank account for rental payments by completing and signing the form below."
-              iframeSrc={JOTFORM_ACH_URL}
-              completedAt={app.achAuthorizedAt}
-              onComplete={markComplete}
-            />
+            <AchForm completedAt={app.achAuthorizedAt} onDone={refresh} />
           )}
           {active === 'lease' && (
-            <JotformDocumentSection
-              doc="lease"
-              title="Lease Agreement & Guaranty to Pay"
-              description="Review and sign the equipment rental agreement, which includes the personal guaranty to pay."
-              iframeSrc={JOTFORM_LEASE_URL}
+            <LeaseGuarantyForm
               completedAt={app.leaseSignedAt}
-              onComplete={markComplete}
+              defaults={{ companyName: app.companyName, email }}
+              onDone={refresh}
             />
           )}
           {active === 'profile' && (

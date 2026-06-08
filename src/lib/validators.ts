@@ -107,6 +107,76 @@ export const creditApplicationSchema = z.object({
   honeypot: z.string().max(0).optional(),
 })
 
+/* ------------------------------------------------------------------ */
+/*  Onboarding — ACH Debits Authorization                             */
+/* ------------------------------------------------------------------ */
+
+export const achAuthorizationSchema = z.object({
+  accountType: z.enum(['checking', 'savings'], {
+    message: 'Select checking or savings',
+  }),
+  bankName: z.string().trim().min(2, 'Depository (bank) name is required'),
+  branch: optionalString,
+  city: z.string().trim().min(2, 'City is required'),
+  state: z.string().trim().min(2, 'State is required'),
+  zip: z.string().trim().min(3, 'ZIP is required'),
+  routingNumber: z
+    .string()
+    .trim()
+    .regex(/^\d{9}$/, 'Routing number must be 9 digits'),
+  accountNumber: z
+    .string()
+    .trim()
+    .regex(/^\d{4,17}$/, 'Enter a valid account number'),
+  accountName: z.string().trim().min(2, 'Name(s) on the account are required'),
+  idNumber: optionalString,
+  signatureConfirmed: z.literal(true, {
+    message: 'You must authorize the ACH debit to submit',
+  }),
+  signatureName: z.string().trim().min(2, 'Please type your full name'),
+  signatureDate: z.string().trim().min(1, 'Date is required'),
+  honeypot: z.string().max(0).optional(),
+})
+
+/* ------------------------------------------------------------------ */
+/*  Onboarding — Lease Agreement & Guaranty to Pay                    */
+/* ------------------------------------------------------------------ */
+
+export const leaseAgreementSchema = z.object({
+  // Lessee signature block
+  signatureName: z.string().trim().min(2, 'Lessee signature (full name) is required'),
+  title: z.string().trim().min(1, 'Title is required'),
+  signatureDate: z.string().trim().min(1, 'Date is required'),
+  signatureConfirmed: z.literal(true, {
+    message: 'You must accept the lease agreement to submit',
+  }),
+  // Personal Guaranty
+  guarantorFullName: z.string().trim().min(2, 'Guarantor full legal name is required'),
+  homeAddress: z.string().trim().min(2, 'Home address is required'),
+  city: z.string().trim().min(2, 'City is required'),
+  state: z.string().trim().min(2, 'State is required'),
+  zip: z.string().trim().min(3, 'ZIP is required'),
+  dob: z.string().trim().min(1, 'Date of birth is required'),
+  dlNumber: z.string().trim().min(2, "Driver's license number is required"),
+  dlState: z.string().trim().min(2, "Driver's license state is required"),
+  email: z.string().trim().email('Please enter a valid email address'),
+  phone: z.string().trim().min(10, 'Phone must have at least 10 digits'),
+  // Principal (renting company)
+  principalLegalName: z.string().trim().min(2, 'Company legal name is required'),
+  dba: optionalString,
+  companyAddress: z.string().trim().min(2, 'Company address is required'),
+  companyState: z.string().trim().min(2, 'Company state is required'),
+  companyZip: z.string().trim().min(3, 'Company ZIP is required'),
+  entityType: z.string().trim().min(2, 'Entity type is required'),
+  fmcsaMcDot: optionalString,
+  guarantyConfirmed: z.literal(true, {
+    message: 'You must accept the personal guaranty to submit',
+  }),
+  guarantySignatureName: z.string().trim().min(2, 'Guarantor signature (full name) is required'),
+  guarantyDate: z.string().trim().min(1, 'Date is required'),
+  honeypot: z.string().max(0).optional(),
+})
+
 export const fmcsaSearchSchema = z.object({
   state: z.string().length(2).optional(),
   zip: z.string().regex(/^\d{5}$/).optional(),
@@ -129,5 +199,7 @@ export type ContactFormData = z.infer<typeof contactSchema>
 export type QuoteFormData = z.infer<typeof quoteSchema>
 export type CreditApplicationFormData = z.infer<typeof creditApplicationSchema>
 export type TradeReference = z.infer<typeof tradeReferenceSchema>
+export type AchAuthorizationFormData = z.infer<typeof achAuthorizationSchema>
+export type LeaseAgreementFormData = z.infer<typeof leaseAgreementSchema>
 export type NewsletterFormData = z.infer<typeof newsletterSchema>
 export type FmcsaSearchFilters = z.infer<typeof fmcsaSearchSchema>

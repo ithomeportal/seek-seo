@@ -1,0 +1,112 @@
+import { NextResponse } from 'next/server'
+import { query } from '@/lib/db'
+import { readPortalSession } from '@/lib/portal-auth'
+import { achAuthorizationSchema } from '@/lib/validators'
+import { buildAchAuthorizationPdf } from '@/lib/ach-authorization-pdf'
+import {
+  getApplicationByEmail,
+  maybeMarkCompleted,
+  publicView,
+  sendOnboardingDocument,
+} from '@/lib/onboarding'
+
+function last4(value: string): string {
+  const clean = value.replace(/\D+/g, '')
+  return clean.slice(-4)
+}
+
+function clientIp(request: Request): string | null {
+  const fwd = request.headers.get('x-forwarded-for')
+  return fwd ? fwd.split(',')[0].trim() : null
+}
+
+/**
+ * Native ACH Debits Authorization submission. Persists last-4 of the bank
+ * numbers (full numbers live only in the emailed signed PDF), generates the
+ * PDF, emails SEEK + the customer, and advances onboarding completion.
+ */
+export async function POST(request: Request) {
+  const session = await readPortalSession()
+  if (!session) {
+    return NextResponse.json({ success: false, message: 'Not signed in' }, { status: 401 })
+  }
+
+  const parsed = achAuthorizationSchema.safeParse(await request.json().catch(() => ({})))
+  if (!parsed.success) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: 'Please review the highlighted fields and try again.',
+        issues: parsed.error.flatten(),
+      },
+      { status: 400 }
+    )
+  }
+  const data = parsed.data
+  if (data.honeypot) {
+    return NextResponse.json({ success: true })
+  }
+
+  const app = await getApplicationByEmail(session.email)
+  if (!app) {
+    return NextResponse.json(
+      { success: false, message: 'Application not found. Please save your contact info first.' },
+      { status: 400 }
+    )
+  }
+  if (!app.companyName || !app.contactFirstName) {
+    return NextResponse.json(
+      { success: false, message: 'Please complete your contact info first.' },
+      { status: 400 }
+    )
+  }
+
+  await query(
+    `UPDATE customer_onboarding_applications
+        SET ach_account_type = $1,
+            ach_bank_name = $2,
+            ach_routing_last4 = $3,
+            ach_account_last4 = $4,
+            ach_authorized_name = $5,
+            ach_authorized_at = NOW(),
+            updated_at = NOW()
+      WHERE id = $6`,
+    [
+      data.accountType,
+      data.bankName,
+      last4(data.routingNumber),
+      last4(data.accountNumber),
+      data.signatureName,
+      app.id,
+    ]
+  )
+
+  const submittedAt = new Date()
+  try {
+    const pdfBytes = await buildAchAuthorizationPdf({
+      ...data,
+      reference: app.reference,
+      companyName: app.companyName,
+      applicantEmail: session.email,
+      submittedAt,
+      submitterIp: clientIp(request),
+    })
+    await sendOnboardingDocument({
+      documentType: 'ach',
+      documentLabel: 'ACH Debits Authorization',
+      reference: app.reference,
+      email: session.email,
+      companyName: app.companyName,
+      pdfBytes,
+      submittedAt,
+    })
+  } catch {
+    // Delivery is best-effort; the authorization is already recorded.
+  }
+
+  const updated = await maybeMarkCompleted(session.email)
+  if (!updated) {
+    return NextResponse.json({ success: false, message: 'Application not found.' }, { status: 500 })
+  }
+  return NextResponse.json({ success: true, application: publicView(updated) })
+}

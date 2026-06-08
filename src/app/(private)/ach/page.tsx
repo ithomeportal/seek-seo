@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 
 export const metadata: Metadata = {
   title: 'ACH Debits Authorization',
@@ -8,16 +9,9 @@ export const metadata: Metadata = {
   },
 }
 
+// The ACH authorization is now signed natively inside the Client Portal
+// onboarding (requires a signed-in session). This legacy JotForm entry point
+// redirects there.
 export default function AchPage() {
-  return (
-    <div className="h-[calc(100vh-104px)] md:h-[calc(100vh-140px)]">
-      <iframe
-        title="SEEK ACH Debits Authorization Form"
-        src="https://unilink.jotform.com/sign/241086530827053/invite/01hvsbcrbnc4e70dac26813945?signEmbed=1"
-        className="h-full w-full border-0"
-        allowTransparency
-        allow="geolocation; microphone; camera; fullscreen"
-      />
-    </div>
-  )
+  redirect('/client-portal')
 }

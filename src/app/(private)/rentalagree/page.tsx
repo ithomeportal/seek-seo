@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 
 export const metadata: Metadata = {
   title: 'Equipment Rental Agreement',
@@ -8,16 +9,9 @@ export const metadata: Metadata = {
   },
 }
 
+// The lease agreement & guaranty are now signed natively inside the Client
+// Portal onboarding (requires a signed-in session). This legacy JotForm entry
+// point redirects there.
 export default function RentalAgreePage() {
-  return (
-    <div className="h-[calc(100vh-104px)] md:h-[calc(100vh-140px)]">
-      <iframe
-        title="EQUIPMENT RENTAL AGREEMENT 2026"
-        src="https://unilink.jotform.com/sign/260556428744060/invite/01kje0xazg743258f9ef5cd542?signEmbed=1"
-        className="h-full w-full border-0"
-        allowTransparency
-        allow="geolocation; microphone; camera; fullscreen"
-      />
-    </div>
-  )
+  redirect('/client-portal')
 }

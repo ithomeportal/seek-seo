@@ -1,5 +1,6 @@
 import { Resend } from 'resend'
 import { query } from '@/lib/db'
+import { postOnboardingDocumentToTeams } from '@/lib/teams-webhook'
 
 // 'approved' | 'declined' | 'bundle_started' are legacy values from the old
 // admin-gated e-sign flow — no longer written, kept so old rows still type-check.
@@ -225,6 +226,89 @@ export async function maybeMarkCompleted(email: string): Promise<OnboardingAppli
     return await getApplicationByEmail(email)
   }
   return app
+}
+
+/**
+ * Emails a signed onboarding document (ACH or lease & guaranty) to SEEK
+ * (rodney cc emendoza) + an acknowledgment copy to the customer, then relays
+ * it to the Teams/n8n webhook (non-blocking). Mirrors the credit-application
+ * delivery flow.
+ */
+export async function sendOnboardingDocument(input: {
+  documentType: 'ach' | 'lease'
+  documentLabel: string
+  reference: string
+  email: string
+  companyName: string | null
+  pdfBytes: Uint8Array
+  submittedAt: Date
+}): Promise<void> {
+  const { documentType, documentLabel, reference, email, companyName, pdfBytes, submittedAt } =
+    input
+  const pdfBase64 = Buffer.from(pdfBytes).toString('base64')
+  const pdfFilename = `${documentType === 'ach' ? 'ach-authorization' : 'lease-agreement'}-${reference}.pdf`
+  const who = companyName ?? email
+
+  const summaryHtml = `
+    <div style="font-family: Arial, sans-serif; padding: 24px;">
+      <h2 style="color: #35668d;">${documentLabel} Signed</h2>
+      <p>${who} signed the ${documentLabel.toLowerCase()} in the onboarding portal. The signed PDF is attached.</p>
+      <ul>
+        <li><strong>Reference:</strong> ${reference}</li>
+        <li><strong>Email:</strong> ${email}</li>
+        <li><strong>Company:</strong> ${companyName ?? '—'}</li>
+        <li><strong>Signed:</strong> ${submittedAt.toLocaleString('en-US')}</li>
+      </ul>
+    </div>
+  `
+
+  const resendKey = process.env.RESEND_API_KEY
+  if (resendKey) {
+    const resend = new Resend(resendKey)
+    try {
+      await resend.emails.send({
+        from: 'SEEK Equipment <noreply@unilinkportal.com>',
+        to: 'rodney@seekequipment.com',
+        cc: 'emendoza@seekequipment.com',
+        replyTo: email,
+        subject: `${documentLabel} signed — ${who} (${reference})`,
+        html: summaryHtml,
+        attachments: [{ filename: pdfFilename, content: pdfBase64 }],
+      })
+      await resend.emails.send({
+        from: 'SEEK Equipment <noreply@unilinkportal.com>',
+        to: email,
+        subject: `Your ${documentLabel} — SEEK Equipment (${reference})`,
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 24px;">
+            <h2 style="color: #35668d;">${documentLabel} Received</h2>
+            <p>Thank you. We have received your signed ${documentLabel.toLowerCase()}. A copy is attached for your records.</p>
+            <p><strong>Reference:</strong> ${reference}</p>
+          </div>
+        `,
+        attachments: [{ filename: pdfFilename, content: pdfBase64 }],
+      })
+    } catch {
+      // Best effort — completion is still recorded in the DB.
+    }
+  }
+
+  try {
+    await postOnboardingDocumentToTeams({
+      kind: 'onboarding-document',
+      documentType,
+      documentLabel,
+      reference,
+      companyName,
+      applicantEmail: email,
+      submittedAt: submittedAt.toISOString(),
+      summaryHtml,
+      pdfBase64,
+      pdfFilename,
+    })
+  } catch {
+    // Non-blocking relay.
+  }
 }
 
 async function notifySeekOfCompletion(
