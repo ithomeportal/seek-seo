@@ -6,6 +6,7 @@ import { ACH_BLOCKS, ACH_TITLE, COMPANY_LEGAL_NAME } from '@/lib/legal-documents
 import { achAuthorizationSchema } from '@/lib/validators'
 import { cn } from '@/lib/utils'
 import { LegalDocument, ScrollableDocument } from './LegalDocument'
+import { VoidedCheckUpload } from './DocumentUpload'
 import {
   CompletedBanner,
   ErrorBanner,
@@ -21,9 +22,13 @@ type Errors = Partial<Record<string, string>>
 
 export function AchForm({
   completedAt,
+  voidedCheckUrl,
+  voidedCheckUploadedAt,
   onDone,
 }: {
   completedAt: string | null
+  voidedCheckUrl: string | null
+  voidedCheckUploadedAt: string | null
   onDone: () => Promise<void>
 }) {
   const [accountType, setAccountType] = useState<'checking' | 'savings' | ''>('')
@@ -44,10 +49,6 @@ export function AchForm({
   const [errors, setErrors] = useState<Errors>({})
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
-
-  if (completedAt) {
-    return <CompletedBanner title="ACH Debits Authorization" completedAt={completedAt} />
-  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -101,7 +102,11 @@ export function AchForm({
   }
 
   return (
-    <form onSubmit={submit} className="space-y-5">
+    <div className="space-y-6">
+      {completedAt ? (
+        <CompletedBanner title="ACH Debits Authorization" completedAt={completedAt} />
+      ) : (
+        <form onSubmit={submit} className="space-y-5">
       <div>
         <h3 className="text-lg font-semibold text-gray-900">{ACH_TITLE}</h3>
         <p className="mt-1 text-sm text-gray-500">
@@ -219,6 +224,14 @@ export function AchForm({
         {saving && <Loader2 className="h-4 w-4 animate-spin" />}
         Submit ACH Authorization
       </button>
-    </form>
+        </form>
+      )}
+
+      <VoidedCheckUpload
+        url={voidedCheckUrl}
+        uploadedAt={voidedCheckUploadedAt}
+        onChanged={onDone}
+      />
+    </div>
   )
 }

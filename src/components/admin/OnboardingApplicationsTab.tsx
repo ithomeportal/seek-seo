@@ -11,6 +11,7 @@ import {
   IdCard,
   Landmark,
   FileSignature,
+  ShieldCheck,
   AlertCircle,
 } from 'lucide-react'
 
@@ -27,16 +28,21 @@ interface OnboardingApp {
   dlUploadedAt: string | null
   achAuthorizedName: string | null
   achAuthorizedAt: string | null
+  achVoidedCheckUrl: string | null
+  achVoidedCheckUploadedAt: string | null
   leaseSignedAt: string | null
   leaseSignedName: string | null
   guarantySignedAt: string | null
   guarantySignedName: string | null
+  coiDocuments: { url: string; filename: string | null; uploadedAt: string }[]
+  coiUploadedAt: string | null
   completedAt: string | null
   createdAt: string
   progress: {
     dl: boolean
     ach: boolean
     lease: boolean
+    coi: boolean
     completed: number
     total: number
     isComplete: boolean
@@ -289,7 +295,7 @@ function FragmentRow({
                 />
                 <DocRow
                   icon={Landmark}
-                  label="ACH Authorization (JotForm)"
+                  label="ACH Authorization"
                   doneLabel={
                     app.achAuthorizedAt
                       ? `Submitted ${formatDate(app.achAuthorizedAt)}`
@@ -298,16 +304,53 @@ function FragmentRow({
                   url={null}
                 />
                 <DocRow
+                  icon={FileText}
+                  label="Voided Check / Deposit Slip"
+                  doneLabel={
+                    app.achVoidedCheckUrl
+                      ? `Uploaded ${formatDate(app.achVoidedCheckUploadedAt)}`
+                      : null
+                  }
+                  url={app.achVoidedCheckUrl}
+                />
+                <DocRow
                   icon={FileSignature}
-                  label="Lease Agreement & Guaranty (JotForm)"
+                  label="Lease Agreement & Guaranty"
                   doneLabel={
                     app.leaseSignedAt ? `Submitted ${formatDate(app.leaseSignedAt)}` : null
                   }
                   url={null}
                 />
+                <DocRow
+                  icon={ShieldCheck}
+                  label={`Insurance / COI${
+                    app.coiDocuments.length > 1 ? ` (${app.coiDocuments.length} files)` : ''
+                  }`}
+                  doneLabel={
+                    app.coiDocuments.length > 0
+                      ? `Uploaded ${formatDate(app.coiUploadedAt)}`
+                      : null
+                  }
+                  url={app.coiDocuments[0]?.url ?? null}
+                />
+                {app.coiDocuments.length > 1 && (
+                  <div className="pl-6 pt-1 space-y-0.5">
+                    {app.coiDocuments.slice(1).map((doc) => (
+                      <a
+                        key={doc.url}
+                        href={doc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-[10px] text-brand-blue hover:underline truncate"
+                      >
+                        {doc.filename || 'Certificate of Insurance'}
+                      </a>
+                    ))}
+                  </div>
+                )}
                 <p className="text-[10px] text-gray-400 mt-2">
-                  ACH and Lease completions are customer-confirmed; signed copies arrive via
-                  JotForm notifications.
+                  ACH and Lease are signed natively in the portal; signed PDFs are emailed to
+                  SEEK on submission. Voided check and COI files are linked above.
                 </p>
               </div>
             </div>

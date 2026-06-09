@@ -12,6 +12,13 @@ export type OnboardingStatus =
   | 'bundle_started'
   | 'completed'
 
+/** A single uploaded Certificate of Insurance file. */
+export interface CoiDocument {
+  url: string
+  filename: string | null
+  uploadedAt: string
+}
+
 export interface OnboardingApplicationRow {
   id: number
   email: string
@@ -37,8 +44,12 @@ export interface OnboardingApplicationRow {
   ach_account_last4: string | null
   ach_account_type: string | null
   ach_voided_check_url: string | null
+  ach_voided_check_uploaded_at: string | null
   ach_authorized_name: string | null
   ach_authorized_at: string | null
+
+  coi_documents: CoiDocument[] | null
+  coi_uploaded_at: string | null
 
   lease_signed_name: string | null
   lease_signed_at: string | null
@@ -76,8 +87,12 @@ export interface OnboardingApplication {
   achAccountLast4: string | null
   achAccountType: string | null
   achVoidedCheckUrl: string | null
+  achVoidedCheckUploadedAt: string | null
   achAuthorizedName: string | null
   achAuthorizedAt: string | null
+
+  coiDocuments: CoiDocument[]
+  coiUploadedAt: string | null
 
   leaseSignedName: string | null
   leaseSignedAt: string | null
@@ -112,8 +127,11 @@ export function rowToApplication(row: OnboardingApplicationRow): OnboardingAppli
     achAccountLast4: row.ach_account_last4,
     achAccountType: row.ach_account_type,
     achVoidedCheckUrl: row.ach_voided_check_url,
+    achVoidedCheckUploadedAt: row.ach_voided_check_uploaded_at,
     achAuthorizedName: row.ach_authorized_name,
     achAuthorizedAt: row.ach_authorized_at,
+    coiDocuments: Array.isArray(row.coi_documents) ? row.coi_documents : [],
+    coiUploadedAt: row.coi_uploaded_at,
     leaseSignedName: row.lease_signed_name,
     leaseSignedAt: row.lease_signed_at,
     guarantySignedName: row.guaranty_signed_name,
@@ -176,15 +194,19 @@ export function sectionProgress(app: OnboardingApplication): {
   dl: boolean
   ach: boolean
   lease: boolean
+  coi: boolean
   completed: number
   total: number
   isComplete: boolean
 } {
   const dl = app.dlUploadedAt !== null
-  const ach = app.achAuthorizedAt !== null
+  // ACH is only complete once the authorization is submitted AND the voided
+  // check / deposit slip has been uploaded (Bruno's 2026-06-09 requirement).
+  const ach = app.achAuthorizedAt !== null && app.achVoidedCheckUrl !== null
   const lease = app.leaseSignedAt !== null
-  const completed = [dl, ach, lease].filter(Boolean).length
-  return { dl, ach, lease, completed, total: 3, isComplete: completed === 3 }
+  const coi = app.coiDocuments.length > 0
+  const completed = [dl, ach, lease, coi].filter(Boolean).length
+  return { dl, ach, lease, coi, completed, total: 4, isComplete: completed === 4 }
 }
 
 /** Shape of an application as exposed to the signed-in portal user. */
@@ -201,8 +223,12 @@ export function publicView(app: OnboardingApplication) {
     dlUploadedAt: app.dlUploadedAt,
     dlFilename: app.dlFilename,
     achAuthorizedAt: app.achAuthorizedAt,
+    achVoidedCheckUrl: app.achVoidedCheckUrl,
+    achVoidedCheckUploadedAt: app.achVoidedCheckUploadedAt,
     leaseSignedAt: app.leaseSignedAt,
     guarantySignedAt: app.guarantySignedAt,
+    coiDocuments: app.coiDocuments,
+    coiUploadedAt: app.coiUploadedAt,
     completedAt: app.completedAt,
     createdAt: app.createdAt,
     progress,

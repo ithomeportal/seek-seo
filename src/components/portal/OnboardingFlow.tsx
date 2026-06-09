@@ -8,12 +8,15 @@ import {
   IdCard,
   Landmark,
   Loader2,
+  ShieldCheck,
   User,
 } from 'lucide-react'
 import { COMPANY } from '@/lib/constants'
+import type { CoiDocument } from '@/lib/onboarding'
 import { UploadButton } from '@/lib/uploadthing'
 import { cn } from '@/lib/utils'
 import { AchForm } from '@/components/portal/onboarding/AchForm'
+import { CoiUpload } from '@/components/portal/onboarding/DocumentUpload'
 import { LeaseGuarantyForm } from '@/components/portal/onboarding/LeaseGuarantyForm'
 
 /* ------------------------------------------------------------------ */
@@ -39,14 +42,19 @@ interface Application {
   dlUploadedAt: string | null
   dlFilename: string | null
   achAuthorizedAt: string | null
+  achVoidedCheckUrl: string | null
+  achVoidedCheckUploadedAt: string | null
   leaseSignedAt: string | null
   guarantySignedAt: string | null
+  coiDocuments: CoiDocument[]
+  coiUploadedAt: string | null
   completedAt: string | null
   createdAt: string
   progress: {
     dl: boolean
     ach: boolean
     lease: boolean
+    coi: boolean
     completed: number
     total: number
     isComplete: boolean
@@ -58,7 +66,7 @@ interface MeResponse {
   customer: { contactFirstName: string | null; contactLastName: string | null } | null
 }
 
-type SectionKey = 'dl' | 'ach' | 'lease' | 'profile'
+type SectionKey = 'dl' | 'ach' | 'lease' | 'coi' | 'profile'
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                           */
@@ -301,6 +309,37 @@ function DriversLicenseSection({
 }
 
 /* ------------------------------------------------------------------ */
+/*  Section: Insurance / COI                                          */
+/* ------------------------------------------------------------------ */
+
+function CoiSection({
+  app,
+  onChanged,
+}: {
+  app: Application
+  onChanged: () => Promise<void>
+}) {
+  return (
+    <div className="space-y-4">
+      <h3 className="text-lg font-semibold text-gray-900">Insurance / COI</h3>
+      <p className="text-sm text-gray-600">
+        Upload your Certificate of Insurance (COI). You can add more than one file if your
+        coverage spans multiple certificates. Accepted formats: JPG, PNG, PDF.
+      </p>
+      <CoiUpload documents={app.coiDocuments} onChanged={onChanged} />
+      <p className="text-xs text-gray-500">
+        SEEK Equipment Rental must be named as an additional insured and loss payee. Questions
+        about coverage requirements? Call{' '}
+        <a href={COMPANY.phoneHref} className="font-medium text-brand-blue hover:underline">
+          {COMPANY.phone}
+        </a>
+        .
+      </p>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
 /*  Section: Profile                                                  */
 /* ------------------------------------------------------------------ */
 
@@ -377,12 +416,14 @@ const SECTIONS: {
   { key: 'dl', label: "DRIVER'S LICENSE", icon: IdCard },
   { key: 'ach', label: 'ACH', icon: Landmark },
   { key: 'lease', label: 'LEASE AGREEMENT & GUARANTY TO PAY', icon: FileSignature },
+  { key: 'coi', label: 'INSURANCE / COI', icon: ShieldCheck },
 ]
 
 function sectionDone(app: Application, key: SectionKey): boolean {
   if (key === 'dl') return app.progress.dl
   if (key === 'ach') return app.progress.ach
   if (key === 'lease') return app.progress.lease
+  if (key === 'coi') return app.progress.coi
   return false
 }
 
@@ -399,6 +440,7 @@ function OnboardingMenu({
     if (!app.progress.dl) return 'dl'
     if (!app.progress.ach) return 'ach'
     if (!app.progress.lease) return 'lease'
+    if (!app.progress.coi) return 'coi'
     return 'profile'
   })
 
@@ -473,7 +515,12 @@ function OnboardingMenu({
         <div className="min-w-0 bg-white rounded-2xl border shadow-sm p-6">
           {active === 'dl' && <DriversLicenseSection app={app} onChanged={refresh} />}
           {active === 'ach' && (
-            <AchForm completedAt={app.achAuthorizedAt} onDone={refresh} />
+            <AchForm
+              completedAt={app.achAuthorizedAt}
+              voidedCheckUrl={app.achVoidedCheckUrl}
+              voidedCheckUploadedAt={app.achVoidedCheckUploadedAt}
+              onDone={refresh}
+            />
           )}
           {active === 'lease' && (
             <LeaseGuarantyForm
@@ -482,6 +529,7 @@ function OnboardingMenu({
               onDone={refresh}
             />
           )}
+          {active === 'coi' && <CoiSection app={app} onChanged={refresh} />}
           {active === 'profile' && (
             <ProfileSection app={app} email={email} onSaved={refresh} />
           )}
