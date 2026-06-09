@@ -204,9 +204,11 @@ export function sectionProgress(app: OnboardingApplication): {
   // check / deposit slip has been uploaded (Bruno's 2026-06-09 requirement).
   const ach = app.achAuthorizedAt !== null && app.achVoidedCheckUrl !== null
   const lease = app.leaseSignedAt !== null
+  // COI is OPTIONAL — tracked for its own sidebar checkmark but NOT counted
+  // toward completion (Bruno's 2026-06-09 follow-up).
   const coi = app.coiDocuments.length > 0
-  const completed = [dl, ach, lease, coi].filter(Boolean).length
-  return { dl, ach, lease, coi, completed, total: 4, isComplete: completed === 4 }
+  const completed = [dl, ach, lease].filter(Boolean).length
+  return { dl, ach, lease, coi, completed, total: 3, isComplete: completed === 3 }
 }
 
 /** Shape of an application as exposed to the signed-in portal user. */

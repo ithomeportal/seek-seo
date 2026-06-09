@@ -48,7 +48,7 @@ function describeMissing(app: OnboardingApplication): string[] {
   if (!progress.dl) missing.push('Driver’s License photo')
   if (!progress.ach) missing.push('ACH Debits Authorization (incl. voided check / deposit slip)')
   if (!progress.lease) missing.push('Lease Agreement & Guaranty to Pay')
-  if (!progress.coi) missing.push('Certificate of Insurance (COI)')
+  // COI is optional — never listed as an outstanding/required item.
   return missing
 }
 

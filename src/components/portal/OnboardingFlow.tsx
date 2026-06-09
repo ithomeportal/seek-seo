@@ -321,10 +321,13 @@ function CoiSection({
 }) {
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-gray-900">Insurance / COI</h3>
+      <h3 className="text-lg font-semibold text-gray-900">
+        Insurance / COI <span className="text-sm font-normal text-gray-400">(optional)</span>
+      </h3>
       <p className="text-sm text-gray-600">
-        Upload your Certificate of Insurance (COI). You can add more than one file if your
-        coverage spans multiple certificates. Accepted formats: JPG, PNG, PDF.
+        Upload your Certificate of Insurance (COI). This step is optional and not required to
+        finish your application, but you&apos;re welcome to add it now. You can add more than one
+        file if your coverage spans multiple certificates. Accepted formats: JPG, PNG, PDF.
       </p>
       <CoiUpload documents={app.coiDocuments} onChanged={onChanged} />
       <p className="text-xs text-gray-500">
@@ -440,7 +443,7 @@ function OnboardingMenu({
     if (!app.progress.dl) return 'dl'
     if (!app.progress.ach) return 'ach'
     if (!app.progress.lease) return 'lease'
-    if (!app.progress.coi) return 'coi'
+    // COI is optional — don't force it as the landing section.
     return 'profile'
   })
 
