@@ -305,6 +305,7 @@ const STATUS_COLORS: Record<string, string> = {
   maintenance: 'bg-yellow-100 text-yellow-800',
   make_ready: 'bg-orange-100 text-orange-800',
   return_inspection: 'bg-cyan-100 text-cyan-800',
+  lease_to_own: 'bg-indigo-100 text-indigo-800',
   sold: 'bg-gray-200 text-gray-600',
 }
 
@@ -316,6 +317,7 @@ const STATUS_LABELS: Record<string, string> = {
   maintenance: 'Maintenance',
   make_ready: 'Make Ready',
   return_inspection: 'Return/Inspection',
+  lease_to_own: 'Lease to Own',
   sold: 'Sold',
 }
 
@@ -1202,6 +1204,7 @@ function DashboardContent() {
             <option value="maintenance">Maintenance</option>
             <option value="make_ready">Make Ready</option>
             <option value="return_inspection">Return/Inspection</option>
+            <option value="lease_to_own">Lease to Own</option>
           </select>
           <button
             onClick={() => setShowHistoricalSales(!showHistoricalSales)}
@@ -1411,6 +1414,7 @@ function DashboardContent() {
                       <option value="maintenance">Maintenance</option>
                       <option value="make_ready">Make Ready</option>
                       <option value="return_inspection">Return/Inspection</option>
+                      <option value="lease_to_own">Lease to Own</option>
                       <option value="sold">Sold</option>
                     </select>
                   </div>
@@ -1695,6 +1699,7 @@ function DashboardContent() {
                       <option value="maintenance">Maintenance</option>
                       <option value="make_ready">Make Ready</option>
                       <option value="return_inspection">Return/Inspection</option>
+                      <option value="lease_to_own">Lease to Own</option>
                       <option value="sold">Sold</option>
                     </select>
                   </div>

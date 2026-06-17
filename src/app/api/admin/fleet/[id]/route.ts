@@ -30,6 +30,7 @@ const updateUnitSchema = z.object({
       'sold',
       'make_ready',
       'return_inspection',
+      'lease_to_own',
     ])
     .optional(),
   rentedTo: z.string().nullable().optional(),
