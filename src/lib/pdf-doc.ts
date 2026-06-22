@@ -62,6 +62,16 @@ export interface PdfDoc {
   checkbox(checked: boolean, label: string, x: number): void
   /** A labelled signature line (underline with caption below). */
   signatureLine(label: string, value: string, opts?: { col?: 'full' | 'left' | 'right' }): void
+  /**
+   * Like signatureLine but renders a drawn signature PNG (data URL) above the
+   * line, falling back to the typed name when no image is supplied.
+   */
+  embedSignature(
+    label: string,
+    pngDataUrl: string | null | undefined,
+    typedName: string,
+    opts?: { col?: 'full' | 'left' | 'right' }
+  ): Promise<void>
   save(): Promise<Uint8Array>
 }
 
@@ -247,6 +257,42 @@ export async function createPdfDoc(meta: {
       rule(x, y - 3, x + colWidth, PDF_COLORS.dark)
       draw(label, x, y - 13, { size: 7.5, color: PDF_COLORS.gray })
       if (col !== 'left') y -= 32
+    },
+
+    async embedSignature(label, pngDataUrl, typedName, opts = {}) {
+      const col = opts.col ?? 'full'
+      ensure(46)
+      const colWidth = col === 'full' ? contentWidth : contentWidth / 2 - 12
+      const x = col === 'right' ? MARGIN + contentWidth / 2 + 12 : MARGIN
+      const prefix = 'data:image/png;base64,'
+      let drewImage = false
+      if (pngDataUrl && pngDataUrl.startsWith(prefix)) {
+        try {
+          const bytes = Uint8Array.from(Buffer.from(pngDataUrl.slice(prefix.length), 'base64'))
+          const png = await pdf.embedPng(bytes)
+          const maxW = Math.min(colWidth, 190)
+          const maxH = 32
+          const scale = Math.min(maxW / png.width, maxH / png.height, 1)
+          page.drawImage(png, {
+            x,
+            y: y - png.height * scale + 6,
+            width: png.width * scale,
+            height: png.height * scale,
+          })
+          drewImage = true
+        } catch {
+          drewImage = false
+        }
+      }
+      if (!drewImage) {
+        draw(typedName || '', x, y, { size: 11, font: bold })
+      }
+      rule(x, y - 3, x + colWidth, PDF_COLORS.dark)
+      draw(label, x, y - 13, { size: 7.5, color: PDF_COLORS.gray })
+      if (drewImage && typedName) {
+        draw(typedName, x, y - 22, { size: 7.5, color: PDF_COLORS.gray })
+      }
+      if (col !== 'left') y -= 40
     },
 
     save() {

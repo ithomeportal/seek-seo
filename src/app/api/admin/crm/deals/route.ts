@@ -41,6 +41,7 @@ const createDealSchema = z.object({
   rentalTermMonths: z.number().int().min(1).default(12),
   isMonthToMonth: z.boolean().default(false),
   region: z.string().optional(),
+  state: z.string().optional(),
   stage: z.enum(DEAL_STAGES).default('Qualification'),
   assignedTo: z.string().optional(),
   expectedCloseDate: z.string().optional(),
@@ -70,8 +71,8 @@ export async function POST(request: Request) {
     const result = await query(
       `INSERT INTO crm_deals
         (lead_id, company_name, trailer_type, quantity, monthly_rate_per_unit, rental_term_months,
-         is_month_to_month, region, stage, probability, assigned_to, expected_close_date, notes, is_archived)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+         is_month_to_month, region, state, stage, probability, assigned_to, expected_close_date, notes, is_archived)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
        RETURNING id`,
       [
         input.leadId,
@@ -82,6 +83,7 @@ export async function POST(request: Request) {
         input.rentalTermMonths,
         input.isMonthToMonth,
         input.region ?? null,
+        input.state ?? null,
         input.stage,
         probability,
         input.assignedTo ?? null,

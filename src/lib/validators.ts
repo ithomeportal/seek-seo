@@ -134,6 +134,10 @@ export const achAuthorizationSchema = z.object({
     message: 'You must authorize the ACH debit to submit',
   }),
   signatureName: z.string().trim().min(2, 'Please type your full name'),
+  signatureImage: z
+    .string()
+    .regex(/^data:image\/png;base64,/, 'Please draw your signature in the box')
+    .max(2_000_000, 'Signature image is too large'),
   signatureDate: z.string().trim().min(1, 'Date is required'),
   honeypot: z.string().max(0).optional(),
 })
@@ -150,6 +154,10 @@ export const leaseAgreementSchema = z.object({
   signatureConfirmed: z.literal(true, {
     message: 'You must accept the lease agreement to submit',
   }),
+  signatureImage: z
+    .string()
+    .regex(/^data:image\/png;base64,/, 'Please draw the lessee signature in the box')
+    .max(2_000_000, 'Signature image is too large'),
   // Personal Guaranty
   guarantorFullName: z.string().trim().min(2, 'Guarantor full legal name is required'),
   homeAddress: z.string().trim().min(2, 'Home address is required'),
@@ -173,6 +181,10 @@ export const leaseAgreementSchema = z.object({
     message: 'You must accept the personal guaranty to submit',
   }),
   guarantySignatureName: z.string().trim().min(2, 'Guarantor signature (full name) is required'),
+  guarantySignatureImage: z
+    .string()
+    .regex(/^data:image\/png;base64,/, 'Please draw the guarantor signature in the box')
+    .max(2_000_000, 'Signature image is too large'),
   guarantyDate: z.string().trim().min(1, 'Date is required'),
   honeypot: z.string().max(0).optional(),
 })

@@ -6,6 +6,7 @@ import { ACH_BLOCKS, ACH_TITLE, COMPANY_LEGAL_NAME } from '@/lib/legal-documents
 import { achAuthorizationSchema } from '@/lib/validators'
 import { cn } from '@/lib/utils'
 import { LegalDocument, ScrollableDocument } from './LegalDocument'
+import { SignaturePad } from './SignaturePad'
 import { VoidedCheckUpload } from './DocumentUpload'
 import {
   CompletedBanner,
@@ -43,6 +44,7 @@ export function AchForm({
   const [idNumber, setIdNumber] = useState('')
   const [signatureConfirmed, setSignatureConfirmed] = useState(false)
   const [signatureName, setSignatureName] = useState('')
+  const [signatureImage, setSignatureImage] = useState('')
   const [signatureDate, setSignatureDate] = useState(today())
   const [honeypot, setHoneypot] = useState('')
 
@@ -66,6 +68,7 @@ export function AchForm({
       idNumber,
       signatureConfirmed,
       signatureName,
+      signatureImage,
       signatureDate,
       honeypot,
     }
@@ -212,6 +215,9 @@ export function AchForm({
             />
           </Field>
         </div>
+        <Field label="Draw Your Signature" required error={errors.signatureImage}>
+          <SignaturePad value={signatureImage} onChange={setSignatureImage} error={!!errors.signatureImage} />
+        </Field>
       </div>
 
       <Honeypot value={honeypot} onChange={setHoneypot} />

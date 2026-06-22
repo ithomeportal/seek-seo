@@ -33,6 +33,7 @@ export interface CrmDeal {
   rentalTermMonths: number
   isMonthToMonth: boolean
   region: string | null
+  state: string | null
   stage: string
   probability: number
   assignedTo: string | null
@@ -105,6 +106,7 @@ export function mapDeal(row: Row): CrmDeal {
     rentalTermMonths: Number(row.rental_term_months ?? 12),
     isMonthToMonth: Boolean(row.is_month_to_month),
     region: (row.region as string) ?? null,
+    state: (row.state as string) ?? null,
     stage: String(row.stage),
     probability: Number(row.probability ?? 0),
     assignedTo: (row.assigned_to as string) ?? null,

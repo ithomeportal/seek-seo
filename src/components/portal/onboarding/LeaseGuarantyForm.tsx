@@ -16,6 +16,7 @@ import {
 import { leaseAgreementSchema } from '@/lib/validators'
 import { cn } from '@/lib/utils'
 import { LegalDocument, ScrollableDocument } from './LegalDocument'
+import { SignaturePad } from './SignaturePad'
 import {
   CompletedBanner,
   ErrorBanner,
@@ -31,6 +32,7 @@ type Errors = Partial<Record<string, string>>
 
 type FormState = {
   signatureName: string
+  signatureImage: string
   title: string
   signatureDate: string
   signatureConfirmed: boolean
@@ -53,6 +55,7 @@ type FormState = {
   fmcsaMcDot: string
   guarantyConfirmed: boolean
   guarantySignatureName: string
+  guarantySignatureImage: string
   guarantyDate: string
   honeypot: string
 }
@@ -68,6 +71,7 @@ export function LeaseGuarantyForm({
 }) {
   const [form, setForm] = useState<FormState>({
     signatureName: '',
+    signatureImage: '',
     title: '',
     signatureDate: today(),
     signatureConfirmed: false,
@@ -90,6 +94,7 @@ export function LeaseGuarantyForm({
     fmcsaMcDot: '',
     guarantyConfirmed: false,
     guarantySignatureName: '',
+    guarantySignatureImage: '',
     guarantyDate: today(),
     honeypot: '',
   })
@@ -191,6 +196,13 @@ export function LeaseGuarantyForm({
             />
           </Field>
         </div>
+        <Field label="Draw Lessee Signature" required error={errors.signatureImage}>
+          <SignaturePad
+            value={form.signatureImage}
+            onChange={(v) => set('signatureImage', v)}
+            error={!!errors.signatureImage}
+          />
+        </Field>
       </div>
 
       {/* Guaranty text */}
@@ -364,6 +376,13 @@ export function LeaseGuarantyForm({
             />
           </Field>
         </div>
+        <Field label="Draw Guarantor Signature" required error={errors.guarantySignatureImage}>
+          <SignaturePad
+            value={form.guarantySignatureImage}
+            onChange={(v) => set('guarantySignatureImage', v)}
+            error={!!errors.guarantySignatureImage}
+          />
+        </Field>
       </div>
 
       <Honeypot value={form.honeypot} onChange={(v) => set('honeypot', v)} />

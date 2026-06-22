@@ -198,6 +198,7 @@ export default function CrmDealsTab() {
               </th>
               <th className="px-3 py-2 font-semibold text-right">Qty</th>
               <th className="px-3 py-2 font-semibold">Region</th>
+              <th className="px-3 py-2 font-semibold">State</th>
               <th className="px-3 py-2 font-semibold text-right">Monthly Rent</th>
               <th className="px-3 py-2 font-semibold">Term</th>
               <th className="px-3 py-2 font-semibold text-right">TCV</th>
@@ -221,6 +222,7 @@ export default function CrmDealsTab() {
                 <td className="px-3 py-2">{crmTrailerLabel(d.trailerType)}</td>
                 <td className="px-3 py-2 text-right">{d.quantity}</td>
                 <td className="px-3 py-2">{d.region ?? '—'}</td>
+                <td className="px-3 py-2">{d.state ?? '—'}</td>
                 <td className="px-3 py-2 text-right">
                   {formatCurrency(monthlyDealRevenue(d.quantity, d.monthlyRatePerUnit))}
                 </td>
@@ -271,7 +273,7 @@ export default function CrmDealsTab() {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={12} className="px-3 py-8 text-center text-gray-500 text-base">
+                <td colSpan={13} className="px-3 py-8 text-center text-gray-500 text-base">
                   No deals found.
                 </td>
               </tr>

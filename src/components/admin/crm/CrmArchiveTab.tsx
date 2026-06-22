@@ -145,8 +145,12 @@ export default function CrmArchiveTab() {
                 <tr key={l.id} className="border-b last:border-0">
                   <td className="px-3 py-2 font-semibold text-gray-900">{l.companyName}</td>
                   <td className="px-3 py-2 text-gray-700">
-                    {l.contactName ?? '—'}
-                    {l.email && <span className="text-sm text-gray-500"> · {l.email}</span>}
+                    <span className="block">{l.contactName ?? '—'}</span>
+                    {(l.email || l.phone) && (
+                      <span className="block text-sm text-gray-500">
+                        {[l.email, l.phone].filter(Boolean).join(' · ')}
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-2">{l.region ?? '—'}{l.state ? ` / ${l.state}` : ''}</td>
                   <td className="px-3 py-2">{l.assignedTo ?? '—'}</td>
@@ -183,6 +187,7 @@ export default function CrmArchiveTab() {
                 <th className="px-3 py-2 font-semibold text-right">Monthly</th>
                 <th className="px-3 py-2 font-semibold">Term</th>
                 <th className="px-3 py-2 font-semibold text-right">TCV</th>
+                <th className="px-3 py-2 font-semibold">Owner</th>
                 <th className="px-3 py-2 font-semibold">Cancelled</th>
                 <th className="px-3 py-2 font-semibold">Reason</th>
                 <th className="px-3 py-2 font-semibold text-right">Actions</th>
@@ -201,6 +206,7 @@ export default function CrmArchiveTab() {
                   <td className="px-3 py-2 text-right font-semibold">
                     {formatCurrency(totalContractValue(d.quantity, d.monthlyRatePerUnit, d.rentalTermMonths, d.isMonthToMonth))}
                   </td>
+                  <td className="px-3 py-2">{d.assignedTo ?? '—'}</td>
                   <td className="px-3 py-2 text-gray-600">{formatDate(d.cancelledAt ?? d.closedAt)}</td>
                   <td className="px-3 py-2 text-sm text-gray-600 italic">{d.cancellationReason ?? '—'}</td>
                   <td className="px-3 py-2 text-right">
@@ -216,7 +222,7 @@ export default function CrmArchiveTab() {
               ))}
               {filteredDeals.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-3 py-8 text-center text-gray-500 text-base">
+                  <td colSpan={10} className="px-3 py-8 text-center text-gray-500 text-base">
                     No archived deals.
                   </td>
                 </tr>

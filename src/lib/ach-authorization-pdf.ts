@@ -63,7 +63,7 @@ export async function buildAchAuthorizationPdf(data: AchPdfInput): Promise<Uint8
     doc.margin
   )
   doc.space(24)
-  doc.signatureLine('Signature (typed name)', data.signatureName, { col: 'left' })
+  await doc.embedSignature('Signature', data.signatureImage, data.signatureName, { col: 'left' })
   doc.signatureLine('Date', data.signatureDate, { col: 'right' })
 
   doc.space(6)

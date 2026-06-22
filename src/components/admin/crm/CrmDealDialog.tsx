@@ -7,6 +7,7 @@ import {
   CRM_TRAILER_LABELS,
   DEAL_STAGES,
   REGIONS,
+  US_STATES,
   defaultMonthlyRateFor,
   formatTermLabel,
   monthlyDealRevenue,
@@ -39,6 +40,7 @@ export default function CrmDealDialog({ deal, lead, leadOptions = [], reps, onCl
   const [term, setTerm] = useState(String(deal?.rentalTermMonths ?? 12))
   const [mtm, setMtm] = useState(deal?.isMonthToMonth ?? false)
   const [region, setRegion] = useState(deal?.region ?? lead?.region ?? '')
+  const [stateCode, setStateCode] = useState(deal?.state ?? '')
   const [stage, setStage] = useState(deal?.stage ?? 'Qualification')
   const [assignedTo, setAssignedTo] = useState(deal?.assignedTo ?? lead?.assignedTo ?? reps[0]?.name ?? '')
   const [expectedClose, setExpectedClose] = useState(deal?.expectedCloseDate ?? '')
@@ -73,6 +75,7 @@ export default function CrmDealDialog({ deal, lead, leadOptions = [], reps, onCl
         rentalTermMonths: termNum,
         isMonthToMonth: mtm,
         region: region || undefined,
+        state: stateCode || undefined,
         stage,
         assignedTo: assignedTo || undefined,
         expectedCloseDate: expectedClose || undefined,
@@ -195,6 +198,19 @@ export default function CrmDealDialog({ deal, lead, leadOptions = [], reps, onCl
                 <option value="">—</option>
                 {REGIONS.map((r) => (
                   <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="text-sm font-semibold text-gray-700">State</span>
+              <select
+                value={stateCode ?? ''}
+                onChange={(e) => setStateCode(e.target.value)}
+                className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-base"
+              >
+                <option value="">—</option>
+                {US_STATES.map((s) => (
+                  <option key={s.code} value={s.code}>{s.code} — {s.name}</option>
                 ))}
               </select>
             </label>

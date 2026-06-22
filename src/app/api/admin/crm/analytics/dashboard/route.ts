@@ -39,6 +39,11 @@ export async function GET(request: Request) {
     const url = new URL(request.url)
     const idleFrom = url.searchParams.get('idleFrom')
     const idleTo = url.searchParams.get('idleTo')
+    const velocityMonthsParam = Number(url.searchParams.get('velocityMonths'))
+    const velocityMonths =
+      Number.isFinite(velocityMonthsParam) && velocityMonthsParam >= 1 && velocityMonthsParam <= 24
+        ? Math.floor(velocityMonthsParam)
+        : 6
 
     const [allDeals, allLeads, fleetResult] = await Promise.all([
       listDeals({}),
@@ -182,7 +187,6 @@ export async function GET(request: Request) {
 
     // Velocity (approximation): rentals started = currently-rented units whose
     // rent_start_date falls inside the trailing window. No rental-history table.
-    const velocityMonths = 6
     const velocitySince = new Date(today)
     velocitySince.setMonth(velocitySince.getMonth() - velocityMonths)
     const startedRecently = rented.filter((f) => {
@@ -203,6 +207,42 @@ export async function GET(request: Request) {
         monthsToLeaseAll: avPerMonth > 0 ? av / avPerMonth : null,
       }
     })
+
+    // ===== 12-month rentals vs available (approximation) =====
+    // No rental-history table, so each month's rented count is reconstructed from
+    // the overlap of a unit's single known rental window (rent_start_date →
+    // rent_end_date). Capacity is the current non-sold fleet size (flat line).
+    // Revenue uses a blended avg monthly rate per unit across the fleet.
+    const blendedRate = total
+      ? fleet.reduce((s, f) => s + (avgRateByType[f.trailer_type] ?? 0), 0) / total
+      : 0
+    const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const rentalsVsAvailablePoints = Array.from({ length: 12 }, (_, idx) => {
+      const i = 11 - idx
+      const mStart = new Date(today.getFullYear(), today.getMonth() - i, 1)
+      const mEnd = new Date(today.getFullYear(), today.getMonth() - i + 1, 0, 23, 59, 59)
+      const rentedInMonth = fleet.filter((f) => {
+        const start = toDate(f.rent_start_date)
+        if (!start || start.getTime() > mEnd.getTime()) return false
+        const end = toDate(f.rent_end_date)
+        if (end && end.getTime() < mStart.getTime()) return false
+        return true
+      }).length
+      const availableUnits = Math.max(0, total - rentedInMonth)
+      return {
+        label: `${MONTH_ABBR[mStart.getMonth()]} ${String(mStart.getFullYear()).slice(2)}`,
+        monthIso: mStart.toISOString().slice(0, 7),
+        rentedUnits: rentedInMonth,
+        availableUnits,
+        availableRevenue: Math.round(availableUnits * blendedRate),
+      }
+    })
+    const rentalsVsAvailable = {
+      capacityUnits: total,
+      blendedRate,
+      capacityRevenue: Math.round(total * blendedRate),
+      points: rentalsVsAvailablePoints,
+    }
 
     // ===== Pipeline breakdowns =====
     const byStage = DEAL_STAGES.map((s) => {
@@ -285,6 +325,7 @@ export async function GET(request: Request) {
         },
         pipeline: { byStage, byRegion, byTrailerType, leadFunnel, leadToQualified, leadToWon },
         dealsByStage,
+        rentalsVsAvailable,
       },
     })
   } catch (error) {

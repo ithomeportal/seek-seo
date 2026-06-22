@@ -36,6 +36,7 @@ export interface CrmDeal {
   rentalTermMonths: number
   isMonthToMonth: boolean
   region: string | null
+  state: string | null
   stage: string
   probability: number
   assignedTo: string | null

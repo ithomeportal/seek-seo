@@ -74,7 +74,7 @@ export async function buildLeaseAgreementPdf(data: LeasePdfInput): Promise<Uint8
     doc.margin
   )
   doc.space(24)
-  doc.signatureLine('Lessee Signature (typed name)', data.signatureName, { col: 'left' })
+  await doc.embedSignature('Lessee Signature', data.signatureImage, data.signatureName, { col: 'left' })
   doc.signatureLine('Title', data.title, { col: 'right' })
   doc.signatureLine('Date', data.signatureDate, { col: 'left' })
   doc.signatureLine('Lessor', 'Seek Equipment Rental, LLC', { col: 'right' })
@@ -124,7 +124,9 @@ export async function buildLeaseAgreementPdf(data: LeasePdfInput): Promise<Uint8
     doc.margin
   )
   doc.space(24)
-  doc.signatureLine('Guarantor Signature (typed name)', data.guarantySignatureName, { col: 'left' })
+  await doc.embedSignature('Guarantor Signature', data.guarantySignatureImage, data.guarantySignatureName, {
+    col: 'left',
+  })
   doc.signatureLine('Date', data.guarantyDate, { col: 'right' })
   doc.signatureLine('Printed Full Legal Name', data.guarantorFullName, { col: 'left' })
   doc.signatureLine('Phone', data.phone, { col: 'right' })
