@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ExternalLink, Loader2, Mail } from 'lucide-react'
 import { crmTrailerLabel, followupSection, humanCountdown } from '@/lib/crm'
-import RentalsVsAvailableChart, { type RentalPoint } from './RentalsVsAvailableChart'
+import { type RentalPoint } from './RentalsVsAvailableChart'
+import RentalVelocityTabs, { type VelocityTypeRow } from './RentalVelocityTabs'
 import { crmFetch, formatCurrency, formatDateTime, type AlertItem, type CrmRep } from './types'
 
 interface DashboardData {
@@ -55,6 +56,13 @@ interface DashboardData {
     blendedRate: number
     capacityRevenue: number
     points: RentalPoint[]
+  }
+  velocity: {
+    months: number
+    totalRecent: number
+    avgPerMonth: number
+    monthsToLeaseAll: number | null
+    byType: VelocityTypeRow[]
   }
 }
 
@@ -147,7 +155,7 @@ export default function CrmDashboardTab() {
   }
   if (!data) return null
 
-  const { kpis, pipeline, dealsByStage, rentalsVsAvailable } = data
+  const { kpis, pipeline, dealsByStage, rentalsVsAvailable, velocity } = data
   const funnelTotal = pipeline.leadFunnel.reduce((s, x) => s + x.count, 0)
 
   return (
@@ -383,15 +391,14 @@ export default function CrmDashboardTab() {
 
       {/* ===== RENTAL VELOCITY & TIME-TO-LEASE FORECAST ===== */}
       <SectionLabel>Rental Velocity &amp; Time-to-Lease Forecast</SectionLabel>
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <h3 className="text-base font-bold text-gray-900 mb-1">12-Month Rentals vs Available</h3>
-        <p className="text-sm text-gray-500 mb-3">Units rented per month vs total available capacity (trailing 12 months).</p>
-        <RentalsVsAvailableChart
-          points={rentalsVsAvailable.points}
-          capacityUnits={rentalsVsAvailable.capacityUnits}
-          capacityRevenue={rentalsVsAvailable.capacityRevenue}
-        />
-      </div>
+      <RentalVelocityTabs
+        points={rentalsVsAvailable.points}
+        capacityUnits={rentalsVsAvailable.capacityUnits}
+        capacityRevenue={rentalsVsAvailable.capacityRevenue}
+        rented={kpis.rented}
+        available={kpis.available}
+        velocityByType={velocity.byType}
+      />
 
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-4">
