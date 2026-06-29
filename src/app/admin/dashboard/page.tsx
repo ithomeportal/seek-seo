@@ -2412,8 +2412,8 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* Table — own vertical scroll so header + totals row stay frozen (Bruno 2026-06-29) */}
-        <div className="overflow-auto max-h-[65vh] rounded-lg border bg-white">
+        {/* Table — header + totals row freeze against the page scroll; no inner-scroll box, fills full page height at any resolution */}
+        <div className="rounded-lg border bg-white">
           <table className="min-w-full text-sm">
             <thead className="sticky top-0 z-10">
               <tr className="border-b bg-gray-50">
