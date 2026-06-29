@@ -120,11 +120,12 @@ export default function CrmCustomDateKpis({
           <DateDropdown value={rentedKey} onChange={setRentedKey} />
         </div>
         <p className="text-2xl font-bold mt-2 text-gray-900">
-          {rented.avgTrailerRented.totalRented}
+          {rented.avgTrailerRented.avgPerMonth.toFixed(1)}
+          <span className="text-base font-semibold text-gray-400">/mo</span>
         </p>
         <p className="text-xs text-gray-400 mt-0.5">
           {mmddyyyy(rented.rangeFrom)} → {mmddyyyy(rented.rangeTo)} ·{' '}
-          {rented.avgTrailerRented.avgPerMonth.toFixed(1)}/mo avg
+          {rented.avgTrailerRented.totalRented} rented
         </p>
         <div className="mt-2 space-y-0.5">
           {rentedTypes.length === 0 ? (
