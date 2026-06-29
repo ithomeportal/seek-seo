@@ -728,15 +728,41 @@ function DashboardContent() {
     fleetPlateFilter !== 'all' ||
     fleetGpsFilter !== 'all'
 
+  const DEFAULT_FLEET_FILTERS = {
+    search: '', type: 'all', status: 'all', year: 'all',
+    make: 'all', customer: 'all', plate: 'all', gps: 'all',
+  }
+  const currentFleetFilters = {
+    search: fleetSearch, type: fleetTypeFilter, status: fleetStatusFilter, year: fleetYearFilter,
+    make: fleetMakeFilter, customer: fleetCustomerFilter, plate: fleetPlateFilter, gps: fleetGpsFilter,
+  }
+  function applyFleetFilters(p: Partial<typeof DEFAULT_FLEET_FILTERS>) {
+    const next = { ...DEFAULT_FLEET_FILTERS, ...p }
+    setFleetSearch(next.search)
+    setFleetTypeFilter(next.type)
+    setFleetStatusFilter(next.status)
+    setFleetYearFilter(next.year)
+    setFleetMakeFilter(next.make)
+    setFleetCustomerFilter(next.customer)
+    setFleetPlateFilter(next.plate)
+    setFleetGpsFilter(next.gps)
+  }
   function clearFleetFilters() {
-    setFleetSearch('')
-    setFleetTypeFilter('all')
-    setFleetStatusFilter('all')
-    setFleetYearFilter('all')
-    setFleetMakeFilter('all')
-    setFleetCustomerFilter('all')
-    setFleetPlateFilter('all')
-    setFleetGpsFilter('all')
+    applyFleetFilters(DEFAULT_FLEET_FILTERS)
+  }
+
+  // Saved quick-view presets (one tap applies a filter combination)
+  const FLEET_PRESETS: { key: string; label: string; state: Partial<typeof DEFAULT_FLEET_FILTERS> }[] = [
+    { key: 'available', label: 'Available now', state: { status: 'available' } },
+    { key: 'rented', label: 'Rented', state: { status: 'rented' } },
+    { key: 'expiring', label: 'Expiring plates', state: { plate: 'due90' } },
+    { key: 'idle_gps', label: 'Idle GPS units', state: { status: 'available', gps: 'has' } },
+  ]
+  function presetIsActive(state: Partial<typeof DEFAULT_FLEET_FILTERS>) {
+    const target = { ...DEFAULT_FLEET_FILTERS, ...state }
+    return (Object.keys(target) as (keyof typeof target)[]).every(
+      (k) => currentFleetFilters[k] === target[k]
+    )
   }
 
   // Same rows the table renders (filtered + current column sort) — shared with CSV export.
@@ -758,6 +784,15 @@ function DashboardContent() {
       default: return null
     }
   })
+
+  // Type group headers only make sense when rows are grouped contiguously by type
+  // (default MANUS order, or when sorted by the Type column).
+  const showFleetGroupHeaders =
+    !showHistoricalSales && (sortKey === '' || sortKey === 'trailerType')
+  const fleetTypeCounts = sortedFleet.reduce<Record<string, number>>((acc, u) => {
+    acc[u.trailerType] = (acc[u.trailerType] ?? 0) + 1
+    return acc
+  }, {})
 
   // Human-readable labels for active-filter chips
   const PLATE_FILTER_LABELS: Record<string, string> = {
@@ -1487,6 +1522,28 @@ function DashboardContent() {
                 : `${filteredFleet.length} units`}
           </span>
         </div>
+        {/* Saved quick-view presets */}
+        {!showHistoricalSales && (
+          <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+            <span className="text-[11px] font-semibold uppercase text-gray-400 mr-0.5">Quick views</span>
+            {FLEET_PRESETS.map((preset) => {
+              const active = presetIsActive(preset.state)
+              return (
+                <button
+                  key={preset.key}
+                  onClick={() => applyFleetFilters(preset.state)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                    active
+                      ? 'bg-brand-blue text-white border-brand-blue'
+                      : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              )
+            })}
+          </div>
+        )}
         </div>
         {/* end frozen top section */}
 
@@ -2386,8 +2443,23 @@ function DashboardContent() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {sortedFleet.map((unit) => (
-                <tr key={unit.id} className="hover:bg-blue-50/40">
+              {sortedFleet.map((unit, idx) => {
+                const showGroupRow =
+                  showFleetGroupHeaders &&
+                  (idx === 0 || sortedFleet[idx - 1].trailerType !== unit.trailerType)
+                return (
+                <Fragment key={unit.id}>
+                {showGroupRow && (
+                  <tr className="bg-gray-100/80">
+                    <td colSpan={14} className="px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-gray-600 border-y border-gray-200">
+                      {TRAILER_TYPE_LABELS[unit.trailerType] ?? unit.trailerType}
+                      <span className="ml-1.5 font-medium text-gray-400 normal-case tracking-normal">
+                        ({fleetTypeCounts[unit.trailerType]})
+                      </span>
+                    </td>
+                  </tr>
+                )}
+                <tr className="hover:bg-blue-50/40">
                   <td className="px-2.5 py-1.5 font-semibold text-gray-900 whitespace-nowrap">{unit.unitNumber}</td>
                   <td className="px-2.5 py-1.5">
                     <span className="text-gray-500">{TRAILER_TYPE_LABELS[unit.trailerType] ?? unit.trailerType}</span>
@@ -2455,7 +2527,9 @@ function DashboardContent() {
                     </button>
                   </td>
                 </tr>
-              ))}
+                </Fragment>
+                )
+              })}
               {filteredFleet.length === 0 && (
                 <tr><td colSpan={14} className="px-3 py-8 text-center text-gray-400">No units match your filters.</td></tr>
               )}
