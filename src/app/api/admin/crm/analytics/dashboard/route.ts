@@ -208,6 +208,63 @@ export async function GET(request: Request) {
       }
     })
 
+    // ===== Custom-date windowed KPIs (Bruno 2026-06-29) =====
+    // Two cards (Lost Revenue, Avg Trailer Rented) share a "Custom Date" dropdown.
+    // Every window is precomputed here so the dropdown switches client-side with no
+    // re-fetch. Lost revenue reuses the range-idle math; rented count reuses velocity.
+    const idleLossForRange = (fromMs: number, toMs: number) => {
+      const rows = nonRevenue.map((f) => {
+        const since = (toDate(f.rent_end_date) ?? toDate(f.updated_at) ?? today).getTime()
+        const start = Math.max(since, fromMs)
+        const days = toMs > start ? Math.floor((toMs - start) / 86400000) : 0
+        const dailyLoss = (avgRateByType[f.trailer_type] ?? 0) / DAYS_PER_MONTH
+        return { trailerType: f.trailer_type, days, lost: days * dailyLoss }
+      })
+      const byType = CRM_TRAILER_TYPES.map((t) => {
+        const list = rows.filter((x) => x.trailerType === t)
+        return {
+          trailerType: t,
+          units: list.length,
+          days: list.reduce((s, x) => s + x.days, 0),
+          lost: list.reduce((s, x) => s + x.lost, 0),
+        }
+      })
+      return { total: rows.reduce((s, x) => s + x.lost, 0), byType }
+    }
+    const rentedForWindow = (months: number, sinceDate: Date) => {
+      const started = rented.filter((f) => {
+        const d = toDate(f.rent_start_date)
+        return d !== null && d >= sinceDate
+      })
+      const byType = CRM_TRAILER_TYPES.map((t) => {
+        const c = started.filter((f) => f.trailer_type === t).length
+        return { trailerType: t, rentedInPeriod: c, avgPerMonth: c / months }
+      })
+      return { totalRented: started.length, avgPerMonth: started.length / months, byType }
+    }
+    const monthsAgo = (m: number) => {
+      const d = new Date(today)
+      d.setMonth(d.getMonth() - m)
+      return d
+    }
+    const ytdMonths = today.getMonth() + 1 // months elapsed this calendar year
+    const customWindows = [
+      { key: 'm1', months: 1, since: monthsAgo(1), lostLabel: '1 MONTH', avgLabel: '1 MO' },
+      { key: 'm3', months: 3, since: monthsAgo(3), lostLabel: '3 MONTH', avgLabel: '3 MO' },
+      { key: 'ytd', months: ytdMonths, since: new Date(today.getFullYear(), 0, 1), lostLabel: 'YTD', avgLabel: `${ytdMonths} MO` },
+      { key: 'm12', months: 12, since: monthsAgo(12), lostLabel: '12 MONTH', avgLabel: '12 MO' },
+    ]
+    const customDateKpis = customWindows.map((w) => ({
+      key: w.key,
+      months: w.months,
+      lostLabel: w.lostLabel,
+      avgLabel: w.avgLabel,
+      rangeFrom: w.since.toISOString().slice(0, 10),
+      rangeTo: today.toISOString().slice(0, 10),
+      lostRevenue: idleLossForRange(w.since.getTime(), today.getTime()),
+      avgTrailerRented: rentedForWindow(w.months, w.since),
+    }))
+
     // ===== 12-month rentals vs available (approximation) =====
     // No rental-history table, so each month's rented count is reconstructed from
     // the overlap of a unit's single known rental window (rent_start_date →
@@ -315,6 +372,7 @@ export async function GET(request: Request) {
         },
         lostMonthlyByType,
         idleLossByType,
+        customDateKpis,
         fleetByType,
         velocity: {
           months: velocityMonths,

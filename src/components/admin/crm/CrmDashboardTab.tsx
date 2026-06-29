@@ -5,6 +5,7 @@ import { ExternalLink, Loader2, Mail } from 'lucide-react'
 import { crmTrailerLabel, followupSection, humanCountdown } from '@/lib/crm'
 import { type RentalPoint } from './RentalsVsAvailableChart'
 import RentalVelocityTabs, { type VelocityTypeRow } from './RentalVelocityTabs'
+import CrmCustomDateKpis, { type CustomDateKpi } from './CrmCustomDateKpis'
 import { crmFetch, formatCurrency, formatDateTime, type AlertItem, type CrmRep } from './types'
 
 interface DashboardData {
@@ -32,6 +33,7 @@ interface DashboardData {
     avgMonthlyRate: number
     lostMonthly: number
   }>
+  customDateKpis: CustomDateKpi[]
   fleetByType: Array<{
     trailerType: string
     total: number
@@ -348,6 +350,7 @@ export default function CrmDashboardTab() {
           </div>
         </KpiCard>
       </div>
+      <CrmCustomDateKpis customDateKpis={data.customDateKpis} />
       <div className="bg-white rounded-xl border border-gray-200 p-4 overflow-x-auto">
         <h3 className="text-base font-bold text-gray-900 mb-3">Fleet Details by Trailer Type</h3>
         <table className="w-full text-base min-w-[640px]">

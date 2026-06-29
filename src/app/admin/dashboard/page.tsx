@@ -1032,8 +1032,10 @@ function DashboardContent() {
       'w-full rounded border border-gray-300 bg-white px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange/50 focus:border-brand-orange'
     const labelClass = 'block text-xs font-semibold text-gray-600 mb-0.5'
 
-    // Compute fleet KPIs from loaded data
-    const activeFleet = fleet.filter((u) => u.status !== 'sold')
+    // Compute fleet KPIs from the *filtered* set so KPIs reflect active filters
+    // (Bruno 2026-06-29). This KPI block only renders when !showHistoricalSales,
+    // and filteredFleet already excludes sold units in that mode.
+    const activeFleet = filteredFleet
     const rentedUnits = activeFleet.filter((u) => u.status === 'rented')
     const availableUnits = activeFleet.filter((u) => u.status === 'available')
     const makeReadyUnits = activeFleet.filter((u) => u.status === 'make_ready')
@@ -1081,8 +1083,15 @@ function DashboardContent() {
       return { key, label, total: typeUnits.length, rented: typeRented.length }
     }).filter((t) => t.total > 0)
 
+    // Column totals for the table's totals row — reflects active filters (Bruno 2026-06-29)
+    const sumRate = filteredFleet.reduce((s, u) => s + (u.rentalRate ? parseFloat(u.rentalRate) : 0), 0)
+    const sumDeposit = filteredFleet.reduce((s, u) => s + (u.depositTotal ? parseFloat(u.depositTotal) : 0), 0)
+    const sumSalePrice = filteredFleet.reduce((s, u) => s + (u.salePrice ? parseFloat(u.salePrice) : 0), 0)
+
     return (
       <div className="space-y-2">
+        {/* Frozen top section: KPIs + filter bar stay pinned while the table scrolls (Bruno 2026-06-29) */}
+        <div className="sticky top-0 z-30 -mx-4 px-4 bg-gray-50 pt-1 pb-2 space-y-2">
         {/* KPI Summary — single compact row */}
         {!showHistoricalSales && (
           <div className="flex flex-wrap items-center gap-1.5">
@@ -1169,8 +1178,8 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* Filters — sticky on scroll so Bruno can keep filtering through long tables */}
-        <div className="sticky top-0 z-20 -mx-1 px-1 py-1.5 bg-white/95 backdrop-blur border-b border-gray-200 shadow-sm flex items-center gap-2 flex-wrap">
+        {/* Filters — pinned via the frozen top-section wrapper above */}
+        <div className="-mx-1 px-2 py-1.5 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center gap-2 flex-wrap">
           <div className="relative flex-1 min-w-[180px] max-w-xs">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
             <input
@@ -1230,6 +1239,8 @@ function DashboardContent() {
               : `${filteredFleet.length} units`}
           </span>
         </div>
+        </div>
+        {/* end frozen top section */}
 
         {/* Add New Unit Modal */}
         {showAddUnit && (
@@ -2074,10 +2085,10 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* Table */}
-        <div className="overflow-x-auto rounded-lg border bg-white">
+        {/* Table — own vertical scroll so header + totals row stay frozen (Bruno 2026-06-29) */}
+        <div className="overflow-auto max-h-[65vh] rounded-lg border bg-white">
           <table className="min-w-full text-sm">
-            <thead>
+            <thead className="sticky top-0 z-10">
               <tr className="border-b bg-gray-50">
                 {renderSortHeader("Unit #", "unitNumber")}
                 {renderSortHeader("Type", "trailerType")}
@@ -2093,6 +2104,15 @@ function DashboardContent() {
                 {renderSortHeader("Sold Date", "soldDate")}
                 {renderSortHeader("Sale Price", "salePrice", "right")}
                 <th className="px-2.5 py-2 w-12"></th>
+              </tr>
+              <tr className="border-b bg-gray-100 font-bold text-gray-900">
+                <td className="px-2.5 py-1.5 whitespace-nowrap">TOTAL ({filteredFleet.length})</td>
+                <td className="px-2.5 py-1.5" colSpan={8}></td>
+                <td className="px-2.5 py-1.5 text-right tabular-nums">{formatCurrency(sumRate)}</td>
+                <td className="px-2.5 py-1.5 text-right tabular-nums">{formatCurrency(sumDeposit)}</td>
+                <td className="px-2.5 py-1.5"></td>
+                <td className="px-2.5 py-1.5 text-right tabular-nums">{formatCurrency(sumSalePrice)}</td>
+                <td className="px-2.5 py-1.5"></td>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
