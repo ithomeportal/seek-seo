@@ -442,6 +442,11 @@ function DashboardContent() {
   const [fleetSearch, setFleetSearch] = useState('')
   const [fleetTypeFilter, setFleetTypeFilter] = useState('all')
   const [fleetStatusFilter, setFleetStatusFilter] = useState('all')
+  const [fleetYearFilter, setFleetYearFilter] = useState('all')
+  const [fleetMakeFilter, setFleetMakeFilter] = useState('all')
+  const [fleetCustomerFilter, setFleetCustomerFilter] = useState('all')
+  const [fleetPlateFilter, setFleetPlateFilter] = useState('all')
+  const [fleetGpsFilter, setFleetGpsFilter] = useState('all')
 
   // Add Unit modal
   const [showAddUnit, setShowAddUnit] = useState(false)
@@ -632,22 +637,106 @@ function DashboardContent() {
   const [showHistoricalSales, setShowHistoricalSales] = useState(false)
 
   // ------ Fleet filtering ------
+  // Scope of units the filter dropdowns draw their option lists from
+  // (sold units only in Historical Sales view, active units otherwise).
+  const fleetScope = fleet.filter((u) =>
+    showHistoricalSales ? u.status === 'sold' : u.status !== 'sold'
+  )
+  const fleetYearOptions = Array.from(
+    new Set(fleetScope.map((u) => u.year).filter((y): y is number => y != null))
+  ).sort((a, b) => b - a)
+  const fleetMakeOptions = Array.from(
+    new Set(fleetScope.map((u) => u.make).filter((m): m is string => !!m))
+  ).sort((a, b) => a.localeCompare(b))
+  const fleetCustomerOptions = Array.from(
+    new Set(fleetScope.map((u) => u.rentedTo).filter((c): c is string => !!c))
+  ).sort((a, b) => a.localeCompare(b))
+
   const filteredFleet = fleet.filter((unit) => {
-    // Exclude sold units from main fleet view (they appear in Historical Sales)
-    if (!showHistoricalSales && unit.status === 'sold') return false
-    if (showHistoricalSales) return unit.status === 'sold'
-    const searchLower = fleetSearch.toLowerCase()
+    // Historical Sales view shows ONLY sold units; the normal view excludes them.
+    if (showHistoricalSales) {
+      if (unit.status !== 'sold') return false
+    } else if (unit.status === 'sold') {
+      return false
+    }
+
+    const searchLower = fleetSearch.toLowerCase().trim()
     const matchesSearch =
-      fleetSearch === '' ||
-      unit.unitNumber.toLowerCase().includes(searchLower) ||
-      (unit.vin ?? '').toLowerCase().includes(searchLower) ||
-      (unit.rentedTo ?? '').toLowerCase().includes(searchLower)
+      searchLower === '' ||
+      [
+        unit.unitNumber,
+        unit.vin,
+        unit.rentedTo,
+        unit.plateNumber,
+        unit.make,
+        unit.model,
+      ].some((f) => (f ?? '').toLowerCase().includes(searchLower))
+
     const matchesType =
       fleetTypeFilter === 'all' || unit.trailerType === fleetTypeFilter
+    // Status filter is disabled in Historical Sales view (all rows are 'sold')
     const matchesStatus =
-      fleetStatusFilter === 'all' || unit.status === fleetStatusFilter
-    return matchesSearch && matchesType && matchesStatus
+      showHistoricalSales ||
+      fleetStatusFilter === 'all' ||
+      unit.status === fleetStatusFilter
+    const matchesYear =
+      fleetYearFilter === 'all' || String(unit.year ?? '') === fleetYearFilter
+    const matchesMake =
+      fleetMakeFilter === 'all' || (unit.make ?? '') === fleetMakeFilter
+    const matchesCustomer =
+      fleetCustomerFilter === 'all' || (unit.rentedTo ?? '') === fleetCustomerFilter
+    const matchesGps =
+      fleetGpsFilter === 'all' ||
+      (fleetGpsFilter === 'has' ? !!unit.skybitzDeviceId : !unit.skybitzDeviceId)
+    const matchesPlate = (() => {
+      if (fleetPlateFilter === 'all') return true
+      if (fleetPlateFilter === 'none') return !unit.plateExpiration
+      const d = daysUntil(unit.plateExpiration)
+      if (d === null) return false
+      switch (fleetPlateFilter) {
+        case 'expired':
+          return d < 0
+        case 'due30':
+          return d >= 0 && d <= 30
+        case 'due90':
+          return d >= 0 && d <= 90
+        default:
+          return true
+      }
+    })()
+
+    return (
+      matchesSearch &&
+      matchesType &&
+      matchesStatus &&
+      matchesYear &&
+      matchesMake &&
+      matchesCustomer &&
+      matchesGps &&
+      matchesPlate
+    )
   })
+
+  const fleetFiltersActive =
+    fleetSearch !== '' ||
+    fleetTypeFilter !== 'all' ||
+    fleetStatusFilter !== 'all' ||
+    fleetYearFilter !== 'all' ||
+    fleetMakeFilter !== 'all' ||
+    fleetCustomerFilter !== 'all' ||
+    fleetPlateFilter !== 'all' ||
+    fleetGpsFilter !== 'all'
+
+  function clearFleetFilters() {
+    setFleetSearch('')
+    setFleetTypeFilter('all')
+    setFleetStatusFilter('all')
+    setFleetYearFilter('all')
+    setFleetMakeFilter('all')
+    setFleetCustomerFilter('all')
+    setFleetPlateFilter('all')
+    setFleetGpsFilter('all')
+  }
 
   // ------ Add Unit handler ------
   async function handleAddUnit() {
@@ -1215,6 +1304,65 @@ function DashboardContent() {
             <option value="return_inspection">Return/Inspection</option>
             <option value="lease_to_own">Lease to Own</option>
           </select>
+          <select
+            value={fleetYearFilter}
+            onChange={(e) => setFleetYearFilter(e.target.value)}
+            className="rounded border border-gray-300 bg-white px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand-blue/50"
+          >
+            <option value="all">All Years</option>
+            {fleetYearOptions.map((y) => (
+              <option key={y} value={String(y)}>{y}</option>
+            ))}
+          </select>
+          <select
+            value={fleetMakeFilter}
+            onChange={(e) => setFleetMakeFilter(e.target.value)}
+            className="rounded border border-gray-300 bg-white px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand-blue/50"
+          >
+            <option value="all">All Makes</option>
+            {fleetMakeOptions.map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+          <select
+            value={fleetCustomerFilter}
+            onChange={(e) => setFleetCustomerFilter(e.target.value)}
+            className="rounded border border-gray-300 bg-white px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand-blue/50 max-w-[160px]"
+          >
+            <option value="all">All Customers</option>
+            {fleetCustomerOptions.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+          <select
+            value={fleetPlateFilter}
+            onChange={(e) => setFleetPlateFilter(e.target.value)}
+            className="rounded border border-gray-300 bg-white px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand-blue/50"
+          >
+            <option value="all">All Plates</option>
+            <option value="expired">Plate Expired</option>
+            <option value="due30">Expiring ≤ 30d</option>
+            <option value="due90">Expiring ≤ 90d</option>
+            <option value="none">No Plate</option>
+          </select>
+          <select
+            value={fleetGpsFilter}
+            onChange={(e) => setFleetGpsFilter(e.target.value)}
+            className="rounded border border-gray-300 bg-white px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand-blue/50"
+          >
+            <option value="all">GPS: Any</option>
+            <option value="has">Has GPS</option>
+            <option value="none">No GPS</option>
+          </select>
+          {fleetFiltersActive && (
+            <button
+              onClick={clearFleetFilters}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium text-gray-600 border border-gray-300 hover:bg-gray-50 transition-colors shrink-0"
+            >
+              <X className="h-3.5 w-3.5" />
+              Clear
+            </button>
+          )}
           <button
             onClick={() => setShowHistoricalSales(!showHistoricalSales)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors shrink-0 ${
@@ -1233,10 +1381,12 @@ function DashboardContent() {
             <Plus className="h-3.5 w-3.5" />
             Add Unit
           </button>
-          <span className="text-xs text-gray-400 ml-auto">
+          <span className="text-xs text-gray-400 ml-auto whitespace-nowrap">
             {showHistoricalSales
               ? `${filteredFleet.length} sold`
-              : `${filteredFleet.length} units`}
+              : fleetFiltersActive
+                ? `${filteredFleet.length} of ${fleetScope.length} units`
+                : `${filteredFleet.length} units`}
           </span>
         </div>
         </div>
