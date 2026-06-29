@@ -36,6 +36,7 @@ import {
   Inbox,
   Upload,
   Archive,
+  Download,
 } from 'lucide-react'
 import { GPSTrackingMap } from '@/components/admin/GPSTrackingMap'
 import OnboardingApplicationsTab from '@/components/admin/OnboardingApplicationsTab'
@@ -738,6 +739,94 @@ function DashboardContent() {
     setFleetGpsFilter('all')
   }
 
+  // Same rows the table renders (filtered + current column sort) — shared with CSV export.
+  const sortedFleet = genericSort(filteredFleet, (u) => {
+    switch (sortKey) {
+      case 'unitNumber': return u.unitNumber
+      case 'trailerType': return u.trailerType
+      case 'year': return u.year
+      case 'vin': return u.vin
+      case 'plateNumber': return u.plateNumber
+      case 'plateExpiration': return u.plateExpiration
+      case 'plateDaysLeft': return daysUntil(u.plateExpiration)
+      case 'status': return u.status
+      case 'rentedTo': return u.rentedTo
+      case 'rentalRate': return u.rentalRate ? parseFloat(u.rentalRate) : null
+      case 'depositTotal': return u.depositTotal ? parseFloat(u.depositTotal) : null
+      case 'soldDate': return u.soldDate
+      case 'salePrice': return u.salePrice ? parseFloat(u.salePrice) : null
+      default: return null
+    }
+  })
+
+  // Human-readable labels for active-filter chips
+  const PLATE_FILTER_LABELS: Record<string, string> = {
+    expired: 'Plate Expired',
+    due30: 'Expiring ≤ 30d',
+    due90: 'Expiring ≤ 90d',
+    none: 'No Plate',
+  }
+  const fleetChips: { key: string; label: string; onClear: () => void }[] = []
+  if (fleetSearch.trim())
+    fleetChips.push({ key: 'search', label: `Search: "${fleetSearch.trim()}"`, onClear: () => setFleetSearch('') })
+  if (fleetTypeFilter !== 'all')
+    fleetChips.push({ key: 'type', label: `Type: ${TRAILER_TYPE_LABELS[fleetTypeFilter] ?? fleetTypeFilter}`, onClear: () => setFleetTypeFilter('all') })
+  if (!showHistoricalSales && fleetStatusFilter !== 'all')
+    fleetChips.push({ key: 'status', label: `Status: ${STATUS_LABELS[fleetStatusFilter] ?? fleetStatusFilter}`, onClear: () => setFleetStatusFilter('all') })
+  if (fleetYearFilter !== 'all')
+    fleetChips.push({ key: 'year', label: `Year: ${fleetYearFilter}`, onClear: () => setFleetYearFilter('all') })
+  if (fleetMakeFilter !== 'all')
+    fleetChips.push({ key: 'make', label: `Make: ${fleetMakeFilter}`, onClear: () => setFleetMakeFilter('all') })
+  if (fleetCustomerFilter !== 'all')
+    fleetChips.push({ key: 'customer', label: `Customer: ${fleetCustomerFilter}`, onClear: () => setFleetCustomerFilter('all') })
+  if (fleetPlateFilter !== 'all')
+    fleetChips.push({ key: 'plate', label: PLATE_FILTER_LABELS[fleetPlateFilter] ?? fleetPlateFilter, onClear: () => setFleetPlateFilter('all') })
+  if (fleetGpsFilter !== 'all')
+    fleetChips.push({ key: 'gps', label: fleetGpsFilter === 'has' ? 'Has GPS' : 'No GPS', onClear: () => setFleetGpsFilter('all') })
+
+  // Export the current filtered + sorted view to CSV (opens in Excel/Sheets).
+  function exportFleetCsv() {
+    const headers = [
+      'Unit #', 'Type', 'Year', 'Make', 'Model', 'VIN', 'Plate',
+      'Plate Expiration', 'Days Left', 'Status', 'Rented To',
+      'Rate', 'Deposit', 'GPS Device', 'Sold Date', 'Sale Price',
+    ]
+    const rows = sortedFleet.map((u) => {
+      const dl = daysUntil(u.plateExpiration)
+      return [
+        u.unitNumber,
+        TRAILER_TYPE_LABELS[u.trailerType] ?? u.trailerType,
+        u.year ?? '',
+        u.make ?? '',
+        u.model ?? '',
+        u.vin ?? '',
+        u.plateNumber ?? '',
+        u.plateExpiration ?? '',
+        dl == null ? '' : dl,
+        STATUS_LABELS[u.status] ?? u.status,
+        u.rentedTo ?? '',
+        u.rentalRate ?? '',
+        u.depositTotal ?? '',
+        u.skybitzDeviceId ?? '',
+        u.soldDate ?? '',
+        u.salePrice ?? '',
+      ]
+    })
+    const csv = [headers, ...rows]
+      .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))
+      .join('\r\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const stamp = new Date().toISOString().slice(0, 10)
+    a.download = `${showHistoricalSales ? 'fleet-historical-sales' : 'fleet'}-${stamp}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
   // ------ Add Unit handler ------
   async function handleAddUnit() {
     setAddUnitLoading(true)
@@ -1363,6 +1452,15 @@ function DashboardContent() {
               Clear
             </button>
           )}
+          <button
+            onClick={exportFleetCsv}
+            disabled={sortedFleet.length === 0}
+            title="Export the current filtered view to CSV"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export CSV
+          </button>
           <button
             onClick={() => setShowHistoricalSales(!showHistoricalSales)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors shrink-0 ${
@@ -2235,6 +2333,28 @@ function DashboardContent() {
           </div>
         )}
 
+        {/* Active filter chips */}
+        {fleetChips.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap mb-2">
+            {fleetChips.map((chip) => (
+              <button
+                key={chip.key}
+                onClick={chip.onClear}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-blue/10 text-brand-blue text-xs font-medium hover:bg-brand-blue/20 transition-colors"
+              >
+                {chip.label}
+                <X className="h-3 w-3" />
+              </button>
+            ))}
+            <button
+              onClick={clearFleetFilters}
+              className="text-xs text-gray-500 hover:text-gray-800 underline ml-1"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
+
         {/* Table — own vertical scroll so header + totals row stay frozen (Bruno 2026-06-29) */}
         <div className="overflow-auto max-h-[65vh] rounded-lg border bg-white">
           <table className="min-w-full text-sm">
@@ -2266,24 +2386,7 @@ function DashboardContent() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {genericSort(filteredFleet, (u) => {
-                switch (sortKey) {
-                  case 'unitNumber': return u.unitNumber
-                  case 'trailerType': return u.trailerType
-                  case 'year': return u.year
-                  case 'vin': return u.vin
-                  case 'plateNumber': return u.plateNumber
-                  case 'plateExpiration': return u.plateExpiration
-                  case 'plateDaysLeft': return daysUntil(u.plateExpiration)
-                  case 'status': return u.status
-                  case 'rentedTo': return u.rentedTo
-                  case 'rentalRate': return u.rentalRate ? parseFloat(u.rentalRate) : null
-                  case 'depositTotal': return u.depositTotal ? parseFloat(u.depositTotal) : null
-                  case 'soldDate': return u.soldDate
-                  case 'salePrice': return u.salePrice ? parseFloat(u.salePrice) : null
-                  default: return null
-                }
-              }).map((unit) => (
+              {sortedFleet.map((unit) => (
                 <tr key={unit.id} className="hover:bg-blue-50/40">
                   <td className="px-2.5 py-1.5 font-semibold text-gray-900 whitespace-nowrap">{unit.unitNumber}</td>
                   <td className="px-2.5 py-1.5">
