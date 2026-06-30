@@ -3,6 +3,7 @@ import { query } from '@/lib/db'
 import { readPortalSession } from '@/lib/portal-auth'
 import { achAuthorizationSchema } from '@/lib/validators'
 import { buildAchAuthorizationPdf } from '@/lib/ach-authorization-pdf'
+import { uploadGeneratedPdf } from '@/lib/uploadthing-server'
 import {
   getApplicationByEmail,
   maybeMarkCompleted,
@@ -91,6 +92,20 @@ export async function POST(request: Request) {
       submittedAt,
       submitterIp: clientIp(request),
     })
+    // Persist the signed PDF to UploadThing so the admin Onboarding tab can
+    // open it in a new tab. Best-effort — a null URL just hides the icon.
+    const pdfUrl = await uploadGeneratedPdf(
+      `ach-authorization-${app.reference}.pdf`,
+      pdfBytes
+    )
+    if (pdfUrl) {
+      await query(
+        `UPDATE customer_onboarding_applications
+            SET ach_pdf_url = $1, updated_at = NOW()
+          WHERE id = $2`,
+        [pdfUrl, app.id]
+      )
+    }
     await sendOnboardingDocument({
       documentType: 'ach',
       documentLabel: 'ACH Debits Authorization',

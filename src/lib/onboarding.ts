@@ -47,12 +47,14 @@ export interface OnboardingApplicationRow {
   ach_voided_check_uploaded_at: string | null
   ach_authorized_name: string | null
   ach_authorized_at: string | null
+  ach_pdf_url: string | null
 
   coi_documents: CoiDocument[] | null
   coi_uploaded_at: string | null
 
   lease_signed_name: string | null
   lease_signed_at: string | null
+  lease_pdf_url: string | null
 
   guaranty_signed_name: string | null
   guaranty_signed_at: string | null
@@ -90,12 +92,14 @@ export interface OnboardingApplication {
   achVoidedCheckUploadedAt: string | null
   achAuthorizedName: string | null
   achAuthorizedAt: string | null
+  achPdfUrl: string | null
 
   coiDocuments: CoiDocument[]
   coiUploadedAt: string | null
 
   leaseSignedName: string | null
   leaseSignedAt: string | null
+  leasePdfUrl: string | null
 
   guarantySignedName: string | null
   guarantySignedAt: string | null
@@ -130,10 +134,12 @@ export function rowToApplication(row: OnboardingApplicationRow): OnboardingAppli
     achVoidedCheckUploadedAt: row.ach_voided_check_uploaded_at,
     achAuthorizedName: row.ach_authorized_name,
     achAuthorizedAt: row.ach_authorized_at,
+    achPdfUrl: row.ach_pdf_url,
     coiDocuments: Array.isArray(row.coi_documents) ? row.coi_documents : [],
     coiUploadedAt: row.coi_uploaded_at,
     leaseSignedName: row.lease_signed_name,
     leaseSignedAt: row.lease_signed_at,
+    leasePdfUrl: row.lease_pdf_url,
     guarantySignedName: row.guaranty_signed_name,
     guarantySignedAt: row.guaranty_signed_at,
     completedAt: row.completed_at,

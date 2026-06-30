@@ -30,8 +30,10 @@ interface OnboardingApp {
   achAuthorizedAt: string | null
   achVoidedCheckUrl: string | null
   achVoidedCheckUploadedAt: string | null
+  achPdfUrl: string | null
   leaseSignedAt: string | null
   leaseSignedName: string | null
+  leasePdfUrl: string | null
   guarantySignedAt: string | null
   guarantySignedName: string | null
   coiDocuments: { url: string; filename: string | null; uploadedAt: string }[]
@@ -302,6 +304,7 @@ function FragmentRow({
                       : null
                   }
                   url={null}
+                  pdfUrl={app.achPdfUrl}
                 />
                 <DocRow
                   icon={FileText}
@@ -320,6 +323,7 @@ function FragmentRow({
                     app.leaseSignedAt ? `Submitted ${formatDate(app.leaseSignedAt)}` : null
                   }
                   url={null}
+                  pdfUrl={app.leasePdfUrl}
                 />
                 <DocRow
                   icon={ShieldCheck}
@@ -349,8 +353,9 @@ function FragmentRow({
                   </div>
                 )}
                 <p className="text-[10px] text-gray-400 mt-2">
-                  ACH and Lease are signed natively in the portal; signed PDFs are emailed to
-                  SEEK on submission. Voided check and COI files are linked above.
+                  ACH and Lease are signed natively in the portal. Use the PDF icon to open the
+                  signed document; copies are also emailed to SEEK on submission. (Documents
+                  signed before 2026-06-30 are email-only and show no icon.)
                 </p>
               </div>
             </div>
@@ -382,11 +387,15 @@ function DocRow({
   label,
   doneLabel,
   url,
+  pdfUrl,
 }: {
   icon: React.ComponentType<{ className?: string }>
   label: string
   doneLabel: string | null
   url: string | null
+  // Signed-PDF link rendered as a clickable PDF icon (ACH + Lease). Distinct
+  // from `url`, which is an uploaded file shown as a "View" text link.
+  pdfUrl?: string | null
 }) {
   return (
     <div className="flex items-center gap-2 py-1 text-xs border-b last:border-0">
@@ -399,7 +408,19 @@ function DocRow({
           <p className="text-[10px] text-gray-400 italic">Not yet submitted</p>
         )}
       </div>
-      {url ? (
+      {pdfUrl ? (
+        <a
+          href={pdfUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Open signed PDF in a new tab"
+          aria-label={`Open ${label} signed PDF in a new tab`}
+          className="shrink-0 inline-flex items-center gap-1 text-brand-blue hover:underline text-[10px] font-medium"
+        >
+          <FileText className="h-3.5 w-3.5" />
+          PDF
+        </a>
+      ) : url ? (
         <a
           href={url}
           target="_blank"
