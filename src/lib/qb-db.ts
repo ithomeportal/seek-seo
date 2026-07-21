@@ -15,15 +15,30 @@ let qbPool: pg.Pool | null = null
  * wrong DB. Setting `url.pathname` works regardless of the original name.
  * (See the matching fix + writeup in src/lib/fmcsa-db.ts, commit c7a4d91.)
  */
-function connectionStringFor(dbName: string): string {
-  const base = process.env.DATABASE_URL ?? ''
-  try {
-    const u = new URL(base)
-    u.pathname = `/${dbName}`
-    return u.toString()
-  } catch {
-    return base
+function connectionStringFor(dbName: string, envVar?: string): string {
+  // Prefer an explicit, per-database URL with its own least-privilege role.
+  // Deriving from DATABASE_URL only works while the two databases share a
+  // credential — the Jul 2026 role migration broke that, and every qb_* query
+  // began failing with SQLSTATE 42501 "permission denied for table".
+  const explicit = envVar ? process.env[envVar] : undefined
+  const base = explicit || process.env.DATABASE_URL || ''
+  let url = base
+  if (!explicit) {
+    try {
+      const u = new URL(base)
+      u.pathname = `/${dbName}`
+      url = u.toString()
+    } catch {
+      url = base
+    }
   }
+  // sslmode in the URL overrides the `ssl` object we pass to Pool and fails
+  // against Aiven's chain (SELF_SIGNED_CERT_IN_CHAIN).
+  return url
+    .replace(/([?&])sslmode=[^&]*/gi, '$1')
+    .replace(/[?&]$/, '')
+    .replace(/\?&/, '?')
+    .replace(/&&/g, '&')
 }
 
 /**
@@ -34,7 +49,7 @@ function connectionStringFor(dbName: string): string {
 export function getQBPool(): pg.Pool {
   if (!qbPool) {
     qbPool = new Pool({
-      connectionString: connectionStringFor('unlk_financial_portal'),
+      connectionString: connectionStringFor('unlk_financial_portal', 'QB_DATABASE_URL'),
       ssl: { rejectUnauthorized: false },
       max: 3,
       idleTimeoutMillis: 30000,

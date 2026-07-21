@@ -15,15 +15,38 @@ let geoPool: pg.Pool | null = null
  * .env.local), which silently left the pool on the wrong DB → "relation does not
  * exist". Setting `url.pathname` works regardless of the original name.
  */
-function connectionStringFor(dbName: string): string {
-  const base = process.env.DATABASE_URL ?? ''
-  try {
-    const u = new URL(base)
-    u.pathname = `/${dbName}`
-    return u.toString()
-  } catch {
-    return base
+function connectionStringFor(dbName: string, envVar?: string): string {
+  // Prefer an explicit, per-database URL with its own least-privilege role.
+  // Deriving another database's URL from DATABASE_URL only works while the two
+  // share a credential — the Jul 2026 role migration gave each database its own
+  // role, so every derived pool started failing with SQLSTATE 42501
+  // "permission denied for table". Keep the swap only as a local-dev fallback.
+  const explicit = envVar ? process.env[envVar] : undefined
+  const base = explicit || process.env.DATABASE_URL || ''
+  let url = base
+  if (!explicit) {
+    try {
+      const u = new URL(base)
+      u.pathname = `/${dbName}`
+      url = u.toString()
+    } catch {
+      url = base
+    }
   }
+  return stripSslMode(url)
+}
+
+/**
+ * Strip any sslmode param. node-postgres lets sslmode in the URL override the
+ * `ssl` object we pass to Pool, forcing strict verification that fails against
+ * Aiven's chain (SELF_SIGNED_CERT_IN_CHAIN).
+ */
+function stripSslMode(url: string): string {
+  return url
+    .replace(/([?&])sslmode=[^&]*/gi, '$1')
+    .replace(/[?&]$/, '')
+    .replace(/\?&/, '?')
+    .replace(/&&/g, '&')
 }
 
 /**
@@ -35,7 +58,7 @@ function connectionStringFor(dbName: string): string {
 export function getFmcsaPool(): pg.Pool {
   if (!censusPool) {
     censusPool = new Pool({
-      connectionString: connectionStringFor('unilink_portal_ap'),
+      connectionString: connectionStringFor('unilink_portal_ap', 'CENSUS_DATABASE_URL'),
       ssl: { rejectUnauthorized: false },
       max: 2,
       idleTimeoutMillis: 30000,
@@ -52,7 +75,7 @@ export function getFmcsaPool(): pg.Pool {
 export function getGeoZipPool(): pg.Pool {
   if (!geoPool) {
     geoPool = new Pool({
-      connectionString: connectionStringFor('geo_zip_usa_can_mex'),
+      connectionString: connectionStringFor('geo_zip_usa_can_mex', 'GEO_DATABASE_URL'),
       ssl: { rejectUnauthorized: false },
       max: 1,
       idleTimeoutMillis: 30000,
