@@ -44,6 +44,8 @@ next-env.d.ts
 docs/
 CLAUDE.md
 *.md
+*.pdf
+!LICENSE
 
 # stock image originals (local only, ~160MB unoptimized)
 public/images/stock/
