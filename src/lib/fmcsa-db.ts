@@ -14,14 +14,19 @@ let geoPool: pg.Pool | null = null
  * database is not necessarily literally "seek_equipment" (it differs from local
  * .env.local), which silently left the pool on the wrong DB → "relation does not
  * exist". Setting `url.pathname` works regardless of the original name.
+ *
+ * `envVar` is REQUIRED, deliberately. It used to be optional, which meant a
+ * caller could omit it and silently fall back to deriving the URL — reopening
+ * the exact bug this guard exists to prevent, with no error. Making it
+ * mandatory moves that guarantee from convention into the type signature.
  */
-function connectionStringFor(dbName: string, envVar?: string): string {
+function connectionStringFor(dbName: string, envVar: string): string {
   // Prefer an explicit, per-database URL with its own least-privilege role.
   // Deriving another database's URL from DATABASE_URL only works while the two
   // share a credential — the Jul 2026 role migration gave each database its own
   // role, so every derived pool started failing with SQLSTATE 42501
   // "permission denied for table". Keep the swap only as a local-dev fallback.
-  const explicit = envVar ? process.env[envVar] : undefined
+  const explicit = process.env[envVar]
   const base = explicit || process.env.DATABASE_URL || ''
   let url = base
   if (!explicit) {

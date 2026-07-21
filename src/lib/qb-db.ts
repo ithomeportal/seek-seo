@@ -14,13 +14,18 @@ let qbPool: pg.Pool | null = null
  * .env.local), so the replace would silently no-op and leave the pool on the
  * wrong DB. Setting `url.pathname` works regardless of the original name.
  * (See the matching fix + writeup in src/lib/fmcsa-db.ts, commit c7a4d91.)
+ *
+ * `envVar` is REQUIRED, deliberately. It used to be optional, which meant a
+ * caller could omit it and silently fall back to deriving the URL — reopening
+ * the exact bug this guard exists to prevent, with no error. Making it
+ * mandatory moves that guarantee from convention into the type signature.
  */
-function connectionStringFor(dbName: string, envVar?: string): string {
+function connectionStringFor(dbName: string, envVar: string): string {
   // Prefer an explicit, per-database URL with its own least-privilege role.
   // Deriving from DATABASE_URL only works while the two databases share a
   // credential — the Jul 2026 role migration broke that, and every qb_* query
   // began failing with SQLSTATE 42501 "permission denied for table".
-  const explicit = envVar ? process.env[envVar] : undefined
+  const explicit = process.env[envVar]
   const base = explicit || process.env.DATABASE_URL || ''
   let url = base
   if (!explicit) {
