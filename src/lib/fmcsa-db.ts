@@ -1,4 +1,5 @@
 import pg from 'pg'
+import { AIVEN_SSL, stripSslMode } from './pg-connection'
 
 const { Pool } = pg
 
@@ -38,20 +39,9 @@ function connectionStringFor(dbName: string, envVar: string): string {
       url = base
     }
   }
+  // sslmode must be stripped or Aiven's self-signed chain fails verify-full
+  // (SELF_SIGNED_CERT_IN_CHAIN). Shared with every other pool via pg-connection.
   return stripSslMode(url)
-}
-
-/**
- * Strip any sslmode param. node-postgres lets sslmode in the URL override the
- * `ssl` object we pass to Pool, forcing strict verification that fails against
- * Aiven's chain (SELF_SIGNED_CERT_IN_CHAIN).
- */
-function stripSslMode(url: string): string {
-  return url
-    .replace(/([?&])sslmode=[^&]*/gi, '$1')
-    .replace(/[?&]$/, '')
-    .replace(/\?&/, '?')
-    .replace(/&&/g, '&')
 }
 
 /**
@@ -64,7 +54,7 @@ export function getFmcsaPool(): pg.Pool {
   if (!censusPool) {
     censusPool = new Pool({
       connectionString: connectionStringFor('unilink_portal_ap', 'CENSUS_DATABASE_URL'),
-      ssl: { rejectUnauthorized: false },
+      ssl: AIVEN_SSL,
       max: 2,
       idleTimeoutMillis: 30000,
     })
@@ -81,7 +71,7 @@ export function getGeoZipPool(): pg.Pool {
   if (!geoPool) {
     geoPool = new Pool({
       connectionString: connectionStringFor('geo_zip_usa_can_mex', 'GEO_DATABASE_URL'),
-      ssl: { rejectUnauthorized: false },
+      ssl: AIVEN_SSL,
       max: 1,
       idleTimeoutMillis: 30000,
     })

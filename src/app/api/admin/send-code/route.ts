@@ -53,7 +53,11 @@ export async function POST(request: Request) {
     }
 
     const resend = new Resend(resendKey)
-    await resend.emails.send({
+    // The Resend SDK does NOT throw on API errors — it resolves to
+    // { data: null, error }. Discarding the result meant a revoked key or an
+    // unverified sending domain returned success:true and left the user waiting
+    // for a code that was never sent. Check the error explicitly.
+    const { error: sendError } = await resend.emails.send({
       from: 'SEEK Equipment <noreply@unilinkportal.com>',
       to: emailLower,
       subject: 'SEEK Equipment — Your Access Code',
@@ -71,6 +75,14 @@ export async function POST(request: Request) {
         </div>
       `,
     })
+
+    if (sendError) {
+      console.error('Resend send failed:', sendError.name, sendError.message)
+      return NextResponse.json(
+        { success: false, message: 'Could not send the access code email' },
+        { status: 502 }
+      )
+    }
 
     return NextResponse.json({ success: true, message: 'Code sent to your email' })
   } catch (error) {

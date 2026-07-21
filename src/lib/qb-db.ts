@@ -1,4 +1,5 @@
 import pg from 'pg'
+import { AIVEN_SSL, stripSslMode } from './pg-connection'
 
 const { Pool } = pg
 
@@ -38,12 +39,9 @@ function connectionStringFor(dbName: string, envVar: string): string {
     }
   }
   // sslmode in the URL overrides the `ssl` object we pass to Pool and fails
-  // against Aiven's chain (SELF_SIGNED_CERT_IN_CHAIN).
-  return url
-    .replace(/([?&])sslmode=[^&]*/gi, '$1')
-    .replace(/[?&]$/, '')
-    .replace(/\?&/, '?')
-    .replace(/&&/g, '&')
+  // against Aiven's chain (SELF_SIGNED_CERT_IN_CHAIN). Shared with every other
+  // pool via pg-connection so the rule cannot be missed in one place again.
+  return stripSslMode(url)
 }
 
 /**
@@ -55,7 +53,7 @@ export function getQBPool(): pg.Pool {
   if (!qbPool) {
     qbPool = new Pool({
       connectionString: connectionStringFor('unlk_financial_portal', 'QB_DATABASE_URL'),
-      ssl: { rejectUnauthorized: false },
+      ssl: AIVEN_SSL,
       max: 3,
       idleTimeoutMillis: 30000,
     })
