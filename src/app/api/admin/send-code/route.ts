@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { query } from '@/lib/db'
+import { ORG_EMAIL_DOMAINS } from '@/lib/allowed-domains'
 
-const ALLOWED_DOMAINS = ['seekequipment.com', 'unilinktransportation.com']
+// Admin/CRM access is internal-only. Widened from 2 to the 16 verified tenant
+// domains on 2026-07-30 (lib/allowed-domains.ts) — the old pair locked out staff
+// on oiltex.com and the rest of the tenant. Note this is the ADMIN gate; the
+// CUSTOMER portal at api/portal/send-code is deliberately open to any address,
+// because customers are external trucking companies.
+const ALLOWED_DOMAINS = ORG_EMAIL_DOMAINS
 
 export async function POST(request: Request) {
   try {
