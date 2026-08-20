@@ -34,12 +34,19 @@ interface GPSUnit {
   rentedTo: string | null
   updatedAt: string
   lastGpsTime: string | null
+  gpsSyncedAt: string | null
 }
 
 interface SkyBitzStatus {
   configured: boolean
   provider: string
   authMode: string
+}
+
+/** Outcome of a manual "Refresh GPS" press, surfaced next to the button. */
+interface RefreshOutcome {
+  ok: boolean
+  message: string
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -142,6 +149,9 @@ export function GPSTrackingMap() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [skybitzStatus, setSkybitzStatus] = useState<SkyBitzStatus | null>(null)
+  const [lastSyncAt, setLastSyncAt] = useState<string | null>(null)
+  const [refreshOutcome, setRefreshOutcome] = useState<RefreshOutcome | null>(null)
+  const [reportingCount, setReportingCount] = useState<number | null>(null)
   const [mapStyle, setMapStyle] = useState<'light' | 'satellite'>('light')
   const [mapReady, setMapReady] = useState(false)
   const [selectedUnit, setSelectedUnit] = useState<GPSUnit | null>(null)
@@ -155,7 +165,10 @@ export function GPSTrackingMap() {
     try {
       const res = await fetch('/api/admin/gps/positions')
       const json = await res.json()
-      if (json.success) setUnits(json.data)
+      if (json.success) {
+        setUnits(json.data)
+        setLastSyncAt(json.lastSyncAt ?? null)
+      }
     } catch {
       /* silently fail, data stays stale */
     }
@@ -171,13 +184,46 @@ export function GPSTrackingMap() {
     }
   }, [])
 
+  /**
+   * Read the response. The previous version awaited the POST and threw the
+   * body away, so a refresh that failed every single time for four months
+   * looked exactly like one that succeeded.
+   */
   const refreshFromSkyBitz = useCallback(async () => {
     setRefreshing(true)
+    setRefreshOutcome(null)
     try {
-      await fetch('/api/admin/gps/skybitz', { method: 'POST' })
+      const res = await fetch('/api/admin/gps/skybitz', { method: 'POST' })
+      const json = await res.json()
+
+      if (!res.ok || !json.success) {
+        setReportingCount(null)
+        setRefreshOutcome({
+          ok: false,
+          message: json.error ?? `Refresh failed (HTTP ${res.status})`,
+        })
+      } else {
+        setReportingCount(json.totalPositions ?? null)
+        const notes: string[] = []
+        if (json.unmatchedAssets?.length) {
+          notes.push(`${json.unmatchedAssets.length} unmatched`)
+        }
+        if (json.silentDevices?.length) {
+          notes.push(`${json.silentDevices.length} not reporting`)
+        }
+        setRefreshOutcome({
+          ok: true,
+          message:
+            `Updated ${json.updatedUnits} of ${json.totalPositions} assets` +
+            (notes.length ? ` (${notes.join(', ')})` : ''),
+        })
+      }
       await fetchPositions()
-    } catch {
-      /* ignore */
+    } catch (err) {
+      setRefreshOutcome({
+        ok: false,
+        message: err instanceof Error ? err.message : 'Refresh failed',
+      })
     } finally {
       setRefreshing(false)
     }
@@ -334,8 +380,10 @@ export function GPSTrackingMap() {
   // ------ Popup HTML (shared between dot + pill markers) ------
   function popupHtml(unit: GPSUnit): string {
     const color = STATUS_COLORS[unit.status] ?? '#6b7280'
-    const t = unit.lastGpsTime ?? unit.updatedAt
-    const fresh = relativeTime(t)
+    // lastGpsTime ONLY — never fall back to updatedAt. updatedAt is bumped by
+    // any admin edit to the row, so the fallback made a stale unit that had
+    // been edited recently render as a healthy green "1 day ago".
+    const fresh = relativeTime(unit.lastGpsTime)
     return `
       <div style="font-family:system-ui;min-width:210px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
@@ -659,12 +707,19 @@ export function GPSTrackingMap() {
             <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-0.5">
               <Satellite className="h-3.5 w-3.5" /> SkyBitz
             </div>
-            <div className="text-xl font-bold text-gray-900">{trackedCount}</div>
+            <div className="text-xl font-bold text-gray-900">
+              {reportingCount ?? trackedCount}
+              {reportingCount !== null && reportingCount !== trackedCount && (
+                <span className="text-sm font-medium text-gray-400">
+                  {' '}/ {trackedCount}
+                </span>
+              )}
+            </div>
             <div className="text-[10px] text-gray-400 mt-0.5">
               {skybitzStatus?.configured ? (
                 <span className="text-green-600">{skybitzStatus.authMode}</span>
               ) : (
-                'Not configured'
+                <span className="text-red-600">Not configured</span>
               )}
             </div>
           </div>
@@ -869,6 +924,11 @@ export function GPSTrackingMap() {
           </button>
         </div>
       </div>
+
+      {/* Freshness banner. A map over a synced table must always say how old
+          its data is — rendering identically for "live" and "feed died in
+          April" is what hid a four-month outage. */}
+      <GpsFreshnessBanner lastSyncAt={lastSyncAt} outcome={refreshOutcome} />
 
       {/* Map + minimap overlay + counter */}
       <div className="relative rounded-xl border bg-white overflow-hidden shadow-sm">
@@ -1150,10 +1210,84 @@ function MapMinimap({
 }
 
 // ---------------------------------------------------------------------------
+// Clock
+// ---------------------------------------------------------------------------
+
+/**
+ * Re-render-safe "now". Calling Date.now() directly in a component body is
+ * impure (react-hooks/purity) and, worse, freezes the freshness label until
+ * something else happens to re-render. Ticking it keeps "GPS data as of …"
+ * honest while the tab sits open.
+ */
+function useNow(intervalMs = 60_000): number {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), intervalMs)
+    return () => clearInterval(id)
+  }, [intervalMs])
+  return now
+}
+
+// ---------------------------------------------------------------------------
+// GPS freshness banner
+// ---------------------------------------------------------------------------
+
+const STALE_AFTER_MS = 2 * 60 * 60 * 1000 // cron runs every 30 min
+
+function GpsFreshnessBanner({
+  lastSyncAt,
+  outcome,
+}: {
+  lastSyncAt: string | null
+  outcome: RefreshOutcome | null
+}) {
+  const now = useNow()
+  const ageMs = lastSyncAt ? now - new Date(lastSyncAt).getTime() : null
+  const stale = ageMs === null || ageMs > STALE_AFTER_MS
+
+  const tone = stale
+    ? 'border-red-200 bg-red-50 text-red-800'
+    : 'border-green-200 bg-green-50 text-green-800'
+
+  return (
+    <div className={`rounded-lg border px-3 py-2 text-xs flex flex-wrap items-center gap-x-3 gap-y-1 ${tone}`}>
+      {stale ? (
+        <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+      ) : (
+        <Satellite className="h-3.5 w-3.5 flex-shrink-0" />
+      )}
+      <span className="font-semibold">
+        {lastSyncAt
+          ? `GPS data as of ${new Date(lastSyncAt).toLocaleString()}`
+          : 'GPS has never synced successfully'}
+      </span>
+      {lastSyncAt && (
+        <span className="opacity-80">({relativeTime(lastSyncAt).label})</span>
+      )}
+      {stale && (
+        <span className="opacity-80">
+          — positions below may not reflect where the trailers actually are.
+        </span>
+      )}
+      {outcome && (
+        <span
+          className={`ml-auto font-medium ${outcome.ok ? 'text-green-700' : 'text-red-700'}`}
+        >
+          {outcome.ok ? '✓ ' : '✗ '}
+          {outcome.message}
+        </span>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Idle Units Table — units with no GPS movement for >24 hours
 // ---------------------------------------------------------------------------
 
 function formatIdleDuration(ms: number): string {
+  // Units that have never reported carry Infinity so they sort to the top.
+  if (!Number.isFinite(ms)) return 'No signal'
   const hours = Math.floor(ms / (1000 * 60 * 60))
   const days = Math.floor(hours / 24)
   const remainHours = hours % 24
@@ -1162,23 +1296,20 @@ function formatIdleDuration(ms: number): string {
 }
 
 function IdleUnitsTable({ units }: { units: GPSUnit[] }) {
-  const now = Date.now()
+  const now = useNow()
   const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000
 
   const idleUnits = units
     .filter((u) => {
-      const refTime = u.lastGpsTime ?? u.updatedAt
-      if (!refTime) return false
-      const gpsTime = new Date(refTime).getTime()
-      return now - gpsTime > TWENTY_FOUR_HOURS
+      // A unit with no GPS fix at all is not "moving" — it is unreported,
+      // which is strictly worse. Surface it here rather than hiding it.
+      if (!u.lastGpsTime) return true
+      return now - new Date(u.lastGpsTime).getTime() > TWENTY_FOUR_HOURS
     })
-    .map((u) => {
-      const refTime = u.lastGpsTime ?? u.updatedAt
-      return {
-        ...u,
-        idleMs: now - new Date(refTime).getTime(),
-      }
-    })
+    .map((u) => ({
+      ...u,
+      idleMs: u.lastGpsTime ? now - new Date(u.lastGpsTime).getTime() : Infinity,
+    }))
     .sort((a, b) => b.idleMs - a.idleMs)
 
   return (
@@ -1189,7 +1320,7 @@ function IdleUnitsTable({ units }: { units: GPSUnit[] }) {
           Idle Units ({idleUnits.length})
         </h3>
         <span className="text-xs text-gray-500 ml-auto">
-          No movement &gt;24h
+          No movement &gt;24h, or never reported
         </span>
       </div>
       <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
@@ -1248,7 +1379,7 @@ function IdleUnitsTable({ units }: { units: GPSUnit[] }) {
                     </td>
                     <td className="px-3 py-2 text-gray-500 text-xs">
                       {(() => {
-                        const t = unit.lastGpsTime ?? unit.updatedAt
+                        const t = unit.lastGpsTime
                         return t
                           ? new Date(t).toLocaleDateString('en-US', {
                               month: 'short',
