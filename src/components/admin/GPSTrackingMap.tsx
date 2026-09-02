@@ -17,6 +17,13 @@ import {
   AlertTriangle,
   Maximize2,
 } from 'lucide-react'
+import {
+  NON_ALERTING_STATUSES,
+  TIER_COLOR,
+  TIER_LABEL,
+  tierForFix,
+  type GpsHealthTier,
+} from '@/lib/gps-health'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -112,6 +119,35 @@ function relativeTime(iso: string | null): { label: string; color: string } {
   const days = Math.floor(hr / 24)
   if (days < 7) return { label: `${days} day${days === 1 ? '' : 's'} ago`, color: '#d97706' }
   return { label: `${days}+ days ago`, color: '#dc2626' }
+}
+
+/**
+ * Tracker-health tier for a unit, from the SHARED classifier in lib/gps-health.
+ *
+ * Marker FILL stays keyed to rental status (blue = rented, green = available…)
+ * because that is what the legend means and what the filters use. Health is
+ * layered on top as a coloured halo, so a dead tracker is visible at a glance
+ * without redefining every existing colour. Before this, a device that had not
+ * reported since November rendered as an ordinary blue "rented" pin sitting at
+ * its last known location — indistinguishable from a unit reporting minutes ago.
+ */
+function healthTier(unit: GPSUnit): GpsHealthTier | null {
+  // Sold units are not monitored — their trackers going quiet is not an
+  // incident, and ringing them in alarm red contradicts the health panel above
+  // (which counts monitored units only). Four sold chassis carry legacy
+  // coordinates with no fix time at all, so without this they were the most
+  // alarming pins on the map while being the least interesting.
+  if (NON_ALERTING_STATUSES.includes(unit.status)) return null
+  const tier = tierForFix(unit.lastGpsTime, !!unit.skybitzDeviceId)
+  return tier === 'ok' ? null : tier
+}
+
+/** Halo CSS for a marker, or '' for a healthy/unmonitored one (no noise). */
+function healthHalo(tier: GpsHealthTier | null): string {
+  if (!tier) return ''
+  const color = TIER_COLOR[tier]
+  // Two rings: a white gap so the halo reads against both map styles.
+  return `box-shadow:0 0 0 2px #fff,0 0 0 5px ${color},0 1px 4px rgba(0,0,0,0.35);`
 }
 
 // Supercluster feature shape — one GeoJSON Point per tracked unit.
@@ -415,16 +451,24 @@ export function GPSTrackingMap() {
     lng: number
   ): mapboxgl.Marker {
     const color = STATUS_COLORS[unit.status] ?? '#6b7280'
+    const tier = healthTier(unit)
+    const halo = healthHalo(tier)
+    // A short badge on the label itself, so the reason is readable without
+    // opening the popup.
+    const badge = !tier
+      ? ''
+      : `<div style="background:${TIER_COLOR[tier]};color:#fff;font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;margin-bottom:1px;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap;">${TIER_LABEL[tier]}</div>`
 
     const el = document.createElement('div')
     el.style.cssText =
       'position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;'
     el.innerHTML = `
+      ${badge}
       <div style="background:${color};color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.3);line-height:1.3;">
         ${unit.unitNumber}
       </div>
       <div style="width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid ${color};"></div>
-      <div style="width:8px;height:8px;background:${color};border-radius:50%;border:2px solid white;margin-top:-2px;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>
+      <div style="width:8px;height:8px;background:${color};border-radius:50%;border:2px solid white;margin-top:-2px;${halo || 'box-shadow:0 1px 3px rgba(0,0,0,0.2);'}"></div>
     `
 
     el.addEventListener('click', () => setSelectedUnit(unit))
@@ -447,9 +491,14 @@ export function GPSTrackingMap() {
     lng: number
   ): mapboxgl.Marker {
     const color = STATUS_COLORS[unit.status] ?? '#6b7280'
+    const tier = healthTier(unit)
+    const halo =
+      healthHalo(tier) || 'box-shadow:0 0 0 1px rgba(0,0,0,0.25),0 1px 2px rgba(0,0,0,0.2);'
     const el = document.createElement('div')
-    el.style.cssText = `width:11px;height:11px;border-radius:50%;background:${color};border:1.5px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,0.25),0 1px 2px rgba(0,0,0,0.2);cursor:pointer;`
-    el.title = `${unit.unitNumber} — ${statusLabel(unit.status)}`
+    el.style.cssText = `width:11px;height:11px;border-radius:50%;background:${color};border:1.5px solid #fff;${halo}cursor:pointer;`
+    el.title =
+      `${unit.unitNumber} — ${statusLabel(unit.status)}` +
+      (tier ? ` · tracker ${TIER_LABEL[tier].toLowerCase()}` : '')
     el.addEventListener('click', () => setSelectedUnit(unit))
 
     const popup = new mapboxgl.Popup({ offset: 12, closeButton: true }).setHTML(
@@ -645,7 +694,11 @@ export function GPSTrackingMap() {
           }
         } else {
           const unit = (c.properties as UnitFeatureProps).unit
-          const id = `unit-${compact ? 'd' : 'p'}-${unit.id}`
+          // The health tier is part of the key: a cached marker is only ever
+          // moved with setLngLat, never re-rendered, so without this a unit
+          // that crossed into "dead" would keep its old healthy halo until a
+          // full remount.
+          const id = `unit-${compact ? 'd' : 'p'}-${unit.id}-${healthTier(unit) ?? 'ok'}`
           nextIds.add(id)
           const existing = markersRef.current.get(id)
           if (existing) {
@@ -939,6 +992,37 @@ export function GPSTrackingMap() {
         <div className="absolute top-2 left-2 z-10 bg-white/90 backdrop-blur rounded-md px-2.5 py-1 text-[11px] font-medium text-gray-700 shadow-sm pointer-events-none">
           {filteredUnits.length} unit{filteredUnits.length === 1 ? '' : 's'} on map
         </div>
+        {/* Halo legend. Top-left under the unit counter — the bottom-left corner
+            belongs to the minimap and the bottom-right to Mapbox attribution.
+            Hidden entirely when nothing is ringed, so a healthy fleet is
+            uncluttered. */}
+        {(() => {
+          const ringed = (['dead', 'stale', 'warn', 'never'] as GpsHealthTier[])
+            .map((tier) => ({
+              tier,
+              count: filteredUnits.filter((u) => healthTier(u) === tier).length,
+            }))
+            .filter((x) => x.count > 0)
+          if (ringed.length === 0) return null
+          return (
+            <div className="absolute top-11 left-2 z-10 bg-white/92 backdrop-blur rounded-md px-2.5 py-1.5 shadow-sm pointer-events-none">
+              <p className="text-[9px] uppercase tracking-wide text-gray-400 font-semibold mb-1">
+                Tracker not reporting
+              </p>
+              <div className="flex flex-col gap-1">
+                {ringed.map(({ tier, count }) => (
+                  <span key={tier} className="flex items-center gap-1.5 text-[10px] text-gray-700">
+                    <span
+                      className="inline-block w-2.5 h-2.5 rounded-full bg-gray-400 shrink-0"
+                      style={{ boxShadow: `0 0 0 1.5px #fff, 0 0 0 3px ${TIER_COLOR[tier]}` }}
+                    />
+                    {TIER_LABEL[tier]} ({count})
+                  </span>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
       </div>
 
       {/* Two-column: filtered units + idle units */}

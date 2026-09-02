@@ -47,6 +47,11 @@ export async function GET() {
       skybitzDeviceId: row.skybitz_device_id,
       lastLatitude: row.last_latitude,
       lastLongitude: row.last_longitude,
+      // The DEVICE's own observation time. Never substitute gps_synced_at or
+      // updated_at here: both are refreshed for a dead tracker (SkyBitz keeps
+      // serving its last known position, and any admin edit bumps updated_at),
+      // which is exactly how a frozen unit passes for a healthy one.
+      lastGpsTime: row.last_gps_time,
       notes: row.notes,
       imageUrl: row.image_url,
       createdAt: row.created_at,

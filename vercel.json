@@ -47,6 +47,14 @@
     {
       "path": "/api/cron/gps-sync",
       "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/gps-watchdog",
+      "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/cron/gps-watchdog",
+      "schedule": "0 14 * * *"
     }
   ]
 }

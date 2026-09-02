@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { syncGpsPositions } from '@/lib/gps-sync'
+import { reportFeedHealth } from '@/lib/gps-feed-alert'
 
 /**
  * GET /api/cron/gps-sync — half-hourly SkyBitz position refresh.
@@ -31,6 +32,11 @@ export async function GET(request: Request) {
 
   try {
     const result = await syncGpsPositions()
+    // Escalate a dead FEED immediately rather than waiting for the 08:00
+    // watchdog — when the pipeline stops, every position freezes at once and
+    // the map still looks healthy. Throttled and fully self-contained; it can
+    // never throw into this handler.
+    await reportFeedHealth(result)
     // Non-200 on failure so a dead feed shows up in Vercel's cron history
     // instead of being recorded as a successful run.
     return NextResponse.json(result, { status: result.success ? 200 : 502 })
