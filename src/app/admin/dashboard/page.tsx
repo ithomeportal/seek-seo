@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, Suspense, Fragment } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import Image from 'next/image'
 import {
   BarChart3,
@@ -3806,14 +3807,14 @@ function DashboardContent() {
 
         {/* Bottom */}
         <div className="border-t border-gray-700/50 py-2 space-y-0.5">
-          <a
+          <Link
             href="/"
             className="flex items-center gap-2.5 px-3 py-1.5 text-xs text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
             title="Back to site"
           >
             <Home className="h-4 w-4 shrink-0" />
             {sidebarOpen && <span>Back to Site</span>}
-          </a>
+          </Link>
           <button
             onClick={handleLogout}
             className="flex items-center gap-2.5 w-full px-3 py-1.5 text-xs text-gray-400 hover:bg-gray-800 hover:text-red-400 transition-colors"
