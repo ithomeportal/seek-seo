@@ -62,6 +62,11 @@ export interface OnboardingApplicationRow {
   completed_at: string | null
   created_at: string
   updated_at: string
+
+  /** Soft archive — hides a row from the admin lists without destroying it. */
+  archived_at: string | null
+  archived_by: string | null
+  archive_reason: string | null
 }
 
 export interface OnboardingApplication {
@@ -107,6 +112,10 @@ export interface OnboardingApplication {
   completedAt: string | null
   createdAt: string
   updatedAt: string
+
+  archivedAt: string | null
+  archivedBy: string | null
+  archiveReason: string | null
 }
 
 export function rowToApplication(row: OnboardingApplicationRow): OnboardingApplication {
@@ -145,15 +154,28 @@ export function rowToApplication(row: OnboardingApplicationRow): OnboardingAppli
     completedAt: row.completed_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    archivedAt: row.archived_at ?? null,
+    archivedBy: row.archived_by ?? null,
+    archiveReason: row.archive_reason ?? null,
   }
 }
 
+/**
+ * The applicant's own live application.
+ *
+ * Archived rows are invisible here on purpose: archiving a row is how an admin
+ * says "this was a test / a mistake", and the address must then behave like a
+ * brand-new applicant rather than resuming the discarded attempt. Everything on
+ * the customer side (portal resume, completion check, reminder emails) flows
+ * through this function, so the exclusion only has to be right once.
+ */
 export async function getApplicationByEmail(
   email: string
 ): Promise<OnboardingApplication | null> {
   const result = await query<OnboardingApplicationRow>(
     `SELECT * FROM customer_onboarding_applications
       WHERE LOWER(email) = LOWER($1)
+        AND archived_at IS NULL
       ORDER BY created_at DESC
       LIMIT 1`,
     [email]

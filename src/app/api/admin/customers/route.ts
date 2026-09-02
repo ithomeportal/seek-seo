@@ -1,6 +1,47 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { qbQuery } from '@/lib/qb-db'
+import {
+  rowToApplication,
+  sectionProgress,
+  type OnboardingApplicationRow,
+} from '@/lib/onboarding'
+
+/**
+ * A company partway through onboarding, surfaced in the Customers list.
+ *
+ * `customers` and `customer_onboarding_applications` are entirely disjoint —
+ * nothing links them, and `customer_id` is NULL on every onboarding row — so a
+ * company signing up was invisible here until it was hand-entered as a
+ * customer. These records are returned alongside the real customers, clearly
+ * marked, rather than merged into them: an onboarding company has no units, no
+ * rent and no deposits, and inventing zeroed customer rows for them would
+ * quietly corrupt the revenue and deposit totals above the table.
+ */
+interface OnboardingCompany {
+  id: number
+  reference: string
+  companyName: string
+  contactName: string | null
+  phone: string | null
+  email: string
+  status: string
+  startedAt: string
+  completedAt: string | null
+  progress: { completed: number; total: number; isComplete: boolean }
+  /** Set when this company already exists in `customers`, matched below. */
+  matchedCustomerId: number | null
+}
+
+/** Loose key for matching an onboarding record to an existing customer. */
+function nameKey(value: string | null): string {
+  return (value ?? '')
+    .toLowerCase()
+    .replace(/[.,]/g, '')
+    .replace(/\b(llc|inc|l\.l\.c|corp|corporation|co|ltd)\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 
 interface CustomerRow {
   id: number
@@ -175,6 +216,55 @@ export async function GET() {
       }
     })
 
+    // ---- Companies in onboarding -------------------------------------
+    // Archived rows are excluded: archiving is how an admin removes a test or
+    // mistaken submission, and it must disappear from every list at once.
+    const onboardingResult = await query<OnboardingApplicationRow>(
+      `SELECT * FROM customer_onboarding_applications
+        WHERE archived_at IS NULL
+        ORDER BY created_at DESC
+        LIMIT 500`
+    )
+
+    const customersByEmail = new Map<string, number>()
+    const customersByName = new Map<string, number>()
+    for (const c of customers) {
+      if (c.email) customersByEmail.set(c.email.toLowerCase().trim(), c.id)
+      const key = nameKey(c.companyName)
+      if (key !== '') customersByName.set(key, c.id)
+      const aliasKey = nameKey(c.alias)
+      if (aliasKey !== '') customersByName.set(aliasKey, c.id)
+    }
+
+    const onboarding: OnboardingCompany[] = onboardingResult.rows.map((row) => {
+      const app = rowToApplication(row)
+      const progress = sectionProgress(app)
+      const emailKey = app.email.toLowerCase().trim()
+      const matchedCustomerId =
+        customersByEmail.get(emailKey) ??
+        customersByName.get(nameKey(app.companyName)) ??
+        null
+
+      return {
+        id: app.id,
+        reference: app.reference,
+        companyName: app.companyName ?? app.email,
+        contactName:
+          [app.contactFirstName, app.contactLastName].filter(Boolean).join(' ') || null,
+        phone: app.phone,
+        email: app.email,
+        status: app.status,
+        startedAt: app.createdAt,
+        completedAt: app.completedAt,
+        progress: {
+          completed: progress.completed,
+          total: progress.total,
+          isComplete: progress.isComplete,
+        },
+        matchedCustomerId,
+      }
+    })
+
     // Summary stats
     const totalCustomers = customers.length
     const activeRenters = customers.filter((c) => c.unitsRented > 0).length
@@ -191,16 +281,30 @@ export async function GET() {
       0
     )
 
+    // Counted from the CHECKLIST, not from `status`. The two disagree in real
+    // data — GNS Services is marked status='completed' while its document
+    // checklist sits at 2/3, a row finished before the voided-check requirement
+    // existed — and the KPI card must match the rows listed beneath it.
+    const onboardingInProgress = onboarding.filter(
+      (o) => !o.progress.isComplete
+    ).length
+
     return NextResponse.json({
       success: true,
       data: {
         customers,
+        onboarding,
         summary: {
           totalCustomers,
           activeRenters,
           totalMonthlyRevenue,
           totalDepositsHeld,
           totalPendingDeposits,
+          // Deliberately NOT folded into totalCustomers — an onboarding company
+          // is not yet a customer, and the revenue/deposit cards beside it are
+          // computed from real rentals only.
+          onboardingTotal: onboarding.length,
+          onboardingInProgress,
         },
       },
     })

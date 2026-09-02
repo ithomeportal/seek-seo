@@ -13,6 +13,8 @@ import {
   FileSignature,
   ShieldCheck,
   AlertCircle,
+  Archive,
+  ArchiveRestore,
 } from 'lucide-react'
 
 interface OnboardingApp {
@@ -40,6 +42,9 @@ interface OnboardingApp {
   coiUploadedAt: string | null
   completedAt: string | null
   createdAt: string
+  archivedAt: string | null
+  archivedBy: string | null
+  archiveReason: string | null
   progress: {
     dl: boolean
     ach: boolean
@@ -55,6 +60,7 @@ interface Summary {
   total: number
   inProgress: number
   completed: number
+  archived: number
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -88,17 +94,26 @@ export default function OnboardingApplicationsTab() {
     total: 0,
     inProgress: 0,
     completed: 0,
+    archived: 0,
   })
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState<number | null>(null)
   const [filter, setFilter] = useState<string>('all')
   const [error, setError] = useState('')
+  const [busyId, setBusyId] = useState<number | null>(null)
 
-  const fetchApps = useCallback(async () => {
+  // 'archived' is a separate LIST, not a client-side filter: an archived row is
+  // excluded by the query, so it has to be fetched deliberately.
+  const showingArchived = filter === 'archived'
+
+  const fetchApps = useCallback(async (archived: boolean) => {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/admin/onboarding-applications', { cache: 'no-store' })
+      const res = await fetch(
+        `/api/admin/onboarding-applications${archived ? '?archived=1' : ''}`,
+        { cache: 'no-store' }
+      )
       const data = await res.json()
       if (data.success) {
         setApps(data.data)
@@ -112,11 +127,59 @@ export default function OnboardingApplicationsTab() {
   }, [])
 
   useEffect(() => {
-    fetchApps()
-  }, [fetchApps])
+    fetchApps(showingArchived)
+  }, [fetchApps, showingArchived])
+
+  /**
+   * Archive hides a row from the list; it never destroys it. Both the confirm
+   * copy and the API say so, because "Delete" that silently keeps the data is
+   * just as misleading as a delete that silently loses it.
+   */
+  const setArchived = useCallback(
+    async (app: OnboardingApp, archive: boolean) => {
+      const verb = archive ? 'Archive' : 'Restore'
+      const label = app.companyName || app.email
+      const message = archive
+        ? `Archive "${label}"?\n\nIt will be hidden from this list and from the ` +
+          `Customers tab, and the reminder emails will stop. Nothing is deleted — ` +
+          `you can restore it from the "Archived" filter at any time.`
+        : `Restore "${label}" to the active list?`
+      if (!window.confirm(message)) return
+
+      setBusyId(app.id)
+      setError('')
+      try {
+        const res = await fetch(
+          `/api/admin/onboarding-applications/${app.id}/archive`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: archive ? 'archive' : 'restore',
+              actor:
+                typeof window !== 'undefined'
+                  ? sessionStorage.getItem('adminEmail') ?? undefined
+                  : undefined,
+            }),
+          }
+        )
+        const data = await res.json()
+        if (!data.success) {
+          setError(data.message || `${verb} failed`)
+          return
+        }
+        await fetchApps(showingArchived)
+      } catch {
+        setError(`${verb} failed`)
+      } finally {
+        setBusyId(null)
+      }
+    },
+    [fetchApps, showingArchived]
+  )
 
   const filtered = apps.filter((a) => {
-    if (filter === 'all') return true
+    if (filter === 'all' || filter === 'archived') return true
     if (filter === 'completed') return a.status === 'completed'
     return a.status !== 'completed'
   })
@@ -146,12 +209,18 @@ export default function OnboardingApplicationsTab() {
           onChange={(e) => setFilter(e.target.value)}
           className="text-xs rounded border border-gray-300 px-2 py-1 bg-white"
         >
-          <option value="all">All ({apps.length})</option>
+          <option value="all">All ({showingArchived ? summary.total : apps.length})</option>
           <option value="in_progress">In progress ({summary.inProgress})</option>
           <option value="completed">Completed ({summary.completed})</option>
+          <option value="archived">Archived ({summary.archived})</option>
         </select>
+        {showingArchived && (
+          <span className="text-[11px] text-gray-500 italic">
+            Archived rows are hidden from the Customers tab and receive no reminder emails.
+          </span>
+        )}
         <button
-          onClick={fetchApps}
+          onClick={() => fetchApps(showingArchived)}
           className="text-xs text-brand-blue font-medium ml-auto hover:underline"
         >
           Refresh
@@ -172,7 +241,11 @@ export default function OnboardingApplicationsTab() {
       ) : filtered.length === 0 ? (
         <div className="text-center py-12 bg-white rounded border">
           <FileText className="h-10 w-10 text-gray-300 mx-auto mb-2" />
-          <p className="text-gray-500 text-sm">No onboarding applications.</p>
+          <p className="text-gray-500 text-sm">
+            {showingArchived
+              ? 'No archived applications.'
+              : 'No onboarding applications.'}
+          </p>
         </div>
       ) : (
         <div className="bg-white rounded-lg border overflow-hidden">
@@ -184,6 +257,9 @@ export default function OnboardingApplicationsTab() {
                 <th className="px-3 py-2 text-left font-semibold text-gray-700">Progress</th>
                 <th className="px-3 py-2 text-left font-semibold text-gray-700">Started</th>
                 <th className="px-3 py-2 text-right font-semibold text-gray-700">Details</th>
+                <th className="px-3 py-2 text-right font-semibold text-gray-700">
+                  {showingArchived ? 'Restore' : 'Archive'}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -193,6 +269,9 @@ export default function OnboardingApplicationsTab() {
                   app={app}
                   isExpanded={expanded === app.id}
                   onToggle={() => setExpanded((prev) => (prev === app.id ? null : app.id))}
+                  isArchivedView={showingArchived}
+                  busy={busyId === app.id}
+                  onArchiveToggle={() => setArchived(app, !showingArchived)}
                 />
               ))}
             </tbody>
@@ -224,10 +303,16 @@ function FragmentRow({
   app,
   isExpanded,
   onToggle,
+  isArchivedView,
+  busy,
+  onArchiveToggle,
 }: {
   app: OnboardingApp
   isExpanded: boolean
   onToggle: () => void
+  isArchivedView: boolean
+  busy: boolean
+  onArchiveToggle: () => void
 }) {
   return (
     <>
@@ -263,10 +348,43 @@ function FragmentRow({
             )}
           </button>
         </td>
+        <td
+          className="px-3 py-2 text-right"
+          // The row itself toggles the detail panel; keep that from firing when
+          // the intent was the archive button.
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={onArchiveToggle}
+            disabled={busy}
+            title={
+              isArchivedView
+                ? 'Restore this application to the active list'
+                : 'Hide this application from the lists (nothing is deleted)'
+            }
+            className={`inline-flex items-center gap-1 text-xs font-medium disabled:opacity-40 ${
+              isArchivedView
+                ? 'text-green-700 hover:underline'
+                : 'text-gray-500 hover:text-red-600 hover:underline'
+            }`}
+          >
+            {isArchivedView ? (
+              <>
+                <ArchiveRestore className="h-3 w-3" />
+                Restore
+              </>
+            ) : (
+              <>
+                <Archive className="h-3 w-3" />
+                Archive
+              </>
+            )}
+          </button>
+        </td>
       </tr>
       {isExpanded && (
         <tr className="bg-gray-50/60">
-          <td colSpan={5} className="px-3 py-4">
+          <td colSpan={6} className="px-3 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Left: applicant info */}
               <div>
@@ -359,6 +477,16 @@ function FragmentRow({
                 </p>
               </div>
             </div>
+
+            {app.archivedAt && (
+              <div className="mt-3 p-3 bg-gray-100 border border-gray-300 rounded text-xs text-gray-600">
+                <Archive className="h-3 w-3 inline mr-1" />
+                Archived {formatDate(app.archivedAt)}
+                {app.archivedBy ? ` by ${app.archivedBy}` : ''}
+                {app.archiveReason ? ` — ${app.archiveReason}` : ''}. Nothing was deleted;
+                use Restore to bring it back.
+              </div>
+            )}
 
             {app.status === 'completed' && (
               <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded text-xs">

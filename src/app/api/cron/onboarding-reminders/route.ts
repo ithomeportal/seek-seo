@@ -126,6 +126,7 @@ export async function GET(request: Request) {
   const result = await query<OnboardingApplicationRow>(
     `SELECT * FROM customer_onboarding_applications
       WHERE status NOT IN ('completed','declined')
+        AND archived_at IS NULL
       ORDER BY created_at ASC
       LIMIT 500`
   )
