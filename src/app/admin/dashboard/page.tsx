@@ -39,6 +39,8 @@ import {
   Download,
 } from 'lucide-react'
 import { GPSTrackingMap } from '@/components/admin/GPSTrackingMap'
+import { GpsHealthPanel } from '@/components/admin/GpsHealthPanel'
+import { TIER_COLOR, TIER_LABEL, formatAge, tierForFix } from '@/lib/gps-health'
 import OnboardingApplicationsTab from '@/components/admin/OnboardingApplicationsTab'
 import DepreciationTab from '@/components/admin/DepreciationTab'
 import FmcsaSearchTab from '@/components/admin/FmcsaSearchTab'
@@ -116,6 +118,7 @@ interface FleetUnit {
   skybitzDeviceId: string | null
   lastLatitude: string | null
   lastLongitude: string | null
+  lastGpsTime: string | null
   notes: string | null
   imageUrl: string | null
   createdAt: string
@@ -228,6 +231,27 @@ interface CustomerSummary {
   totalMonthlyRevenue: number
   totalDepositsHeld: number
   totalPendingDeposits: number
+  onboardingTotal: number
+  onboardingInProgress: number
+}
+
+/**
+ * A company partway through onboarding. Kept as its own list rather than being
+ * folded into `customers`: it has no units, rent or deposits, so mixing it in
+ * would silently skew the revenue and deposit KPI cards.
+ */
+interface OnboardingCompany {
+  id: number
+  reference: string
+  companyName: string
+  contactName: string | null
+  phone: string | null
+  email: string
+  status: string
+  startedAt: string
+  completedAt: string | null
+  progress: { completed: number; total: number; isComplete: boolean }
+  matchedCustomerId: number | null
 }
 
 interface QBInvoice {
@@ -423,6 +447,7 @@ function DashboardContent() {
   const [appStatusSaving, setAppStatusSaving] = useState<number | null>(null)
   const [forSaleItems, setForSaleItems] = useState<EquipmentForSale[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
+  const [onboardingCompanies, setOnboardingCompanies] = useState<OnboardingCompany[]>([])
   const [customerSummary, setCustomerSummary] = useState<CustomerSummary | null>(null)
   const [qbInvoices, setQbInvoices] = useState<QBInvoice[]>([])
   const [qbInvoiceSummary, setQbInvoiceSummary] = useState<QBInvoiceSummary | null>(null)
@@ -435,7 +460,9 @@ function DashboardContent() {
 
   // Customer filters
   const [customerSearch, setCustomerSearch] = useState('')
-  const [customerFilter, setCustomerFilter] = useState<'all' | 'active' | 'no_rentals'>('all')
+  const [customerFilter, setCustomerFilter] = useState<
+    'all' | 'active' | 'no_rentals' | 'onboarding'
+  >('all')
   const [customerSort, setCustomerSort] = useState<'name' | 'units' | 'revenue' | 'deposits'>('name')
   const [expandedCustomer, setExpandedCustomer] = useState<number | null>(null)
 
@@ -549,6 +576,7 @@ function DashboardContent() {
             const custJson = await custRes.json()
             if (custJson.success) {
               setCustomers(custJson.data.customers)
+              setOnboardingCompanies(custJson.data.onboarding ?? [])
               setCustomerSummary(custJson.data.summary)
             }
             const statsJson = await statsRes.json()
@@ -560,6 +588,7 @@ function DashboardContent() {
             const json = await res.json()
             if (json.success) {
               setCustomers(json.data.customers)
+              setOnboardingCompanies(json.data.onboarding ?? [])
               setCustomerSummary(json.data.summary)
             }
             break
@@ -776,6 +805,14 @@ function DashboardContent() {
       case 'plateExpiration': return u.plateExpiration
       case 'plateDaysLeft': return daysUntil(u.plateExpiration)
       case 'status': return u.status
+      // Age in hours, so sorting puts the most-neglected trackers together.
+      // A unit with no fix at all sorts as the very worst.
+      case 'lastGpsTime':
+        return u.skybitzDeviceId && !u.lastGpsTime
+          ? Number.MAX_SAFE_INTEGER
+          : u.lastGpsTime
+            ? Math.round((Date.now() - new Date(u.lastGpsTime).getTime()) / 3_600_000)
+            : null
       case 'rentedTo': return u.rentedTo
       case 'rentalRate': return u.rentalRate ? parseFloat(u.rentalRate) : null
       case 'depositTotal': return u.depositTotal ? parseFloat(u.depositTotal) : null
@@ -824,7 +861,8 @@ function DashboardContent() {
     const headers = [
       'Unit #', 'Type', 'Year', 'Make', 'Model', 'VIN', 'Plate',
       'Plate Expiration', 'Days Left', 'Status', 'Rented To',
-      'Rate', 'Deposit', 'GPS Device', 'Sold Date', 'Sale Price',
+      'Rate', 'Deposit', 'GPS Device', 'Last GPS Fix', 'Tracker Health',
+      'Sold Date', 'Sale Price',
     ]
     const rows = sortedFleet.map((u) => {
       const dl = daysUntil(u.plateExpiration)
@@ -843,6 +881,8 @@ function DashboardContent() {
         u.rentalRate ?? '',
         u.depositTotal ?? '',
         u.skybitzDeviceId ?? '',
+        u.lastGpsTime ?? '',
+        u.skybitzDeviceId ? TIER_LABEL[tierForFix(u.lastGpsTime, true)] : '',
         u.soldDate ?? '',
         u.salePrice ?? '',
       ]
@@ -1091,6 +1131,36 @@ function DashboardContent() {
       const sb = String(vb).toLowerCase()
       return sortDir === 'asc' ? sa.localeCompare(sb) : sb.localeCompare(sa)
     })
+  }
+
+  /**
+   * Age of a unit's LAST DEVICE FIX, coloured by the shared health tiers.
+   *
+   * Reads `lastGpsTime` only. `updatedAt` is bumped by any admin edit and
+   * `gpsSyncedAt` is refreshed for a dead tracker too, so either of those would
+   * paint a unit that has not reported since November as freshly healthy.
+   */
+  function renderLastFix(unit: FleetUnit) {
+    if (!unit.skybitzDeviceId) {
+      return <span className="text-gray-300" title="No GPS device assigned">—</span>
+    }
+    const tier = tierForFix(unit.lastGpsTime, true)
+    const ageHours = unit.lastGpsTime
+      ? Math.round((Date.now() - new Date(unit.lastGpsTime).getTime()) / 3_600_000)
+      : null
+    return (
+      <span
+        style={{ color: TIER_COLOR[tier] }}
+        className={tier === 'ok' ? 'text-gray-500' : 'font-semibold'}
+        title={
+          unit.lastGpsTime
+            ? `Last position fix ${new Date(unit.lastGpsTime).toLocaleString()} — ${TIER_LABEL[tier]}`
+            : 'This unit has a GPS device but has never reported a position'
+        }
+      >
+        {formatAge(ageHours)}
+      </span>
+    )
   }
 
   function renderSortHeader(label: string, sortId: string, align?: 'left' | 'right' | 'center') {
@@ -2425,6 +2495,7 @@ function DashboardContent() {
                 {renderSortHeader("Date Expiration", "plateExpiration")}
                 {renderSortHeader("Days Left", "plateDaysLeft", "right")}
                 {renderSortHeader("Status", "status")}
+                {renderSortHeader("Last Fix", "lastGpsTime", "right")}
                 {renderSortHeader("Rented To", "rentedTo")}
                 {renderSortHeader("Rate", "rentalRate", "right")}
                 {renderSortHeader("Deposit", "depositTotal", "right")}
@@ -2434,7 +2505,7 @@ function DashboardContent() {
               </tr>
               <tr className="border-b bg-gray-100 font-bold text-gray-900">
                 <td className="px-2.5 py-1.5 whitespace-nowrap">TOTAL ({filteredFleet.length})</td>
-                <td className="px-2.5 py-1.5" colSpan={8}></td>
+                <td className="px-2.5 py-1.5" colSpan={9}></td>
                 <td className="px-2.5 py-1.5 text-right tabular-nums">{formatCurrency(sumRate)}</td>
                 <td className="px-2.5 py-1.5 text-right tabular-nums">{formatCurrency(sumDeposit)}</td>
                 <td className="px-2.5 py-1.5"></td>
@@ -2479,6 +2550,9 @@ function DashboardContent() {
                   </td>
                   <td className="px-2.5 py-1.5">
                     {renderBadge(STATUS_LABELS[unit.status] ?? unit.status, STATUS_COLORS[unit.status] ?? 'bg-gray-100 text-gray-800')}
+                  </td>
+                  <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap">
+                    {renderLastFix(unit)}
                   </td>
                   <td className="px-2.5 py-1.5">
                     {unit.rentedTo ? (() => {
@@ -2541,7 +2615,12 @@ function DashboardContent() {
   }
 
   function renderGPS() {
-    return <GPSTrackingMap />
+    return (
+      <>
+        <GpsHealthPanel />
+        <GPSTrackingMap />
+      </>
+    )
   }
 
   function renderInquiries() {
@@ -2731,9 +2810,37 @@ function DashboardContent() {
       return matchesSearch && matchesFilter
     })
 
+    // Companies still working through the onboarding checklist. Matched to an
+    // existing customer where possible, so a company that is BOTH shows as a
+    // badge on its real row instead of appearing twice.
+    const onboardingSearchLower = customerSearch.toLowerCase()
+    const onboardingMatches = onboardingCompanies.filter(
+      (o) =>
+        customerSearch === '' ||
+        o.companyName.toLowerCase().includes(onboardingSearchLower) ||
+        (o.contactName ?? '').toLowerCase().includes(onboardingSearchLower) ||
+        o.email.toLowerCase().includes(onboardingSearchLower)
+    )
+    const onboardingByCustomerId = new Map<number, OnboardingCompany>()
+    for (const o of onboardingCompanies) {
+      if (o.matchedCustomerId !== null) onboardingByCustomerId.set(o.matchedCustomerId, o)
+    }
+    // Only the ones with no customer record get their own row.
+    // In the default "All Customers" view only companies still WORKING through
+    // the checklist are surfaced — a finished onboarding is history, and eight
+    // completed rows pinned above the customer list would push the actual
+    // customers off the screen for good. The "In Onboarding" filter shows every
+    // onboarding record, completed ones included.
+    const unlinkedOnboarding = onboardingMatches
+      .filter((o) => o.matchedCustomerId === null)
+      .filter((o) => customerFilter === 'onboarding' || !o.progress.isComplete)
+    const showOnboarding =
+      customerFilter === 'all' || customerFilter === 'onboarding'
+
     const summaryCards = [
       { label: 'Customers', value: customerSummary.totalCustomers, color: 'bg-gray-900 text-white' },
       { label: 'Active', value: customerSummary.activeRenters, color: 'bg-blue-50 text-blue-700' },
+      { label: 'Onboarding', value: customerSummary.onboardingInProgress, color: 'bg-amber-50 text-amber-700' },
       { label: 'Revenue/Mo', value: formatCurrency(customerSummary.totalMonthlyRevenue), color: 'bg-green-50 text-green-700' },
       { label: 'Deposits', value: formatCurrency(customerSummary.totalDepositsHeld), color: 'bg-purple-50 text-purple-700' },
       { label: 'Pending', value: formatCurrency(customerSummary.totalPendingDeposits), color: 'bg-orange-50 text-orange-700' },
@@ -2806,14 +2913,85 @@ function DashboardContent() {
             <option value="all">All Customers</option>
             <option value="active">Active Renters</option>
             <option value="no_rentals">No Current Rentals</option>
+            <option value="onboarding">
+              In Onboarding ({customerSummary.onboardingInProgress} active / {onboardingCompanies.length} total)
+            </option>
           </select>
         </div>
 
-        <p className="text-xs text-gray-400">{sorted.length} customers</p>
+        <p className="text-xs text-gray-400">
+          {customerFilter === 'onboarding'
+            ? `${unlinkedOnboarding.length} onboarding record${unlinkedOnboarding.length === 1 ? '' : 's'}` +
+              ` (${unlinkedOnboarding.filter((o) => !o.progress.isComplete).length} still in progress)`
+            : `${sorted.length} customers${
+                showOnboarding && unlinkedOnboarding.length > 0
+                  ? ` · ${unlinkedOnboarding.length} in onboarding`
+                  : ''
+              }`}
+        </p>
+
+        {/* Companies in onboarding — no customer record yet, so they have no
+            units, rent or deposits. Listed separately above the customers so
+            they are visible here (previously they existed only on the
+            Onboarding tab and this section could not see them at all). */}
+        {showOnboarding && unlinkedOnboarding.length > 0 && (
+          <div className="space-y-1">
+            {unlinkedOnboarding.map((ob) => (
+              <div
+                key={`ob-${ob.id}`}
+                className="rounded-lg border border-amber-200 bg-amber-50/50 px-3 py-2"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="shrink-0 w-7 h-7 rounded bg-amber-100 flex items-center justify-center">
+                      <Clock className="h-3.5 w-3.5 text-amber-700" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">
+                        {ob.companyName}
+                      </p>
+                      <div className="flex items-center gap-2 text-xs text-gray-400">
+                        {ob.contactName && <span>{ob.contactName}</span>}
+                        {ob.phone && (
+                          <span className="flex items-center gap-0.5"><Phone className="h-2.5 w-2.5" />{ob.phone}</span>
+                        )}
+                        <span className="items-center gap-0.5 hidden md:flex"><Mail className="h-2.5 w-2.5" />{ob.email}</span>
+                        <span className="text-gray-300">{ob.reference}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="text-right hidden sm:block">
+                      <p className="text-xs text-gray-400">Started</p>
+                      <p className="text-xs font-medium text-gray-600">{formatDate(ob.startedAt)}</p>
+                    </div>
+                    <span
+                      className={`rounded px-1.5 py-px text-xs font-medium ${
+                        ob.progress.isComplete
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}
+                    >
+                      {ob.progress.isComplete
+                        ? 'Onboarding complete'
+                        : `Onboarding ${ob.progress.completed}/${ob.progress.total}`}
+                    </span>
+                    <button
+                      onClick={() => setActiveTab('onboarding')}
+                      className="text-xs font-medium text-brand-blue hover:underline whitespace-nowrap"
+                    >
+                      View documents
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Customer list */}
         <div className="space-y-1">
-          {sorted.map((customer) => {
+          {customerFilter !== 'onboarding' && sorted.map((customer) => {
             const isExpanded = expandedCustomer === customer.id
             return (
               <div
@@ -2876,6 +3054,20 @@ function DashboardContent() {
                       ) : (
                         <span className="rounded px-1.5 py-px text-xs font-medium bg-gray-100 text-gray-400">Idle</span>
                       )}
+                      {/* Already a customer AND mid-onboarding — badge the real
+                          row rather than listing the company twice. */}
+                      {(() => {
+                        const ob = onboardingByCustomerId.get(customer.id)
+                        if (!ob || ob.progress.isComplete) return null
+                        return (
+                          <span
+                            title={`Onboarding ${ob.progress.completed}/${ob.progress.total} — ${ob.reference}`}
+                            className="rounded px-1.5 py-px text-xs font-medium bg-amber-100 text-amber-800"
+                          >
+                            Onboarding {ob.progress.completed}/{ob.progress.total}
+                          </span>
+                        )
+                      })()}
                     </div>
                     {isExpanded ? <ChevronUp className="h-3.5 w-3.5 text-gray-400" /> : <ChevronDown className="h-3.5 w-3.5 text-gray-400" />}
                   </div>
@@ -2954,11 +3146,18 @@ function DashboardContent() {
             )
           })}
 
-          {sorted.length === 0 && (
-            <div className="text-center py-12 text-gray-400">
-              No customers match your filters.
-            </div>
-          )}
+          {customerFilter === 'onboarding'
+            ? unlinkedOnboarding.length === 0 && (
+                <div className="text-center py-12 text-gray-400">
+                  No companies are currently in onboarding.
+                </div>
+              )
+            : sorted.length === 0 &&
+              unlinkedOnboarding.length === 0 && (
+                <div className="text-center py-12 text-gray-400">
+                  No customers match your filters.
+                </div>
+              )}
         </div>
       </div>
     )
