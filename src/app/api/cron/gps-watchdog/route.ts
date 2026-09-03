@@ -37,7 +37,9 @@ const SEND_LOCAL_HOUR = 8
 const TIMEZONE = 'America/Chicago'
 
 const DEFAULT_TO = 'rodney@seekequipment.com'
-const DEFAULT_CC = 'dfrodriguez@unilinktransportation.com'
+// Both cc addresses are tenant domains, so this stays a staff-facing send with
+// no email-domain-policy conflict.
+const DEFAULT_CC = 'dfrodriguez@unilinktransportation.com,emendoza@seekequipment.com'
 const FROM = 'SEEK Equipment <noreply@unilinkportal.com>'
 
 function isAuthorized(request: Request): boolean {

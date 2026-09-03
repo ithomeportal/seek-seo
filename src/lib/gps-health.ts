@@ -53,6 +53,22 @@ export const DEFAULT_THRESHOLDS: GpsHealthThresholds = {
  */
 export const NON_ALERTING_STATUSES: readonly string[] = ['sold']
 
+/**
+ * Fleet-status groupings used by the daily report's inventory sections.
+ *
+ * `available` is the only status that means "a customer could take this today";
+ * `make_ready`, `return_inspection`, `damaged` and `maintenance` are all units
+ * in the yard that are NOT rentable yet, and listing them as available is how a
+ * report starts quoting equipment that cannot go out.
+ *
+ * `lease_to_own` sits with `rented` because the unit is out with a customer
+ * earning money — the same thing Rodney is looking for when he asks where the
+ * rented equipment is. Its own status is shown on every row, so nothing is
+ * silently reclassified.
+ */
+export const AVAILABLE_STATUSES: readonly string[] = ['available']
+export const ON_RENT_STATUSES: readonly string[] = ['rented', 'lease_to_own']
+
 /** Minimal row shape this module needs; a superset is fine. */
 export interface GpsHealthUnitRow {
   unit_number: string
@@ -63,6 +79,8 @@ export interface GpsHealthUnitRow {
   last_gps_time: string | Date | null
   gps_synced_at: string | Date | null
   last_location: string | null
+  last_latitude: string | number | null
+  last_longitude: string | number | null
 }
 
 export interface GpsHealthUnit {
@@ -74,6 +92,9 @@ export interface GpsHealthUnit {
   lastGpsTime: string | null
   gpsSyncedAt: string | null
   lastLocation: string | null
+  /** Last known coordinates, so a report can link straight to the map. */
+  latitude: number | null
+  longitude: number | null
   /** Hours since the device's own last fix; null when it never reported. */
   ageHours: number | null
   tier: GpsHealthTier
@@ -88,6 +109,14 @@ export interface GpsHealthReport {
   units: GpsHealthUnit[]
   /** Units that need somebody to act — alerting units outside `ok`. */
   problems: GpsHealthUnit[]
+  /**
+   * Ready-to-rent inventory (`AVAILABLE_STATUSES`), unit order. Listed in full
+   * every day — the daily report is also the answer to "what can I quote right
+   * now, and is its tracker healthy".
+   */
+  available: GpsHealthUnit[]
+  /** Units out with a customer (`ON_RENT_STATUSES`), unit order. */
+  onRent: GpsHealthUnit[]
   /**
    * Tier counts over the MONITORED population only (sold excluded), so a
    * headline number always matches the rows listed underneath it. A pill
@@ -146,6 +175,52 @@ export const TIER_COLOR: Record<GpsHealthTier, string> = {
   warn: '#ca8a04',
   ok: '#16a34a',
   no_device: '#9ca3af',
+}
+
+/** Fleet status → human label, matching the admin Fleet Master badges. */
+export const STATUS_LABEL: Record<string, string> = {
+  available: 'Available',
+  rented: 'Rented',
+  lease_to_own: 'Lease to Own',
+  damaged: 'Damaged',
+  maintenance: 'Maintenance',
+  make_ready: 'Make Ready',
+  return_inspection: 'Return Inspection',
+  for_sale: 'For Sale',
+  sold: 'Sold',
+}
+
+/** Trailer type → human label, matching `TRAILER_TYPE_LABELS` in the dashboard. */
+export const TRAILER_TYPE_LABEL: Record<string, string> = {
+  sand_chassis: 'Sand Chassis',
+  belly_dump: 'Belly Dump',
+  sand_hopper: 'Sand Hopper',
+  dry_van: 'Dry Van',
+  flatbed: 'Flat Bed',
+  tank: 'Tank',
+}
+
+/** Label a raw snake_case value, falling back to a readable form of itself. */
+function labelled(map: Record<string, string>, value: string | null): string {
+  if (!value) return '\u2014'
+  return map[value] ?? value.replace(/_/g, ' ')
+}
+
+export const formatStatus = (status: string | null): string =>
+  labelled(STATUS_LABEL, status)
+
+export const formatTrailerType = (type: string | null): string =>
+  labelled(TRAILER_TYPE_LABEL, type)
+
+/**
+ * pg returns `numeric` columns as strings. Coordinates are only ever used to
+ * build a map link, so anything unparseable becomes null rather than `NaN`,
+ * which would render a link pointing at nowhere.
+ */
+function toCoord(value: string | number | null): number | null {
+  if (value === null || value === undefined || value === '') return null
+  const n = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(n) ? n : null
 }
 
 function toIso(value: string | Date | null): string | null {
@@ -218,6 +293,8 @@ export function classifyUnit(
     lastGpsTime: toIso(row.last_gps_time),
     gpsSyncedAt: toIso(row.gps_synced_at),
     lastLocation: row.last_location,
+    latitude: toCoord(row.last_latitude),
+    longitude: toCoord(row.last_longitude),
     ageHours: ageHours === null ? null : Math.round(ageHours),
     tier,
     alerting: !NON_ALERTING_STATUSES.includes(row.status),
@@ -266,6 +343,17 @@ export function buildHealthReport(
   // something Rodney asked to see — "all of our inventory, even if not rented".
   const problems = units.filter((u) => u.alerting && u.tier !== 'ok')
 
+  // These two are inventory listings, not incident lists, so they read in unit
+  // order rather than the worst-first order `units` carries.
+  const byUnit = (a: GpsHealthUnit, b: GpsHealthUnit) =>
+    a.unitNumber.localeCompare(b.unitNumber, 'en', { numeric: true })
+  const available = units
+    .filter((u) => AVAILABLE_STATUSES.includes(u.status))
+    .sort(byUnit)
+  const onRent = units
+    .filter((u) => ON_RENT_STATUSES.includes(u.status))
+    .sort(byUnit)
+
   const syncTimes = units
     .map((u) => u.gpsSyncedAt)
     .filter((v): v is string => v !== null)
@@ -278,6 +366,8 @@ export function buildHealthReport(
     thresholds,
     units,
     problems,
+    available,
+    onRent,
     counts,
     countsAll,
     totals: {
@@ -303,7 +393,8 @@ export function formatAge(ageHours: number | null): string {
 /** The SQL every consumer uses, so the map and the email can never disagree. */
 export const GPS_HEALTH_QUERY = `
   SELECT unit_number, trailer_type, status, rented_to,
-         skybitz_device_id, last_gps_time, gps_synced_at, last_location
+         skybitz_device_id, last_gps_time, gps_synced_at, last_location,
+         last_latitude, last_longitude
     FROM fleet_units
    ORDER BY unit_number
 `

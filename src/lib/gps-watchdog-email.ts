@@ -9,6 +9,8 @@ import {
   TIER_COLOR,
   TIER_LABEL,
   formatAge,
+  formatStatus,
+  formatTrailerType,
   type GpsHealthReport,
   type GpsHealthTier,
   type GpsHealthUnit,
@@ -18,6 +20,21 @@ const ADMIN_GPS_URL = 'https://www.seekequipment.com/admin/dashboard?tab=gps'
 
 /** Tier order inside the email body: worst first. */
 const PROBLEM_TIERS: GpsHealthTier[] = ['never', 'dead', 'stale', 'warn', 'no_device']
+
+/**
+ * Short tier labels for the per-row GPS chip in the inventory tables.
+ *
+ * The exception-sections above already spell the tier out in their heading; in
+ * a 30-row table the chip has to stay narrow or the location column wraps.
+ */
+const TIER_SHORT: Record<GpsHealthTier, string> = {
+  never: 'Never',
+  dead: 'Dead',
+  stale: 'Stale',
+  warn: 'Late',
+  ok: 'OK',
+  no_device: 'No GPS',
+}
 
 function escapeHtml(value: string | null | undefined): string {
   if (!value) return ''
@@ -117,6 +134,121 @@ function tierSection(tier: GpsHealthTier, units: GpsHealthUnit[]): string {
     </table>`
 }
 
+/** Coloured GPS chip — same palette as the map halos and the admin panel. */
+function healthChip(u: GpsHealthUnit): string {
+  return `<span style="display:inline-block;background:${TIER_COLOR[u.tier]};color:#ffffff;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;letter-spacing:.3px;white-space:nowrap;">${TIER_SHORT[u.tier]}</span>`
+}
+
+/**
+ * Where the unit is, linked to its actual coordinates when we have them.
+ *
+ * The landmark name alone is not a position — "Von Ormy, TX" is both the yard
+ * and half the county — so the coordinates are what makes this section usable
+ * for actually going and finding a trailer.
+ */
+function locationCell(u: GpsHealthUnit): string {
+  const label = escapeHtml(u.lastLocation) || '—'
+  if (u.latitude === null || u.longitude === null) return label
+  const coords = `${u.latitude.toFixed(5)},${u.longitude.toFixed(5)}`
+  return `<a href="https://www.google.com/maps?q=${coords}" style="color:#35668d;text-decoration:none;">${label} <span style="color:#9ca3af;">↗</span></a>`
+}
+
+const TD = 'padding:5px 8px;border-bottom:1px solid #eef0f3;'
+const TH = 'padding:5px 8px;color:#6b7280;font-weight:600;'
+
+/**
+ * An inventory table: every unit in one fleet-status group, in unit order.
+ *
+ * Unlike the exception sections above this lists healthy units too — that is
+ * the point. "Which trailers can go out today, where are they, and is the
+ * tracker on each one actually alive" is a question the daily report can answer
+ * for free, and answering it every morning is also what keeps anyone reading it.
+ */
+function inventorySection(
+  title: string,
+  blurb: string,
+  units: GpsHealthUnit[],
+  options: { showCustomer: boolean; emptyNote: string }
+): string {
+  const head = `
+    <h3 style="font-size:13px;margin:22px 0 2px;color:#35668d;">
+      ${escapeHtml(title)} (${units.length})
+    </h3>
+    <p style="margin:0 0 6px;color:#6b7280;font-size:11px;">${escapeHtml(blurb)}</p>`
+
+  if (units.length === 0) {
+    return `${head}
+    <p style="margin:0;color:#6b7280;font-size:11px;font-style:italic;">${escapeHtml(options.emptyNote)}</p>`
+  }
+
+  const customerHead = options.showCustomer
+    ? `<th align="left" style="${TH}">Customer</th>`
+    : ''
+
+  const rows = units
+    .map(
+      (u) => `
+      <tr>
+        <td style="${TD}font-weight:600;color:#111827;">${escapeHtml(u.unitNumber)}</td>
+        <td style="${TD}color:#6b7280;">${escapeHtml(formatTrailerType(u.trailerType))}</td>
+        ${options.showCustomer ? `<td style="${TD}color:#111827;">${escapeHtml(u.rentedTo) || '—'}</td>` : ''}
+        <td style="${TD}">${healthChip(u)}</td>
+        <td style="${TD}color:#111827;white-space:nowrap;">${formatCentral(u.lastGpsTime)}</td>
+        <td style="${TD}text-align:right;font-weight:700;color:${TIER_COLOR[u.tier]};white-space:nowrap;">${formatAge(u.ageHours)}</td>
+        <td style="${TD}color:#374151;">${locationCell(u)}</td>
+      </tr>`
+    )
+    .join('')
+
+  return `${head}
+    <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:11px;">
+      <thead>
+        <tr style="background:#f7f8fa;">
+          <th align="left" style="${TH}">Unit</th>
+          <th align="left" style="${TH}">Type</th>
+          ${customerHead}
+          <th align="left" style="${TH}">GPS</th>
+          <th align="left" style="${TH}">Last fix</th>
+          <th align="right" style="${TH}">Age</th>
+          <th align="left" style="${TH}">Latest position</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`
+}
+
+/** The two daily inventory listings: what is rentable, and what is out. */
+function inventorySections(report: GpsHealthReport): string {
+  const leaseToOwn = report.onRent.filter((u) => u.status === 'lease_to_own')
+  const leaseNote =
+    leaseToOwn.length > 0
+      ? ` Includes ${leaseToOwn.length} lease-to-own unit${leaseToOwn.length === 1 ? '' : 's'} (${leaseToOwn.map((u) => u.unitNumber).join(', ')}).`
+      : ''
+
+  return `
+    <div style="margin-top:26px;padding-top:16px;border-top:2px solid #e5e7eb;">
+      <h2 style="color:#35668d;margin:0 0 2px;font-size:16px;">Fleet inventory — where everything is</h2>
+      <p style="color:#6b7280;font-size:11px;margin:0 0 4px;">
+        Location names link to the exact coordinates on Google Maps.
+      </p>
+      ${inventorySection(
+        'Available to rent',
+        'Ready to go out today. Units in make-ready, return inspection, maintenance or damaged are NOT listed here — they are not rentable yet.',
+        report.available,
+        {
+          showCustomer: false,
+          emptyNote: 'Nothing is currently marked available — every unit is out, or in the yard being worked on.',
+        }
+      )}
+      ${inventorySection(
+        'On rent',
+        `Out with a customer.${leaseNote}`,
+        report.onRent,
+        { showCustomer: true, emptyNote: 'No units are currently on rent.' }
+      )}
+    </div>`
+}
+
 export function watchdogHtml(report: GpsHealthReport): string {
   const t = report.thresholds
 
@@ -179,6 +311,8 @@ export function watchdogHtml(report: GpsHealthReport): string {
 
     ${sections}
 
+    ${inventorySections(report)}
+
     <p style="margin:22px 0 6px;">
       <a href="${ADMIN_GPS_URL}"
          style="background:#ee5519;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600;font-size:13px;display:inline-block;">
@@ -195,6 +329,9 @@ export function watchdogHtml(report: GpsHealthReport): string {
         <li>Thresholds: warning at ${t.warnHours} h, stale at ${t.staleHours} h,
             dead at ${Math.round(t.deadHours / 24)} days.</li>
         ${excludedNote}
+        <li>The inventory tables list <strong>every</strong> available and on-rent unit, healthy or
+            not, so the report also answers "what can I quote today" and "where is that customer's
+            trailer" — not only "what is broken".</li>
         <li>This email is sent every morning at 8:00 AM Central whether or not anything is wrong —
             silence would be indistinguishable from a healthy fleet.</li>
       </ul>
@@ -235,6 +372,32 @@ export function watchdogText(report: GpsHealthReport): string {
       lines.push('')
     }
   }
+  const inventoryLine = (u: GpsHealthUnit, withCustomer: boolean): string => {
+    const where = u.lastLocation ?? 'unknown location'
+    const coords =
+      u.latitude !== null && u.longitude !== null
+        ? ` (${u.latitude.toFixed(5)}, ${u.longitude.toFixed(5)})`
+        : ''
+    const who = withCustomer ? ` — ${u.rentedTo ?? 'customer not set'}` : ''
+    return (
+      `  ${u.unitNumber} [${formatTrailerType(u.trailerType)}]${who} — ` +
+      `GPS ${TIER_SHORT[u.tier]}, last fix ${formatCentral(u.lastGpsTime)} ` +
+      `(${formatAge(u.ageHours)}) — ${where}${coords}`
+    )
+  }
+
+  lines.push(`Available to rent (${report.available.length}):`)
+  if (report.available.length === 0) lines.push('  none')
+  for (const u of report.available) lines.push(inventoryLine(u, false))
+  lines.push('')
+  lines.push(`On rent (${report.onRent.length}):`)
+  if (report.onRent.length === 0) lines.push('  none')
+  for (const u of report.onRent) {
+    lines.push(
+      `${inventoryLine(u, true)}${u.status === 'lease_to_own' ? ` [${formatStatus(u.status)}]` : ''}`
+    )
+  }
+  lines.push('')
   lines.push(ADMIN_GPS_URL)
   return lines.join('\n')
 }

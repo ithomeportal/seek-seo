@@ -90,6 +90,12 @@ async function main() {
   console.log('')
   console.log('Counts:', report.counts)
   console.log('Totals:', report.totals)
+  console.log(
+    'Inventory sections: available',
+    report.available.length,
+    '| on rent',
+    report.onRent.length
+  )
   console.log('Feed down:', report.feedDown, '| last sync', report.lastSyncAt)
   console.log('')
   console.table(
@@ -104,7 +110,12 @@ async function main() {
   )
 
   fs.writeFileSync(outfile, email.watchdogHtml(report), 'utf8')
-  console.log(`\nHTML written to ${outfile} (nothing was sent)`)
+  // The text part is what a text-only client actually shows, so it is written
+  // too — a section added to the HTML only would silently be missing there.
+  const textfile = outfile.replace(/\.html?$/i, '') + '.txt'
+  fs.writeFileSync(textfile, email.watchdogText(report), 'utf8')
+  console.log(`\nHTML written to ${outfile}`)
+  console.log(`Text written to ${textfile} (nothing was sent)`)
 }
 
 main().catch((err) => {
