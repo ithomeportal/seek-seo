@@ -68,6 +68,8 @@ interface MeResponse {
   success: boolean
   email: string
   hasExistingAccount: boolean
+  /** A live onboarding application whose document checklist is not finished. */
+  onboardingIncomplete: boolean
   customer: {
     id: number
     companyName: string | null
@@ -689,7 +691,12 @@ function Dashboard({ me, onLogout }: { me: MeResponse; onLogout: () => void }) {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8">
-        {!me.hasExistingAccount ? (
+        {/* The wizard is shown while the checklist is unfinished, NOT merely
+            while the company is missing from `customers`. Every onboarding
+            company now gets a customer row on sign-up, so the old
+            `!hasExistingAccount` test would have hidden the remaining upload
+            steps from exactly the people who still need them. */}
+        {!me.hasExistingAccount || me.onboardingIncomplete ? (
           <OnboardingFlow me={{ email: me.email, customer: null }} />
         ) : loading ? (
           <div className="flex items-center justify-center py-20">

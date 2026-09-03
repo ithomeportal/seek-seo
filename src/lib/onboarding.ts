@@ -193,6 +193,102 @@ export async function getApplicationById(
   return result.rows[0] ? rowToApplication(result.rows[0]) : null
 }
 
+/**
+ * Loose key for deciding whether a company already exists in `customers`.
+ *
+ * ⚠ Shared deliberately: `/api/admin/customers` matches onboarding records to
+ * customers with this, `linkCustomerForApplication` creates them with it, and
+ * scripts/link-onboarding-customers.mjs backfilled them with a copy. If the
+ * three ever disagree about what counts as the same company, the admin UI shows
+ * a company twice and the portal creates a duplicate customer.
+ */
+export function companyNameKey(value: string | null): string {
+  return (value ?? '')
+    .toLowerCase()
+    .replace(/[.,]/g, '')
+    .replace(/\b(llc|inc|l\.l\.c|corp|corporation|co|ltd)\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
+ * Make sure the company behind an onboarding application has a row in
+ * `customers`, and record the link on the application.
+ *
+ * Before 2026-09-03 the two tables were disjoint — a company that signed up
+ * through the portal existed only as an onboarding record, and somebody had to
+ * hand-enter it as a customer before it appeared under Customers at all. Called
+ * from the profile step, this keeps "everything in Onboarding is in Customers"
+ * true by construction instead of by a periodic backfill.
+ *
+ * Idempotent: an application that already carries `customer_id` is left alone,
+ * and an existing customer is linked rather than duplicated (`customers` has no
+ * unique index on email, so the guard has to live here).
+ *
+ * ⚠ Widths are clamped in SQL. The onboarding contact-name columns are
+ * varchar(120) and the customer ones are varchar(100): assigning across that
+ * pair raises SQLSTATE 22001 the first day a long name arrives, and it would
+ * surface as the customer's profile step failing for no visible reason.
+ */
+export async function linkCustomerForApplication(
+  app: OnboardingApplication
+): Promise<number | null> {
+  if (app.customerId !== null) return app.customerId
+
+  const email = app.email.trim().toLowerCase()
+  const key = companyNameKey(app.companyName)
+
+  // Matched in JS against the whole (small) customer list rather than in SQL:
+  // the normalised key would otherwise have to be interpolated into a regex,
+  // and a company name containing `(` would both break the query and hand a
+  // caller-supplied pattern to the planner.
+  const candidates = await query<{
+    id: number
+    email: string | null
+    company_name: string
+    alias: string | null
+  }>(`SELECT id, email, company_name, alias FROM customers ORDER BY id ASC`)
+
+  // Email first, then the normalised name — the same precedence
+  // /api/admin/customers uses, so the two agree on who is already a customer.
+  let customerId: number | null =
+    candidates.rows.find((c) => (c.email ?? '').trim().toLowerCase() === email)?.id ??
+    (key === ''
+      ? null
+      : (candidates.rows.find(
+          (c) => companyNameKey(c.company_name) === key || companyNameKey(c.alias) === key
+        )?.id ?? null))
+
+  if (customerId === null) {
+    const created = await query<{ id: number }>(
+      `INSERT INTO customers (
+         company_name, contact_first_name, contact_last_name, phone, email,
+         ach_authorized, status, created_at, updated_at
+       ) VALUES (
+         LEFT($1, 255), LEFT($2, 100), LEFT($3, 100), LEFT($4, 50), LEFT($5, 255),
+         false, 'active', NOW(), NOW()
+       ) RETURNING id`,
+      [
+        app.companyName ?? app.email,
+        app.contactFirstName,
+        app.contactLastName,
+        app.phone,
+        app.email,
+      ]
+    )
+    customerId = created.rows[0].id
+  }
+
+  await query(
+    `UPDATE customer_onboarding_applications
+        SET customer_id = $1, updated_at = NOW()
+      WHERE id = $2 AND customer_id IS NULL`,
+    [customerId, app.id]
+  )
+
+  return customerId
+}
+
 export function nextReference(): string {
   const year = new Date().getFullYear()
   const seq = String(Math.floor(Math.random() * 9000) + 1000)

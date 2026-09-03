@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { qbQuery } from '@/lib/qb-db'
 import {
+  companyNameKey as nameKey,
   rowToApplication,
   sectionProgress,
   type OnboardingApplicationRow,
@@ -10,13 +11,17 @@ import {
 /**
  * A company partway through onboarding, surfaced in the Customers list.
  *
- * `customers` and `customer_onboarding_applications` are entirely disjoint —
- * nothing links them, and `customer_id` is NULL on every onboarding row — so a
- * company signing up was invisible here until it was hand-entered as a
- * customer. These records are returned alongside the real customers, clearly
- * marked, rather than merged into them: an onboarding company has no units, no
- * rent and no deposits, and inventing zeroed customer rows for them would
- * quietly corrupt the revenue and deposit totals above the table.
+ * The two tables used to be entirely disjoint — nothing linked them and
+ * `customer_id` was NULL on every onboarding row — so a company that signed up
+ * through the portal was invisible here until somebody hand-entered it as a
+ * customer. Since 2026-09-03 every onboarding company gets a real `customers`
+ * row (created on sign-up, backfilled by
+ * scripts/link-onboarding-customers.mjs) and this array is what carries the
+ * checklist state onto that row: the progress badge, the "View documents" jump
+ * and the "In Onboarding" filter all read it.
+ *
+ * It is still NOT folded into `summary.totalMonthlyRevenue` / `totalDeposits`
+ * — those come from real rentals, and an onboarding record has none of its own.
  */
 interface OnboardingCompany {
   id: number
@@ -29,18 +34,12 @@ interface OnboardingCompany {
   startedAt: string
   completedAt: string | null
   progress: { completed: number; total: number; isComplete: boolean }
-  /** Set when this company already exists in `customers`, matched below. */
+  /**
+   * The customer row this company is. `customer_id` when the link is recorded,
+   * otherwise the best email/name guess. Null only for a legacy row that has
+   * not been backfilled.
+   */
   matchedCustomerId: number | null
-}
-
-/** Loose key for matching an onboarding record to an existing customer. */
-function nameKey(value: string | null): string {
-  return (value ?? '')
-    .toLowerCase()
-    .replace(/[.,]/g, '')
-    .replace(/\b(llc|inc|l\.l\.c|corp|corporation|co|ltd)\b/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
 }
 
 interface CustomerRow {
@@ -137,31 +136,6 @@ export async function GET() {
       })
     }
 
-    // Also get units linked by rented_to name (for units without customer_id)
-    const nameRentalsResult = await query<RentalRow>(
-      `SELECT
-        rented_to AS customer_name,
-        COUNT(*)::text AS units_rented,
-        COALESCE(SUM(rental_rate), 0)::text AS total_monthly_rent,
-        COALESCE(SUM(deposit_total), 0)::text AS total_deposits,
-        COALESCE(SUM(pending_deposit), 0)::text AS total_pending_deposits,
-        json_agg(json_build_object(
-          'unitNumber', unit_number,
-          'trailerType', trailer_type,
-          'status', status,
-          'rentalRate', rental_rate,
-          'depositTotal', deposit_total,
-          'pendingDeposit', pending_deposit,
-          'rentStartDate', rent_start_date,
-          'rentEndDate', rent_end_date,
-          'rentDueDay', rent_due_day,
-          'vin', vin
-        ) ORDER BY unit_number)::text AS unit_details
-      FROM fleet_units
-      WHERE customer_id IS NULL AND rented_to IS NOT NULL AND status = 'rented'
-      GROUP BY rented_to`
-    )
-
     // Fetch QB balances for linked customers
     const qbBalanceMap = new Map<string, number>()
     try {
@@ -240,7 +214,14 @@ export async function GET() {
       const app = rowToApplication(row)
       const progress = sectionProgress(app)
       const emailKey = app.email.toLowerCase().trim()
+      // `customer_id` is the exact link, written when the application is first
+      // given a company profile (and backfilled for everything that predates
+      // that by scripts/link-onboarding-customers.mjs). The email and
+      // normalised-name lookups below stay as the fallback for any row that
+      // has not been linked yet — they are a heuristic, so they must never win
+      // over a recorded link.
       const matchedCustomerId =
+        app.customerId ??
         customersByEmail.get(emailKey) ??
         customersByName.get(nameKey(app.companyName)) ??
         null
@@ -300,9 +281,11 @@ export async function GET() {
           totalMonthlyRevenue,
           totalDepositsHeld,
           totalPendingDeposits,
-          // Deliberately NOT folded into totalCustomers — an onboarding company
-          // is not yet a customer, and the revenue/deposit cards beside it are
-          // computed from real rentals only.
+          // These companies ARE counted in totalCustomers now — they each have
+          // a customers row. This pair stays separate because the amber KPI
+          // card answers a different question ("how many are still working
+          // through the checklist"), and the revenue/deposit cards beside it
+          // are computed from real rentals only.
           onboardingTotal: onboarding.length,
           onboardingInProgress,
         },

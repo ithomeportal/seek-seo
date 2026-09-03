@@ -237,9 +237,11 @@ interface CustomerSummary {
 }
 
 /**
- * A company partway through onboarding. Kept as its own list rather than being
- * folded into `customers`: it has no units, rent or deposits, so mixing it in
- * would silently skew the revenue and deposit KPI cards.
+ * The onboarding checklist for a company. Every onboarding company now also has
+ * a real `customers` row, so this list is no longer a parallel set of companies
+ * — it is the document state that gets attached to the customer row it matches
+ * (`matchedCustomerId`). A row of its own is rendered only for a legacy record
+ * that has not been linked to a customer yet.
  */
 interface OnboardingCompany {
   id: number
@@ -2797,6 +2799,14 @@ function DashboardContent() {
       )
     }
 
+    // Checklist state keyed by the customer row it belongs to. Built before the
+    // filter runs because "In Onboarding" selects customers through it.
+    const onboardingByCustomerId = new Map<number, OnboardingCompany>()
+    for (const o of onboardingCompanies) {
+      if (o.matchedCustomerId !== null) onboardingByCustomerId.set(o.matchedCustomerId, o)
+    }
+    const onboardingCustomerIds = new Set(onboardingByCustomerId.keys())
+
     const filtered = customers.filter((c) => {
       const searchLower = customerSearch.toLowerCase()
       const matchesSearch =
@@ -2807,7 +2817,12 @@ function DashboardContent() {
       const matchesFilter =
         customerFilter === 'all' ||
         (customerFilter === 'active' && c.unitsRented > 0) ||
-        (customerFilter === 'no_rentals' && c.unitsRented === 0)
+        (customerFilter === 'no_rentals' && c.unitsRented === 0) ||
+        // ⚠ "In Onboarding" has to select CUSTOMERS now. It used to list the
+        // unlinked onboarding rows only, which went empty the moment every
+        // onboarding company got a customer row — the filter would have
+        // reported "no companies in onboarding" while ten of them were.
+        (customerFilter === 'onboarding' && onboardingCustomerIds.has(c.id))
       return matchesSearch && matchesFilter
     })
 
@@ -2822,16 +2837,17 @@ function DashboardContent() {
         (o.contactName ?? '').toLowerCase().includes(onboardingSearchLower) ||
         o.email.toLowerCase().includes(onboardingSearchLower)
     )
-    const onboardingByCustomerId = new Map<number, OnboardingCompany>()
-    for (const o of onboardingCompanies) {
-      if (o.matchedCustomerId !== null) onboardingByCustomerId.set(o.matchedCustomerId, o)
-    }
-    // Only the ones with no customer record get their own row.
+    // Only a record with NO customer row still gets an amber row of its own.
+    // Since the 2026-09-03 backfill that is normally none of them: an
+    // onboarding company is a customer, and its checklist shows as a badge on
+    // its own customer row instead of a duplicate entry above the list. The
+    // path is kept because a record can still arrive unlinked (a legacy row, or
+    // a company whose profile step has not run yet), and silently dropping it
+    // would put us back where this started — a company nobody can see.
+    //
     // In the default "All Customers" view only companies still WORKING through
-    // the checklist are surfaced — a finished onboarding is history, and eight
-    // completed rows pinned above the customer list would push the actual
-    // customers off the screen for good. The "In Onboarding" filter shows every
-    // onboarding record, completed ones included.
+    // the checklist are surfaced; a finished onboarding is history. The
+    // "In Onboarding" filter shows every onboarding record, completed included.
     const unlinkedOnboarding = onboardingMatches
       .filter((o) => o.matchedCustomerId === null)
       .filter((o) => customerFilter === 'onboarding' || !o.progress.isComplete)
@@ -2908,7 +2924,7 @@ function DashboardContent() {
           </div>
           <select
             value={customerFilter}
-            onChange={(e) => setCustomerFilter(e.target.value as 'all' | 'active' | 'no_rentals')}
+            onChange={(e) => setCustomerFilter(e.target.value as 'all' | 'active' | 'no_rentals' | 'onboarding')}
             className="rounded border border-gray-300 bg-white px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand-blue/50"
           >
             <option value="all">All Customers</option>
@@ -2922,11 +2938,17 @@ function DashboardContent() {
 
         <p className="text-xs text-gray-400">
           {customerFilter === 'onboarding'
-            ? `${unlinkedOnboarding.length} onboarding record${unlinkedOnboarding.length === 1 ? '' : 's'}` +
-              ` (${unlinkedOnboarding.filter((o) => !o.progress.isComplete).length} still in progress)`
+            ? (() => {
+                const total = sorted.length + unlinkedOnboarding.length
+                const inProgress =
+                  sorted.filter((c) => !onboardingByCustomerId.get(c.id)?.progress.isComplete)
+                    .length +
+                  unlinkedOnboarding.filter((o) => !o.progress.isComplete).length
+                return `${total} onboarding record${total === 1 ? '' : 's'} (${inProgress} still in progress)`
+              })()
             : `${sorted.length} customers${
                 showOnboarding && unlinkedOnboarding.length > 0
-                  ? ` · ${unlinkedOnboarding.length} in onboarding`
+                  ? ` · ${unlinkedOnboarding.length} in onboarding, not yet linked`
                   : ''
               }`}
         </p>
@@ -2992,7 +3014,7 @@ function DashboardContent() {
 
         {/* Customer list */}
         <div className="space-y-1">
-          {customerFilter !== 'onboarding' && sorted.map((customer) => {
+          {sorted.map((customer) => {
             const isExpanded = expandedCustomer === customer.id
             return (
               <div
@@ -3055,17 +3077,27 @@ function DashboardContent() {
                       ) : (
                         <span className="rounded px-1.5 py-px text-xs font-medium bg-gray-100 text-gray-400">Idle</span>
                       )}
-                      {/* Already a customer AND mid-onboarding — badge the real
-                          row rather than listing the company twice. */}
+                      {/* The onboarding checklist for this customer. Shown for
+                          finished onboardings too: once every onboarding
+                          company is a customer, hiding the completed ones left
+                          no way to tell which rows came from the portal, and
+                          the "In Onboarding" filter would list rows carrying no
+                          visible reason for being there. */}
                       {(() => {
                         const ob = onboardingByCustomerId.get(customer.id)
-                        if (!ob || ob.progress.isComplete) return null
+                        if (!ob) return null
                         return (
                           <span
                             title={`Onboarding ${ob.progress.completed}/${ob.progress.total} — ${ob.reference}`}
-                            className="rounded px-1.5 py-px text-xs font-medium bg-amber-100 text-amber-800"
+                            className={`rounded px-1.5 py-px text-xs font-medium ${
+                              ob.progress.isComplete
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}
                           >
-                            Onboarding {ob.progress.completed}/{ob.progress.total}
+                            {ob.progress.isComplete
+                              ? 'Onboarded'
+                              : `Onboarding ${ob.progress.completed}/${ob.progress.total}`}
                           </span>
                         )
                       })()}
@@ -3147,18 +3179,13 @@ function DashboardContent() {
             )
           })}
 
-          {customerFilter === 'onboarding'
-            ? unlinkedOnboarding.length === 0 && (
-                <div className="text-center py-12 text-gray-400">
-                  No companies are currently in onboarding.
-                </div>
-              )
-            : sorted.length === 0 &&
-              unlinkedOnboarding.length === 0 && (
-                <div className="text-center py-12 text-gray-400">
-                  No customers match your filters.
-                </div>
-              )}
+          {sorted.length === 0 && unlinkedOnboarding.length === 0 && (
+            <div className="text-center py-12 text-gray-400">
+              {customerFilter === 'onboarding'
+                ? 'No companies are currently in onboarding.'
+                : 'No customers match your filters.'}
+            </div>
+          )}
         </div>
       </div>
     )

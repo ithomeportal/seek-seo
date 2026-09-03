@@ -4,6 +4,7 @@ import { readPortalSession } from '@/lib/portal-auth'
 import {
   createApplication,
   getApplicationByEmail,
+  linkCustomerForApplication,
   publicView,
 } from '@/lib/onboarding'
 
@@ -64,6 +65,24 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { success: false, message: 'Application not found.' },
       { status: 500 }
+    )
+  }
+
+  // This is the first step that knows the company's name, so it is where the
+  // customer record gets created — keeping "every company in Onboarding is in
+  // Customers" true by construction rather than by a periodic backfill.
+  //
+  // Isolated on purpose: the link is a back-office convenience, and a customer
+  // filling in their profile must never be shown a failure because of it. The
+  // error is logged with its SQLSTATE so a silent drift is still diagnosable,
+  // and the next save retries (the application still has customer_id NULL).
+  try {
+    await linkCustomerForApplication(updated)
+  } catch (err) {
+    const code = (err as { code?: string }).code ?? 'unknown'
+    console.error(
+      `[onboarding] could not link ${updated.reference} to a customer (SQLSTATE ${code}):`,
+      err instanceof Error ? err.message : err
     )
   }
 
