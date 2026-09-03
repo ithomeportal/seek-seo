@@ -168,7 +168,7 @@ function inventorySection(
   title: string,
   blurb: string,
   units: GpsHealthUnit[],
-  options: { showCustomer: boolean; emptyNote: string }
+  options: { showCustomer: boolean; showStatus?: boolean; emptyNote: string }
 ): string {
   const head = `
     <h3 style="font-size:13px;margin:22px 0 2px;color:#35668d;">
@@ -184,6 +184,11 @@ function inventorySection(
   const customerHead = options.showCustomer
     ? `<th align="left" style="${TH}">Customer</th>`
     : ''
+  // Only the mixed-status yard table needs a Status column; in the other two
+  // the section heading already IS the status.
+  const statusHead = options.showStatus
+    ? `<th align="left" style="${TH}">Status</th>`
+    : ''
 
   const rows = units
     .map(
@@ -191,6 +196,7 @@ function inventorySection(
       <tr>
         <td style="${TD}font-weight:600;color:#111827;">${escapeHtml(u.unitNumber)}</td>
         <td style="${TD}color:#6b7280;">${escapeHtml(formatTrailerType(u.trailerType))}</td>
+        ${options.showStatus ? `<td style="${TD}color:#6b7280;">${escapeHtml(formatStatus(u.status))}</td>` : ''}
         ${options.showCustomer ? `<td style="${TD}color:#111827;">${escapeHtml(u.rentedTo) || '—'}</td>` : ''}
         <td style="${TD}">${healthChip(u)}</td>
         <td style="${TD}color:#111827;white-space:nowrap;">${formatCentral(u.lastGpsTime)}</td>
@@ -206,6 +212,7 @@ function inventorySection(
         <tr style="background:#f7f8fa;">
           <th align="left" style="${TH}">Unit</th>
           <th align="left" style="${TH}">Type</th>
+          ${statusHead}
           ${customerHead}
           <th align="left" style="${TH}">GPS</th>
           <th align="left" style="${TH}">Last fix</th>
@@ -246,6 +253,22 @@ function inventorySections(report: GpsHealthReport): string {
         report.onRent,
         { showCustomer: true, emptyNote: 'No units are currently on rent.' }
       )}
+      ${inventorySection(
+        'In the yard — not rentable yet',
+        'Everything still ours that is neither available nor on rent: make-ready, return inspection, maintenance and damaged. The Customer column is who the unit is coming back from, where we have it.',
+        report.inYard,
+        {
+          showCustomer: true,
+          showStatus: true,
+          emptyNote: 'Nothing is in the yard — every unit is either available or out with a customer.',
+        }
+      )}
+      <p style="color:#6b7280;font-size:11px;margin:14px 0 0;">
+        ${report.available.length} available + ${report.onRent.length} on rent +
+        ${report.inYard.length} in the yard = ${report.totals.alerting} units still ours.
+        The three tables together account for every unit except the
+        ${report.totals.excluded} sold.
+      </p>
     </div>`
 }
 
@@ -329,9 +352,9 @@ export function watchdogHtml(report: GpsHealthReport): string {
         <li>Thresholds: warning at ${t.warnHours} h, stale at ${t.staleHours} h,
             dead at ${Math.round(t.deadHours / 24)} days.</li>
         ${excludedNote}
-        <li>The inventory tables list <strong>every</strong> available and on-rent unit, healthy or
-            not, so the report also answers "what can I quote today" and "where is that customer's
-            trailer" — not only "what is broken".</li>
+        <li>The three inventory tables list <strong>every</strong> unit that is still ours, healthy
+            or not, so the report also answers "what can I quote today", "where is that customer's
+            trailer" and "what is sitting in the yard" — not only "what is broken".</li>
         <li>This email is sent every morning at 8:00 AM Central whether or not anything is wrong —
             silence would be indistinguishable from a healthy fleet.</li>
       </ul>
@@ -372,13 +395,17 @@ export function watchdogText(report: GpsHealthReport): string {
       lines.push('')
     }
   }
-  const inventoryLine = (u: GpsHealthUnit, withCustomer: boolean): string => {
+  const inventoryLine = (
+    u: GpsHealthUnit,
+    withCustomer: boolean,
+    noCustomerText = 'customer not set'
+  ): string => {
     const where = u.lastLocation ?? 'unknown location'
     const coords =
       u.latitude !== null && u.longitude !== null
         ? ` (${u.latitude.toFixed(5)}, ${u.longitude.toFixed(5)})`
         : ''
-    const who = withCustomer ? ` — ${u.rentedTo ?? 'customer not set'}` : ''
+    const who = withCustomer ? ` — ${u.rentedTo ?? noCustomerText}` : ''
     return (
       `  ${u.unitNumber} [${formatTrailerType(u.trailerType)}]${who} — ` +
       `GPS ${TIER_SHORT[u.tier]}, last fix ${formatCentral(u.lastGpsTime)} ` +
@@ -397,6 +424,18 @@ export function watchdogText(report: GpsHealthReport): string {
       `${inventoryLine(u, true)}${u.status === 'lease_to_own' ? ` [${formatStatus(u.status)}]` : ''}`
     )
   }
+  lines.push('')
+  lines.push(`In the yard — not rentable yet (${report.inYard.length}):`)
+  if (report.inYard.length === 0) lines.push('  none')
+  for (const u of report.inYard) {
+    lines.push(`${inventoryLine(u, true, '—')} [${formatStatus(u.status)}]`)
+  }
+  lines.push('')
+  lines.push(
+    `${report.available.length} available + ${report.onRent.length} on rent + ` +
+      `${report.inYard.length} in the yard = ${report.totals.alerting} units still ours ` +
+      `(${report.totals.excluded} sold excluded).`
+  )
   lines.push('')
   lines.push(ADMIN_GPS_URL)
   return lines.join('\n')

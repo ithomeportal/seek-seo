@@ -65,6 +65,13 @@ export const NON_ALERTING_STATUSES: readonly string[] = ['sold']
  * earning money — the same thing Rodney is looking for when he asks where the
  * rented equipment is. Its own status is shown on every row, so nothing is
  * silently reclassified.
+ *
+ * ⚠ The third group — "in the yard, not rentable yet" — is deliberately NOT a
+ * list. It is everything monitored that is in neither of the two lists above,
+ * so the three sections plus the excluded (sold) units always account for the
+ * WHOLE fleet. A hardcoded list would silently drop a status added later out of
+ * all three tables, and a unit that appears in no section of a daily inventory
+ * report is exactly the kind of quiet gap this feature exists to close.
  */
 export const AVAILABLE_STATUSES: readonly string[] = ['available']
 export const ON_RENT_STATUSES: readonly string[] = ['rented', 'lease_to_own']
@@ -117,6 +124,12 @@ export interface GpsHealthReport {
   available: GpsHealthUnit[]
   /** Units out with a customer (`ON_RENT_STATUSES`), unit order. */
   onRent: GpsHealthUnit[]
+  /**
+   * Monitored units in neither of the two groups above — make-ready, return
+   * inspection, maintenance, damaged, and anything else added later. Derived by
+   * exclusion so `available + onRent + inYard + totals.excluded === fleet`.
+   */
+  inYard: GpsHealthUnit[]
   /**
    * Tier counts over the MONITORED population only (sold excluded), so a
    * headline number always matches the rows listed underneath it. A pill
@@ -353,6 +366,14 @@ export function buildHealthReport(
   const onRent = units
     .filter((u) => ON_RENT_STATUSES.includes(u.status))
     .sort(byUnit)
+  const inYard = units
+    .filter(
+      (u) =>
+        u.alerting &&
+        !AVAILABLE_STATUSES.includes(u.status) &&
+        !ON_RENT_STATUSES.includes(u.status)
+    )
+    .sort(byUnit)
 
   const syncTimes = units
     .map((u) => u.gpsSyncedAt)
@@ -368,6 +389,7 @@ export function buildHealthReport(
     problems,
     available,
     onRent,
+    inYard,
     counts,
     countsAll,
     totals: {

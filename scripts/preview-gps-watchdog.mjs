@@ -94,7 +94,12 @@ async function main() {
     'Inventory sections: available',
     report.available.length,
     '| on rent',
-    report.onRent.length
+    report.onRent.length,
+    '| in yard',
+    report.inYard.length,
+    '| reconciles:',
+    report.available.length + report.onRent.length + report.inYard.length ===
+      report.totals.alerting
   )
   console.log('Feed down:', report.feedDown, '| last sync', report.lastSyncAt)
   console.log('')
