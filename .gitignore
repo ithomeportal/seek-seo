@@ -49,3 +49,9 @@ CLAUDE.md
 
 # stock image originals (local only, ~160MB unoptimized)
 public/images/stock/
+
+# operator-script backups — these carry real customer PII (names, emails,
+# addresses, ACH last-4). Every destructive/bulk script in scripts/ writes one
+# to the working directory before it commits, so the pattern has to be ignored
+# rather than each file remembered.
+*-backup-*.json
