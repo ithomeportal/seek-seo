@@ -58,10 +58,46 @@ function stripSslMode(url) {
 function nameKey(value) {
   return (value ?? '')
     .toLowerCase()
-    .replace(/[.,]/g, '')
+    .replace(/[.,'‘’]/g, '')
     .replace(/\b(llc|inc|l\.l\.c|corp|corporation|co|ltd)\b/g, '')
     .replace(/\s+/g, ' ')
     .trim()
+}
+
+/**
+ * Fleet names that are the same company as a customer under a different
+ * spelling, confirmed by hand against the onboarding + credit-application
+ * records. Applied as a `customers.alias`, which is what that column is for and
+ * what the matcher below already reads — so the equivalence is recorded once,
+ * as data, instead of being re-guessed by a fuzzier rule that would also drag
+ * in companies that merely share a first word.
+ *
+ * Nothing is added here that is not corroborated by a second field (email,
+ * phone or the credit application's address). An unresolved name belongs in the
+ * "LEFT UNTOUCHED" report, not here.
+ */
+const CONFIRMED_ALIASES = [
+  {
+    // fleet CH135/CH140 "Apollo Energy" ↔ customer 33 "APOLLO ENERGY SERVICES
+    // INC" (OB-2026-3263 / CA-2026-0010, office@apolloenergyinc.com, Midland
+    // TX). The only Apollo entity anywhere in the database.
+    customerName: 'APOLLO ENERGY SERVICES INC',
+    alias: 'Apollo Energy',
+  },
+]
+
+async function applyConfirmedAliases(client) {
+  const applied = []
+  for (const entry of CONFIRMED_ALIASES) {
+    const res = await client.query(
+      `UPDATE customers SET alias = $1, updated_at = NOW()
+        WHERE company_name = $2 AND (alias IS NULL OR TRIM(alias) = '')
+        RETURNING id`,
+      [entry.alias, entry.customerName]
+    )
+    if (res.rowCount > 0) applied.push(`${res.rows[0].id} ${entry.customerName} → "${entry.alias}"`)
+  }
+  return applied
 }
 
 async function main() {
@@ -77,6 +113,16 @@ async function main() {
     max: 2,
   })
 
+  // Written before the match runs — an alias is a fact about the company, so it
+  // is recorded whether or not any unit ends up moving.
+  if (commit) {
+    const applied = await applyConfirmedAliases(pool)
+    if (applied.length > 0) {
+      console.log('Confirmed aliases written:')
+      for (const line of applied) console.log(`   ${line}`)
+    }
+  }
+
   const customers = await pool.query(
     'SELECT id, company_name, alias FROM customers ORDER BY id ASC'
   )
@@ -91,7 +137,13 @@ async function main() {
   // and gets no automatic answer.
   const byKey = new Map()
   for (const c of customers.rows) {
-    for (const source of [c.company_name, c.alias]) {
+    // A dry run previews the aliases too, otherwise it would report units as
+    // unmatched that a commit would in fact move — and the preview has to be
+    // the thing that gets reviewed.
+    const pending = CONFIRMED_ALIASES.find(
+      (a) => a.customerName === c.company_name && (c.alias ?? '').trim() === ''
+    )
+    for (const source of [c.company_name, c.alias, pending?.alias]) {
       const k = nameKey(source)
       if (k === '') continue
       if (!byKey.has(k)) byKey.set(k, new Set())

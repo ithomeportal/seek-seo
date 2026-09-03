@@ -205,7 +205,7 @@ export async function getApplicationById(
 export function companyNameKey(value: string | null): string {
   return (value ?? '')
     .toLowerCase()
-    .replace(/[.,]/g, '')
+    .replace(/[.,'‘’]/g, '')
     .replace(/\b(llc|inc|l\.l\.c|corp|corporation|co|ltd)\b/g, '')
     .replace(/\s+/g, ' ')
     .trim()
