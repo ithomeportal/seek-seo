@@ -43,10 +43,6 @@ export const quoteSchema = z.object({
   captchaAnswer: z.union([z.number(), z.string()]).optional(),
 })
 
-export const newsletterSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-})
-
 const optionalString = z.string().trim().optional().or(z.literal(''))
 
 const tradeReferenceSchema = z.object({
@@ -213,5 +209,4 @@ export type CreditApplicationFormData = z.infer<typeof creditApplicationSchema>
 export type TradeReference = z.infer<typeof tradeReferenceSchema>
 export type AchAuthorizationFormData = z.infer<typeof achAuthorizationSchema>
 export type LeaseAgreementFormData = z.infer<typeof leaseAgreementSchema>
-export type NewsletterFormData = z.infer<typeof newsletterSchema>
 export type FmcsaSearchFilters = z.infer<typeof fmcsaSearchSchema>
