@@ -77,6 +77,146 @@ interface RentalRow {
   unit_details: string
 }
 
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Rental forecast (Bruno 2026-09-15, ?tab=customers)
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * Each rented unit produces one row per calendar month it is under contract,
+ * carrying its monthly rate; rows are then summed per customer per month.
+ *
+ * ⚠ It reads `fleet_units` DIRECTLY and does NOT reuse the per-customer `units`
+ * aggregate above. That aggregate is scoped `WHERE customer_id IS NOT NULL`,
+ * and `customer_id` is stale by design — it is written only by the seed and by
+ * `relink-fleet-customers.mjs`, never by the admin Fleet editor. As of today
+ * two renters (AIG Transport, 8 units; Johnson Trucking Enterprise, 2) have no
+ * `customers` row at ALL, so building the forecast on that aggregate would drop
+ * $12,300/mo — about a third of rented revenue — and render a perfectly
+ * formatted, badly wrong number with no error anywhere. Joining outwards and
+ * falling back to `rented_to` keeps them in, flagged as unlinked.
+ *
+ * ⚠ The month expansion happens in SQL. `rent_start_date` / `rent_end_date` are
+ * DATE columns; crossing them into JS turns them into local-midnight instants
+ * serialised as UTC, and `getMonth()` on that puts a lease starting on the 1st
+ * into the previous month.
+ *
+ * Null end date = open-ended month-to-month, which is 12 of the 27 units on
+ * rent today. Taking "every month within Start and End" literally would yield
+ * ZERO rows for each of them and quietly halve the forecast, so they are
+ * projected across the whole horizon and counted in `openEnded` so the
+ * assumption is visible on screen instead of buried here.
+ */
+const FORECAST_HORIZON_MONTHS = 12
+
+/** Statuses that are earning rent — the same pair the GPS report calls "on rent". */
+const FORECAST_STATUSES = ['rented', 'lease_to_own']
+
+const FORECAST_SQL = `
+  WITH src AS (
+    SELECT f.id,
+           COALESCE(c.company_name, f.rented_to) AS customer,
+           c.id                                  AS customer_id,
+           f.rental_rate,
+           f.rent_start_date                     AS starts,
+           f.rent_end_date                       AS ends
+      FROM fleet_units f
+      LEFT JOIN customers c ON c.id = f.customer_id
+     WHERE f.status = ANY($1::text[])
+       AND f.rental_rate IS NOT NULL AND f.rental_rate > 0
+       AND f.rent_start_date IS NOT NULL
+       AND COALESCE(c.company_name, f.rented_to) IS NOT NULL
+       -- Bad data, not a short lease: skip rather than emit a negative range.
+       AND (f.rent_end_date IS NULL OR f.rent_end_date >= f.rent_start_date)
+       -- Already over. Kept out of a FORWARD forecast, reported as an exclusion.
+       AND (f.rent_end_date IS NULL
+            OR f.rent_end_date >= date_trunc('month', CURRENT_DATE))
+  ), expanded AS (
+    SELECT src.*, m::date AS month_start
+      FROM src
+      CROSS JOIN LATERAL generate_series(
+        -- A lease that began in the past starts contributing THIS month.
+        GREATEST(date_trunc('month', src.starts), date_trunc('month', CURRENT_DATE)),
+        LEAST(
+          date_trunc('month', COALESCE(
+            src.ends,
+            CURRENT_DATE + ($2::int - 1) * INTERVAL '1 month'
+          )),
+          date_trunc('month', CURRENT_DATE + ($2::int - 1) * INTERVAL '1 month')
+        ),
+        INTERVAL '1 month'
+      ) AS m
+  )
+  SELECT customer,
+         customer_id,
+         to_char(month_start, 'YYYY-MM')      AS month_iso,
+         EXTRACT(YEAR  FROM month_start)::int AS year,
+         EXTRACT(MONTH FROM month_start)::int AS month,
+         SUM(rental_rate)::float              AS amount,
+         COUNT(*)::int                        AS units,
+         COUNT(*) FILTER (WHERE ends IS NULL)::int AS open_ended
+    FROM expanded
+   GROUP BY 1, 2, 3, 4, 5
+   ORDER BY 3 ASC, 1 ASC`
+
+/**
+ * Units on rent that the forecast cannot price, with the reason.
+ *
+ * This exists because the alternative is silence. Eight of the units on rent
+ * today fall out for one of these reasons — three of them because their end
+ * date precedes their start date — and a forecast that simply omitted them
+ * would under-report by $6,350/mo while looking complete.
+ */
+const FORECAST_EXCLUDED_SQL = `
+  SELECT * FROM (
+    SELECT f.unit_number,
+           COALESCE(c.company_name, f.rented_to)   AS customer,
+           f.status,
+           f.rental_rate::float                    AS rental_rate,
+           to_char(f.rent_start_date, 'YYYY-MM-DD') AS rent_start_date,
+           to_char(f.rent_end_date,   'YYYY-MM-DD') AS rent_end_date,
+           CASE
+             WHEN f.rental_rate IS NULL OR f.rental_rate <= 0
+               THEN 'no rent rate on file'
+             WHEN f.rent_start_date IS NULL
+               THEN 'no start date on file'
+             WHEN COALESCE(c.company_name, f.rented_to) IS NULL
+               THEN 'no customer on file'
+             WHEN f.rent_end_date IS NOT NULL AND f.rent_end_date < f.rent_start_date
+               THEN 'end date is before the start date'
+             WHEN f.rent_end_date IS NOT NULL
+                  AND f.rent_end_date < date_trunc('month', CURRENT_DATE)
+               THEN 'lease already ended'
+             ELSE NULL
+           END AS reason
+      FROM fleet_units f
+      LEFT JOIN customers c ON c.id = f.customer_id
+     WHERE f.status = ANY($1::text[])
+  ) x
+   WHERE reason IS NOT NULL
+   ORDER BY reason, unit_number`
+
+interface ForecastRow {
+  customer: string
+  customerId: number | null
+  monthIso: string
+  year: number
+  month: number
+  amount: number
+  units: number
+  openEnded: number
+}
+
+interface ForecastExcluded {
+  unitNumber: string
+  customer: string | null
+  status: string
+  rentalRate: number | null
+  rentStartDate: string | null
+  rentEndDate: string | null
+  reason: string
+}
+
 export async function GET() {
   try {
     const customersResult = await query<CustomerRow>(
@@ -262,6 +402,37 @@ export async function GET() {
       0
     )
 
+    // Forecast — read straight from fleet_units; see FORECAST_SQL for why this
+    // does not reuse the per-customer `units` aggregate above.
+    const [forecastResult, forecastExcludedResult] = await Promise.all([
+      query<Record<string, unknown>>(FORECAST_SQL, [
+        FORECAST_STATUSES,
+        FORECAST_HORIZON_MONTHS,
+      ]),
+      query<Record<string, unknown>>(FORECAST_EXCLUDED_SQL, [FORECAST_STATUSES]),
+    ])
+
+    const forecastRows: ForecastRow[] = forecastResult.rows.map((r) => ({
+      customer: r.customer as string,
+      customerId: r.customer_id === null ? null : Number(r.customer_id),
+      monthIso: r.month_iso as string,
+      year: Number(r.year),
+      month: Number(r.month),
+      amount: Number(r.amount),
+      units: Number(r.units),
+      openEnded: Number(r.open_ended),
+    }))
+
+    const forecastExcluded: ForecastExcluded[] = forecastExcludedResult.rows.map((r) => ({
+      unitNumber: r.unit_number as string,
+      customer: (r.customer as string | null) ?? null,
+      status: r.status as string,
+      rentalRate: r.rental_rate === null ? null : Number(r.rental_rate),
+      rentStartDate: (r.rent_start_date as string | null) ?? null,
+      rentEndDate: (r.rent_end_date as string | null) ?? null,
+      reason: r.reason as string,
+    }))
+
     // Counted from the CHECKLIST, not from `status`. The two disagree in real
     // data — GNS Services is marked status='completed' while its document
     // checklist sits at 2/3, a row finished before the voided-check requirement
@@ -288,6 +459,11 @@ export async function GET() {
           // are computed from real rentals only.
           onboardingTotal: onboarding.length,
           onboardingInProgress,
+        },
+        forecast: {
+          horizonMonths: FORECAST_HORIZON_MONTHS,
+          rows: forecastRows,
+          excluded: forecastExcluded,
         },
       },
     })

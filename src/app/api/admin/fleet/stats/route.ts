@@ -10,55 +10,40 @@ export async function GET() {
        FROM fleet_units GROUP BY status`
     )
 
+    // ⚠ The active-fleet total is derived by EXCLUSION, never from an allowlist
+    // of known statuses. The switch this replaced had no case for
+    // `lease_to_own`, so those units were silently absent from `total` — and
+    // `total` is the utilization denominator, so utilization read HIGH and
+    // nothing anywhere reported a problem. A status added later now counts by
+    // default; only the ones listed here opt out.
+    const EXCLUDED_FROM_ACTIVE_FLEET: readonly string[] = ['sold']
+
+    const counts: Record<string, number> = {}
     let total = 0
-    let available = 0
-    let rented = 0
-    let damaged = 0
-    let maintenance = 0
-    let makeReady = 0
-    let returnInspection = 0
-    let forSale = 0
-    let sold = 0
     let expectedMonthlyRevenue = 0
 
     for (const row of statusResult.rows) {
+      const status = String(row.status)
       const count = Number(row.count)
-      switch (row.status) {
-        case 'available':
-          available = count
-          total += count
-          break
-        case 'rented':
-          rented = count
-          expectedMonthlyRevenue = Number(row.total_rate)
-          total += count
-          break
-        case 'damaged':
-          damaged = count
-          total += count
-          break
-        case 'maintenance':
-          maintenance = count
-          total += count
-          break
-        case 'make_ready':
-          makeReady = count
-          total += count
-          break
-        case 'return_inspection':
-          returnInspection = count
-          total += count
-          break
-        case 'for_sale':
-          forSale = count
-          total += count
-          break
-        case 'sold':
-          sold = count
-          // Sold units excluded from total & stats
-          break
-      }
+      counts[status] = count
+      if (!EXCLUDED_FROM_ACTIVE_FLEET.includes(status)) total += count
+      if (status === 'rented') expectedMonthlyRevenue = Number(row.total_rate)
     }
+
+    const available = counts.available ?? 0
+    const rented = counts.rented ?? 0
+    const damaged = counts.damaged ?? 0
+    const maintenance = counts.maintenance ?? 0
+    const makeReady = counts.make_ready ?? 0
+    const returnInspection = counts.return_inspection ?? 0
+    const forSale = counts.for_sale ?? 0
+    const leaseToOwn = counts.lease_to_own ?? 0
+    // Lost/stolen units stay in the active fleet, like `damaged` — they are
+    // still on the books until written off, and dropping them out of `total`
+    // would make this endpoint disagree with the Fleet tab's own count.
+    const lost = counts.lost ?? 0
+    const stolen = counts.stolen ?? 0
+    const sold = counts.sold ?? 0
 
     const utilizationRate =
       total > 0 ? Math.round((rented / total) * 1000) / 10 : 0
@@ -131,6 +116,9 @@ export async function GET() {
         makeReady,
         returnInspection,
         forSale,
+        leaseToOwn,
+        lost,
+        stolen,
         sold,
         expectedMonthlyRevenue,
         utilizationRate,
@@ -141,7 +129,11 @@ export async function GET() {
         topCustomers,
       },
     })
-  } catch {
+  } catch (err) {
+    // The user-facing message and the diagnostic record are never the same
+    // object — see CLAUDE.md, "a friendly error message is not a log".
+    const e = err as { message?: string; code?: string }
+    console.error('[fleet/stats] query failed', e?.code ?? '-', e?.message ?? err)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }

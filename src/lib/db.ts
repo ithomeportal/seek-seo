@@ -15,6 +15,10 @@ let pool: pg.Pool | null = null
  * SELF_SIGNED_CERT_IN_CHAIN. Local `.env.local` has no sslmode, so it passed
  * every local check. Do NOT inline `process.env.DATABASE_URL` here again.
  */
+/** A value node-postgres can bind, including an array for `= ANY($1)`. */
+type QueryScalar = string | number | boolean | null
+export type QueryParam = QueryScalar | QueryScalar[]
+
 export function getPool(): pg.Pool {
   if (!pool) {
     pool = new Pool(poolConfigFor('DATABASE_URL', { max: 5 }))
@@ -24,7 +28,10 @@ export function getPool(): pg.Pool {
 
 export async function query<T extends pg.QueryResultRow = pg.QueryResultRow>(
   text: string,
-  params?: (string | number | boolean | null)[]
+  // Arrays are included because node-postgres binds a JS array to a Postgres
+  // array — `WHERE status = ANY($1::text[])` keeps a value list parameterised
+  // instead of interpolated into the SQL string.
+  params?: QueryParam[]
 ): Promise<pg.QueryResult<T>> {
   const p = getPool()
   return p.query<T>(text, params)

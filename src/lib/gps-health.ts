@@ -51,7 +51,20 @@ export const DEFAULT_THRESHOLDS: GpsHealthThresholds = {
  * its tracker going quiet is not an incident — but the count is still reported
  * so the totals reconcile against the fleet table and nothing hides in a gap.
  */
-export const NON_ALERTING_STATUSES: readonly string[] = ['sold']
+export const NON_ALERTING_STATUSES: readonly string[] = ['sold', 'lost']
+
+/**
+ * Units that are ours but unaccounted for. They get their OWN report section
+ * rather than falling into `inYard` by exclusion, because "in the yard — not
+ * rentable yet" is a plain lie about a stolen trailer, and a daily report that
+ * says something false is worse than one that omits it.
+ *
+ * ⚠ `stolen` is deliberately NOT in `NON_ALERTING_STATUSES` above. A stolen
+ * unit is the one case where a tracker going quiet is the whole point, so it
+ * keeps raising. `lost` does not: the unit is written off pending a decision,
+ * and a permanent nightly alert on it is how people learn to skim the email.
+ */
+export const LOST_STOLEN_STATUSES: readonly string[] = ['lost', 'stolen']
 
 /**
  * Fleet-status groupings used by the daily report's inventory sections.
@@ -131,6 +144,12 @@ export interface GpsHealthReport {
    */
   inYard: GpsHealthUnit[]
   /**
+   * Units marked lost or stolen (`LOST_STOLEN_STATUSES`), unit order. Listed
+   * whether or not they alert, so they are never silently absent from a report
+   * that claims to cover the whole fleet.
+   */
+  lostStolen: GpsHealthUnit[]
+  /**
    * Tier counts over the MONITORED population only (sold excluded), so a
    * headline number always matches the rows listed underneath it. A pill
    * reading "Never 4" above an empty section is exactly the sort of quiet
@@ -143,7 +162,12 @@ export interface GpsHealthReport {
     fleet: number
     alerting: number
     withDevice: number
-    /** Excluded from alerting (sold), reported so the numbers reconcile. */
+    /**
+     * Excluded from alerting (`NON_ALERTING_STATUSES` — sold, lost), reported
+     * so the numbers reconcile:
+     * `available + onRent + inYard + lostStolen + excluded-not-already-listed
+     *  === fleet`.
+     */
     excluded: number
   }
   /** Newest `gps_synced_at` across the whole fleet — the feed's own pulse. */
@@ -200,6 +224,8 @@ export const STATUS_LABEL: Record<string, string> = {
   make_ready: 'Make Ready',
   return_inspection: 'Return Inspection',
   for_sale: 'For Sale',
+  lost: 'Lost',
+  stolen: 'Stolen',
   sold: 'Sold',
 }
 
@@ -366,12 +392,16 @@ export function buildHealthReport(
   const onRent = units
     .filter((u) => ON_RENT_STATUSES.includes(u.status))
     .sort(byUnit)
+  const lostStolen = units
+    .filter((u) => LOST_STOLEN_STATUSES.includes(u.status))
+    .sort(byUnit)
   const inYard = units
     .filter(
       (u) =>
         u.alerting &&
         !AVAILABLE_STATUSES.includes(u.status) &&
-        !ON_RENT_STATUSES.includes(u.status)
+        !ON_RENT_STATUSES.includes(u.status) &&
+        !LOST_STOLEN_STATUSES.includes(u.status)
     )
     .sort(byUnit)
 
@@ -390,6 +420,7 @@ export function buildHealthReport(
     available,
     onRent,
     inYard,
+    lostStolen,
     counts,
     countsAll,
     totals: {

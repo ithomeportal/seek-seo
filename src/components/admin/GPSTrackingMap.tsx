@@ -56,12 +56,22 @@ interface RefreshOutcome {
   message: string
 }
 
+// ⚠ These four maps must list EVERY fleet status. The legend below is driven by
+// `Object.entries(STATUS_COLORS)`, so a status missing here is a unit that has a
+// pin on the map but no line in the "Tracked Units" legend — present and
+// uncounted. `make_ready`, `return_inspection` and `lease_to_own` sat missing
+// this way from the day each was added.
 const STATUS_COLORS: Record<string, string> = {
   available: '#059669',
   rented: '#2563eb',
   damaged: '#dc2626',
   for_sale: '#7c3aed',
   maintenance: '#d97706',
+  make_ready: '#ea580c',
+  return_inspection: '#0891b2',
+  lease_to_own: '#4f46e5',
+  lost: '#475569',
+  stolen: '#be123c',
   sold: '#6b7280',
 }
 
@@ -71,6 +81,11 @@ const STATUS_RING: Record<string, string> = {
   damaged: 'ring-red-500 bg-red-50 text-red-700',
   for_sale: 'ring-purple-500 bg-purple-50 text-purple-700',
   maintenance: 'ring-yellow-500 bg-yellow-50 text-yellow-700',
+  make_ready: 'ring-orange-500 bg-orange-50 text-orange-700',
+  return_inspection: 'ring-cyan-500 bg-cyan-50 text-cyan-700',
+  lease_to_own: 'ring-indigo-500 bg-indigo-50 text-indigo-700',
+  lost: 'ring-slate-500 bg-slate-50 text-slate-700',
+  stolen: 'ring-rose-600 bg-rose-50 text-rose-700',
   sold: 'ring-gray-500 bg-gray-50 text-gray-700',
 }
 
@@ -80,6 +95,11 @@ const STATUS_SELECTED: Record<string, string> = {
   damaged: 'ring-2 ring-red-500 bg-red-100 text-red-800',
   for_sale: 'ring-2 ring-purple-500 bg-purple-100 text-purple-800',
   maintenance: 'ring-2 ring-yellow-500 bg-yellow-100 text-yellow-800',
+  make_ready: 'ring-2 ring-orange-500 bg-orange-100 text-orange-800',
+  return_inspection: 'ring-2 ring-cyan-500 bg-cyan-100 text-cyan-800',
+  lease_to_own: 'ring-2 ring-indigo-500 bg-indigo-100 text-indigo-800',
+  lost: 'ring-2 ring-slate-500 bg-slate-200 text-slate-800',
+  stolen: 'ring-2 ring-rose-600 bg-rose-100 text-rose-800',
   sold: 'ring-2 ring-gray-500 bg-gray-100 text-gray-800',
 }
 
@@ -89,6 +109,11 @@ const STATUS_BG: Record<string, string> = {
   damaged: 'bg-red-100 text-red-800',
   for_sale: 'bg-purple-100 text-purple-800',
   maintenance: 'bg-yellow-100 text-yellow-800',
+  make_ready: 'bg-orange-100 text-orange-800',
+  return_inspection: 'bg-cyan-100 text-cyan-800',
+  lease_to_own: 'bg-indigo-100 text-indigo-800',
+  lost: 'bg-slate-200 text-slate-700',
+  stolen: 'bg-rose-100 text-rose-800',
   sold: 'bg-gray-200 text-gray-600',
 }
 

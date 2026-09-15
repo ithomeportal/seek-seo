@@ -11,6 +11,17 @@ interface DepositRow {
   status: string
 }
 
+/**
+ * Statuses where SEEK still holds the customer's deposit. A unit that is out,
+ * being bought out, or unaccounted for has not had its deposit returned.
+ */
+const HELD_DEPOSIT_STATUSES: readonly string[] = [
+  'rented',
+  'lease_to_own',
+  'lost',
+  'stolen',
+]
+
 export async function GET() {
   const session = await readPortalSession()
   if (!session) {
@@ -41,7 +52,13 @@ export async function GET() {
     rentStartDate: r.rent_start_date,
     depositTotal: r.deposit_total ? parseFloat(r.deposit_total) : 0,
     pendingDeposit: r.pending_deposit ? parseFloat(r.pending_deposit) : 0,
-    status: r.status === 'rented' ? 'held' : 'refunded',
+    // ⚠ This is CUSTOMER-facing, so the fallback has to be the true statement,
+    // not the common one. `=== 'rented' ? 'held' : 'refunded'` told a customer
+    // their deposit was refunded for any status but `rented` — including
+    // lease-to-own, and (once those statuses existed) lost and stolen, where we
+    // are still holding their money. Held is an allowlist of "the deposit cycle
+    // has not closed"; anything else genuinely came back to them.
+    status: HELD_DEPOSIT_STATUSES.includes(r.status) ? 'held' : 'refunded',
   }))
 
   return NextResponse.json({ success: true, data: deposits })

@@ -81,6 +81,9 @@ interface FleetStats {
   makeReady: number
   returnInspection: number
   forSale: number
+  leaseToOwn: number
+  lost: number
+  stolen: number
   sold: number
   expectedMonthlyRevenue: number
   utilizationRate: number
@@ -226,6 +229,37 @@ interface Customer {
   units: CustomerUnit[]
 }
 
+/** One customer's projected rent for one calendar month. Aggregated in SQL. */
+interface ForecastRow {
+  customer: string
+  /** null = the unit's renter has no `customers` row; see the forecast note. */
+  customerId: number | null
+  monthIso: string
+  year: number
+  month: number
+  amount: number
+  units: number
+  /** Units in this bucket with no end date, projected across the horizon. */
+  openEnded: number
+}
+
+/** A unit on rent the forecast could not price, and why. */
+interface ForecastExcluded {
+  unitNumber: string
+  customer: string | null
+  status: string
+  rentalRate: number | null
+  rentStartDate: string | null
+  rentEndDate: string | null
+  reason: string
+}
+
+interface CustomerForecast {
+  horizonMonths: number
+  rows: ForecastRow[]
+  excluded: ForecastExcluded[]
+}
+
 interface CustomerSummary {
   totalCustomers: number
   activeRenters: number
@@ -286,6 +320,19 @@ interface QBPayment {
 interface QBPaymentSummary {
   totalPayments: number
   totalCollected: number
+  /** Payments with no txn_date — they belong to no month, so the rollup
+   *  below cannot include them. Surfaced so that gap is never silent. */
+  undatedPayments: number
+  undatedAmount: number
+}
+
+/** One customer's total for one calendar month, aggregated in SQL. */
+interface QBPaymentMonth {
+  customerName: string
+  year: number
+  month: number
+  amount: number
+  paymentCount: number
 }
 
 // ---------------------------------------------------------------------------
@@ -334,6 +381,11 @@ const STATUS_COLORS: Record<string, string> = {
   make_ready: 'bg-orange-100 text-orange-800',
   return_inspection: 'bg-cyan-100 text-cyan-800',
   lease_to_own: 'bg-indigo-100 text-indigo-800',
+  // Lost is muted — the unit is unaccounted for, not an incident. Stolen is the
+  // only solid-fill badge on the tab: it is the one status that wants to be
+  // impossible to skim past.
+  lost: 'bg-slate-200 text-slate-700',
+  stolen: 'bg-red-600 text-white',
   sold: 'bg-gray-200 text-gray-600',
 }
 
@@ -346,6 +398,8 @@ const STATUS_LABELS: Record<string, string> = {
   make_ready: 'Make Ready',
   return_inspection: 'Return/Inspection',
   lease_to_own: 'Lease to Own',
+  lost: 'Lost',
+  stolen: 'Stolen',
   sold: 'Sold',
 }
 
@@ -367,6 +421,32 @@ function formatCurrency(value: number): string {
     currency: 'USD',
     minimumFractionDigits: 0,
   }).format(value)
+}
+
+/**
+ * Currency WITH cents. `formatCurrency` above rounds to whole dollars, which is
+ * right for a rent rate but wrong for a total that has to reconcile against a
+ * ledger — a column of rounded rows does not add up to a rounded total, and the
+ * reader has no way to tell that from a bug.
+ */
+function formatCurrencyCents(value: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value)
+}
+
+/** Month number (1-12) → full name. Built from a fixed list rather than from a
+ *  Date, so no timezone can shift it. */
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+] as const
+
+function monthName(month: number): string {
+  return MONTH_NAMES[month - 1] ?? String(month)
 }
 
 function formatDate(iso: string): string {
@@ -452,10 +532,19 @@ function DashboardContent() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [onboardingCompanies, setOnboardingCompanies] = useState<OnboardingCompany[]>([])
   const [customerSummary, setCustomerSummary] = useState<CustomerSummary | null>(null)
+  const [customerForecast, setCustomerForecast] = useState<CustomerForecast | null>(null)
+  const [forecastOpen, setForecastOpen] = useState(true)
+  const [forecastMonth, setForecastMonth] = useState<string>('all')
   const [qbInvoices, setQbInvoices] = useState<QBInvoice[]>([])
   const [qbInvoiceSummary, setQbInvoiceSummary] = useState<QBInvoiceSummary | null>(null)
   const [qbPayments, setQbPayments] = useState<QBPayment[]>([])
   const [qbPaymentSummary, setQbPaymentSummary] = useState<QBPaymentSummary | null>(null)
+  const [qbPaymentMonths, setQbPaymentMonths] = useState<QBPaymentMonth[]>([])
+  // The rollup table lives on the same tab as the payment list, and `sortKey`
+  // is ONE value shared by every table on the dashboard — sorting one would
+  // scramble the other. This pair is the rollup's own.
+  const [paySortKey, setPaySortKey] = useState<string>('')
+  const [paySortDir, setPaySortDir] = useState<'asc' | 'desc'>('asc')
   const [qbSyncStatus, setQbSyncStatus] = useState<Record<string, { syncedAt: string }>>({})
   const [invoiceSearch, setInvoiceSearch] = useState('')
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState<'all' | 'Open' | 'Paid' | 'Overdue'>('all')
@@ -581,6 +670,7 @@ function DashboardContent() {
               setCustomers(custJson.data.customers)
               setOnboardingCompanies(custJson.data.onboarding ?? [])
               setCustomerSummary(custJson.data.summary)
+              setCustomerForecast(custJson.data.forecast ?? null)
             }
             const statsJson = await statsRes.json()
             if (statsJson.success) setStats(statsJson.data)
@@ -593,6 +683,7 @@ function DashboardContent() {
               setCustomers(json.data.customers)
               setOnboardingCompanies(json.data.onboarding ?? [])
               setCustomerSummary(json.data.summary)
+              setCustomerForecast(json.data.forecast ?? null)
             }
             break
           }
@@ -619,6 +710,7 @@ function DashboardContent() {
             if (payJson.success) {
               setQbPayments(payJson.data.payments)
               setQbPaymentSummary(payJson.data.summary)
+              setQbPaymentMonths(payJson.data.monthly ?? [])
             }
             const syncJson = await syncRes.json()
             if (syncJson.success) setQbSyncStatus(syncJson.data)
@@ -1213,6 +1305,9 @@ function DashboardContent() {
       { label: 'Maint.', value: stats.maintenance, color: 'bg-yellow-50 text-yellow-700' },
       ...(stats.makeReady > 0 ? [{ label: 'Make Ready', value: stats.makeReady, color: 'bg-orange-50 text-orange-700' }] : []),
       ...(stats.returnInspection > 0 ? [{ label: 'Return/Insp.', value: stats.returnInspection, color: 'bg-cyan-50 text-cyan-700' }] : []),
+      ...(stats.leaseToOwn > 0 ? [{ label: 'Lease/Own', value: stats.leaseToOwn, color: 'bg-indigo-50 text-indigo-700' }] : []),
+      ...(stats.lost > 0 ? [{ label: 'Lost', value: stats.lost, color: 'bg-slate-100 text-slate-700' }] : []),
+      ...(stats.stolen > 0 ? [{ label: 'Stolen', value: stats.stolen, color: 'bg-red-600 text-white' }] : []),
       ...(stats.sold > 0 ? [{ label: 'Sold', value: stats.sold, color: 'bg-gray-100 text-gray-500' }] : []),
     ]
 
@@ -1326,6 +1421,12 @@ function DashboardContent() {
     const availableUnits = activeFleet.filter((u) => u.status === 'available')
     const makeReadyUnits = activeFleet.filter((u) => u.status === 'make_ready')
     const returnInspectionUnits = activeFleet.filter((u) => u.status === 'return_inspection')
+    // Lost/stolen stay inside `activeFleet` (everything but `sold`), like
+    // `damaged` — so they are in the Fleet total and the utilization
+    // denominator. They get their own chips because a unit that is only
+    // visible as a row is a unit nobody notices.
+    const lostUnits = activeFleet.filter((u) => u.status === 'lost')
+    const stolenUnits = activeFleet.filter((u) => u.status === 'stolen')
     const uniqueTypes = new Set(activeFleet.map((u) => u.trailerType))
     const uniqueCompanies = new Set(rentedUnits.map((u) => u.rentedTo).filter(Boolean))
     const totalMonthlyRevenue = rentedUnits.reduce(
@@ -1403,6 +1504,18 @@ function DashboardContent() {
               <div className="rounded-lg px-2.5 py-1.5 bg-cyan-100 text-cyan-800">
                 <p className="text-[10px] font-semibold uppercase opacity-70 leading-tight">Return/Insp.</p>
                 <p className="text-lg font-bold leading-tight">{returnInspectionUnits.length}</p>
+              </div>
+            )}
+            {lostUnits.length > 0 && (
+              <div className="rounded-lg px-2.5 py-1.5 bg-slate-200 text-slate-700">
+                <p className="text-[10px] font-semibold uppercase opacity-70 leading-tight">Lost</p>
+                <p className="text-lg font-bold leading-tight">{lostUnits.length}</p>
+              </div>
+            )}
+            {stolenUnits.length > 0 && (
+              <div className="rounded-lg px-2.5 py-1.5 bg-red-600 text-white">
+                <p className="text-[10px] font-semibold uppercase opacity-70 leading-tight">Stolen</p>
+                <p className="text-lg font-bold leading-tight">{stolenUnits.length}</p>
               </div>
             )}
             <div className="rounded-lg px-2.5 py-1.5 bg-teal-50 text-teal-700">
@@ -1500,6 +1613,8 @@ function DashboardContent() {
             <option value="make_ready">Make Ready</option>
             <option value="return_inspection">Return/Inspection</option>
             <option value="lease_to_own">Lease to Own</option>
+            <option value="lost">Lost</option>
+            <option value="stolen">Stolen</option>
           </select>
           <select
             value={fleetYearFilter}
@@ -1804,6 +1919,8 @@ function DashboardContent() {
                       <option value="make_ready">Make Ready</option>
                       <option value="return_inspection">Return/Inspection</option>
                       <option value="lease_to_own">Lease to Own</option>
+                      <option value="lost">Lost</option>
+                      <option value="stolen">Stolen</option>
                       <option value="sold">Sold</option>
                     </select>
                   </div>
@@ -2089,6 +2206,8 @@ function DashboardContent() {
                       <option value="make_ready">Make Ready</option>
                       <option value="return_inspection">Return/Inspection</option>
                       <option value="lease_to_own">Lease to Own</option>
+                      <option value="lost">Lost</option>
+                      <option value="stolen">Stolen</option>
                       <option value="sold">Sold</option>
                     </select>
                   </div>
@@ -2870,6 +2989,31 @@ function DashboardContent() {
       { key: 'deposits', label: 'Deposits' },
     ]
 
+    // ── Forecast ────────────────────────────────────────────────────────────
+    // Rows arrive pre-aggregated per customer per month; everything here is
+    // presentation. See the API for why the month expansion is done in SQL and
+    // why it reads fleet_units rather than these customers' `units` arrays.
+    const forecastRows = customerForecast?.rows ?? []
+    const forecastMonths = Array.from(new Set(forecastRows.map((r) => r.monthIso))).sort()
+    const forecastVisible = forecastRows.filter((r) => {
+      const matchesMonth = forecastMonth === 'all' || r.monthIso === forecastMonth
+      const searchLower = customerSearch.toLowerCase()
+      const matchesSearch =
+        customerSearch === '' || r.customer.toLowerCase().includes(searchLower)
+      return matchesMonth && matchesSearch
+    })
+    const forecastTotal = forecastVisible.reduce((sum, r) => sum + r.amount, 0)
+    const forecastOpenEnded = forecastRows
+      .filter((r) => r.monthIso === forecastMonths[0])
+      .reduce((sum, r) => sum + r.openEnded, 0)
+    const forecastExcluded = customerForecast?.excluded ?? []
+    // Rent we can name but cannot place in a month. Reported next to the total
+    // so a shortfall reads as a data gap rather than as a quiet business dip.
+    const forecastExcludedRent = forecastExcluded.reduce(
+      (sum, u) => sum + (u.rentalRate ?? 0),
+      0
+    )
+
     // Apply sorting
     const sorted = [...filtered].sort((a, b) => {
       switch (customerSort) {
@@ -2952,6 +3096,163 @@ function DashboardContent() {
                   : ''
               }`}
         </p>
+
+        {/* ── Forecast (Bruno 2026-09-15) ───────────────────────────────────
+            Projected rent per customer per calendar month, one row per month a
+            unit is under contract. Open-ended rentals and unpriceable units are
+            both stated on screen: a forecast that silently omits a third of the
+            fleet looks exactly like a forecast that is right. */}
+        {customerForecast && (
+          <div className="rounded-lg border bg-white">
+            <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
+              <button
+                onClick={() => setForecastOpen((v) => !v)}
+                className="flex items-center gap-1.5 text-sm font-bold text-gray-900 hover:text-brand-orange transition-colors"
+                aria-expanded={forecastOpen}
+              >
+                {forecastOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                Forecast
+              </button>
+              <span className="text-xs text-gray-400">
+                next {customerForecast.horizonMonths} months · {forecastVisible.length} row
+                {forecastVisible.length === 1 ? '' : 's'} ·{' '}
+                <span className="font-semibold text-green-700">{formatCurrency(forecastTotal)}</span>
+              </span>
+              <select
+                value={forecastMonth}
+                onChange={(e) => setForecastMonth(e.target.value)}
+                className="rounded border border-gray-300 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-brand-blue/50"
+              >
+                <option value="all">All months</option>
+                {forecastMonths.map((m) => {
+                  const [y, mo] = m.split('-').map(Number)
+                  return (
+                    <option key={m} value={m}>
+                      {monthName(mo)} {y}
+                    </option>
+                  )
+                })}
+              </select>
+            </div>
+
+            {forecastOpen && (
+              <>
+                {(forecastOpenEnded > 0 || forecastExcluded.length > 0) && (
+                  <div className="border-b bg-amber-50/60 px-3 py-2 space-y-1">
+                    {forecastOpenEnded > 0 && (
+                      <p className="text-xs text-amber-900">
+                        <span className="font-semibold">{forecastOpenEnded} unit
+                        {forecastOpenEnded === 1 ? ' has' : 's have'} no end date</span> — projected
+                        across the full {customerForecast.horizonMonths}-month horizon. Set an end
+                        date on the Fleet tab to forecast the real term.
+                      </p>
+                    )}
+                    {forecastExcluded.length > 0 && (
+                      <details className="text-xs text-amber-900">
+                        <summary className="cursor-pointer font-semibold">
+                          {forecastExcluded.length} unit{forecastExcluded.length === 1 ? '' : 's'} on
+                          rent {forecastExcluded.length === 1 ? 'is' : 'are'} NOT in this forecast
+                          {forecastExcludedRent > 0 && <> ({formatCurrency(forecastExcludedRent)}/mo)</>}
+                        </summary>
+                        <div className="mt-1.5 overflow-x-auto rounded border border-amber-200 bg-white">
+                          <table className="min-w-full text-xs">
+                            <thead>
+                              <tr className="border-b bg-amber-50/80">
+                                <th className="px-2 py-1 text-left font-medium text-gray-500">Unit</th>
+                                <th className="px-2 py-1 text-left font-medium text-gray-500">Customer</th>
+                                <th className="px-2 py-1 text-right font-medium text-gray-500">Rent/Mo</th>
+                                <th className="px-2 py-1 text-left font-medium text-gray-500">Start</th>
+                                <th className="px-2 py-1 text-left font-medium text-gray-500">End</th>
+                                <th className="px-2 py-1 text-left font-medium text-gray-500">Why</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-amber-50">
+                              {forecastExcluded.map((u) => (
+                                <tr key={u.unitNumber}>
+                                  <td className="px-2 py-1 font-semibold text-gray-900">{u.unitNumber}</td>
+                                  <td className="px-2 py-1 text-gray-600">{u.customer ?? '—'}</td>
+                                  <td className="px-2 py-1 text-right text-gray-600 tabular-nums">
+                                    {u.rentalRate ? formatCurrency(u.rentalRate) : '—'}
+                                  </td>
+                                  <td className="px-2 py-1 text-gray-400">{u.rentStartDate ?? '—'}</td>
+                                  <td className="px-2 py-1 text-gray-400">{u.rentEndDate ?? '—'}</td>
+                                  <td className="px-2 py-1 text-amber-900">{u.reason}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </details>
+                    )}
+                  </div>
+                )}
+
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-gray-50">
+                        <th className="px-2.5 py-2 text-left font-medium text-gray-500">Customer</th>
+                        <th className="px-2.5 py-2 text-left font-medium text-gray-500">Month</th>
+                        <th className="px-2.5 py-2 text-right font-medium text-gray-500">Units</th>
+                        <th className="px-2.5 py-2 text-right font-medium text-gray-500">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {forecastVisible.map((r) => (
+                        <tr key={`${r.customer}-${r.monthIso}`} className="hover:bg-blue-50/40">
+                          <td className="px-2.5 py-1.5 font-medium text-gray-900">
+                            {r.customer}
+                            {r.customerId === null && (
+                              <span
+                                className="ml-1.5 rounded bg-amber-100 px-1 py-px text-[10px] font-medium text-amber-800"
+                                title="This renter has no customer record — the units are matched by the Rented To name on the Fleet tab."
+                              >
+                                unlinked
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-2.5 py-1.5 text-gray-500">
+                            {monthName(r.month)} {r.year}
+                          </td>
+                          <td className="px-2.5 py-1.5 text-right text-gray-500 tabular-nums">
+                            {r.units}
+                            {r.openEnded > 0 && (
+                              <span className="ml-1 text-amber-600" title={`${r.openEnded} open-ended`}>
+                                *
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-2.5 py-1.5 text-right font-medium text-green-700 tabular-nums">
+                            {formatCurrency(r.amount)}
+                          </td>
+                        </tr>
+                      ))}
+                      {forecastVisible.length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="px-3 py-8 text-center text-gray-400">
+                            Nothing to forecast — no unit on rent has both a rate and a start date.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                    {forecastVisible.length > 0 && (
+                      <tfoot>
+                        <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
+                          <td colSpan={3} className="px-2.5 py-1.5 text-gray-700">
+                            TOTAL{forecastMonth !== 'all' && <> · {forecastVisible.length} customers</>}
+                          </td>
+                          <td className="px-2.5 py-1.5 text-right text-green-800 tabular-nums">
+                            {formatCurrency(forecastTotal)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Companies in onboarding — no customer record yet, so they have no
             units, rent or deposits. Listed separately above the customers so
@@ -3361,6 +3662,62 @@ function DashboardContent() {
       return paymentSearch === '' || p.customerName.toLowerCase().includes(searchLower)
     })
 
+    // The rollup answers the same search box as the list below it, so the two
+    // tables never describe different populations while sitting on one screen.
+    const monthlyFiltered = qbPaymentMonths.filter(
+      (m) =>
+        paymentSearch === '' ||
+        m.customerName.toLowerCase().includes(paymentSearch.toLowerCase())
+    )
+    const monthlyTotal = monthlyFiltered.reduce((sum, m) => sum + m.amount, 0)
+    const monthlySorted = paySortKey
+      ? [...monthlyFiltered].sort((a, b) => {
+          const pick = (m: QBPaymentMonth): string | number => {
+            switch (paySortKey) {
+              case 'aggCustomer': return m.customerName
+              case 'aggMonth': return m.month
+              case 'aggYear': return m.year
+              case 'aggCount': return m.paymentCount
+              case 'aggAmount': return m.amount
+              default: return 0
+            }
+          }
+          const va = pick(a)
+          const vb = pick(b)
+          if (typeof va === 'number' && typeof vb === 'number') {
+            return paySortDir === 'asc' ? va - vb : vb - va
+          }
+          return paySortDir === 'asc'
+            ? String(va).localeCompare(String(vb))
+            : String(vb).localeCompare(String(va))
+        })
+      : monthlyFiltered
+
+    function renderPaySortHeader(label: string, sortId: string, align?: 'right') {
+      const isActive = paySortKey === sortId
+      return (
+        <th
+          className={`px-2.5 py-2 font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 transition-colors ${
+            align === 'right' ? 'text-right' : 'text-left'
+          }`}
+          onClick={() => {
+            if (paySortKey === sortId) {
+              setPaySortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+            } else {
+              setPaySortKey(sortId)
+              setPaySortDir('asc')
+            }
+          }}
+        >
+          <span className="inline-flex items-center gap-1">
+            {label}
+            {isActive && <span className="text-brand-orange">{paySortDir === 'asc' ? '▲' : '▼'}</span>}
+            {!isActive && <span className="text-gray-300">{'▴'}</span>}
+          </span>
+        </th>
+      )
+    }
+
     const syncTime = qbSyncStatus.payments?.syncedAt
 
     return (
@@ -3393,6 +3750,74 @@ function DashboardContent() {
             onChange={(e) => setPaymentSearch(e.target.value)}
             className="w-full pl-8 pr-3 py-1.5 rounded border border-gray-300 bg-white focus:outline-none focus:ring-1 focus:ring-brand-blue/50 text-sm"
           />
+        </div>
+
+        {/* Payments rolled up by customer and calendar month (Bruno 2026-09-15).
+            Rows come pre-aggregated from SQL — see the route for why this is
+            not summed in the browser. */}
+        <div className="rounded-lg border bg-white">
+          <div className="flex flex-wrap items-baseline gap-2 border-b px-3 py-2">
+            <h3 className="text-sm font-bold text-gray-900">Payments by Customer &amp; Month</h3>
+            <p className="text-xs text-gray-400">
+              {monthlyFiltered.length} customer-month{monthlyFiltered.length === 1 ? '' : 's'}
+              {' · '}
+              {formatCurrencyCents(monthlyTotal)}
+            </p>
+            {qbPaymentSummary.undatedPayments > 0 && (
+              <p className="text-xs text-orange-600">
+                {qbPaymentSummary.undatedPayments} payment
+                {qbPaymentSummary.undatedPayments === 1 ? '' : 's'} with no date
+                ({formatCurrencyCents(qbPaymentSummary.undatedAmount)}) belong to no
+                month and are not counted here.
+              </p>
+            )}
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b bg-gray-50">
+                  {renderPaySortHeader('Customer', 'aggCustomer')}
+                  {renderPaySortHeader('Month', 'aggMonth')}
+                  {renderPaySortHeader('Year', 'aggYear')}
+                  {renderPaySortHeader('Payments', 'aggCount', 'right')}
+                  {renderPaySortHeader('Amount', 'aggAmount', 'right')}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {monthlySorted.map((m) => (
+                  <tr key={`${m.customerName}-${m.year}-${m.month}`} className="hover:bg-blue-50/40">
+                    <td className="px-2.5 py-1.5 font-medium text-gray-900">{m.customerName}</td>
+                    <td className="px-2.5 py-1.5 text-gray-500">{monthName(m.month)}</td>
+                    <td className="px-2.5 py-1.5 text-gray-500 tabular-nums">{m.year}</td>
+                    <td className="px-2.5 py-1.5 text-right text-gray-500 tabular-nums">{m.paymentCount}</td>
+                    <td className="px-2.5 py-1.5 text-right font-medium text-green-700 tabular-nums">
+                      {formatCurrencyCents(m.amount)}
+                    </td>
+                  </tr>
+                ))}
+                {monthlySorted.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-3 py-8 text-center text-gray-400">
+                      No payments found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+              {monthlySorted.length > 0 && (
+                <tfoot>
+                  <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
+                    <td colSpan={3} className="px-2.5 py-1.5 text-gray-700">TOTAL</td>
+                    <td className="px-2.5 py-1.5 text-right text-gray-700 tabular-nums">
+                      {monthlyFiltered.reduce((sum, m) => sum + m.paymentCount, 0)}
+                    </td>
+                    <td className="px-2.5 py-1.5 text-right text-green-800 tabular-nums">
+                      {formatCurrencyCents(monthlyTotal)}
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
         </div>
 
         <p className="text-xs text-gray-400">{filtered.length} payments</p>

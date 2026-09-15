@@ -157,6 +157,29 @@ const TD = 'padding:5px 8px;border-bottom:1px solid #eef0f3;'
 const TH = 'padding:5px 8px;color:#6b7280;font-weight:600;'
 
 /**
+ * Units still on the books, counted from the sections the report actually
+ * prints rather than from `totals.alerting`.
+ *
+ * ⚠ They are no longer the same number. `lost` is non-alerting (see
+ * `NON_ALERTING_STATUSES`) but IS listed, so quoting `totals.alerting` under
+ * four tables would print a footer that does not add up — and a reconciliation
+ * line that fails to reconcile is how a report stops being believed.
+ */
+function stillOurs(report: GpsHealthReport): number {
+  return (
+    report.available.length +
+    report.onRent.length +
+    report.inYard.length +
+    report.lostStolen.length
+  )
+}
+
+/** Sold units — the only group deliberately absent from every table. */
+function soldCount(report: GpsHealthReport): number {
+  return report.units.filter((u) => u.status === 'sold').length
+}
+
+/**
  * An inventory table: every unit in one fleet-status group, in unit order.
  *
  * Unlike the exception sections above this lists healthy units too — that is
@@ -263,11 +286,22 @@ function inventorySections(report: GpsHealthReport): string {
           emptyNote: 'Nothing is in the yard — every unit is either available or out with a customer.',
         }
       )}
+      ${inventorySection(
+        'Lost or stolen',
+        'Units marked lost or stolen. Listed whether or not the tracker still reports — a stolen unit keeps raising GPS alerts on purpose; a lost one does not.',
+        report.lostStolen,
+        {
+          showCustomer: true,
+          showStatus: true,
+          emptyNote: 'No units are marked lost or stolen.',
+        }
+      )}
       <p style="color:#6b7280;font-size:11px;margin:14px 0 0;">
         ${report.available.length} available + ${report.onRent.length} on rent +
-        ${report.inYard.length} in the yard = ${report.totals.alerting} units still ours.
-        The three tables together account for every unit except the
-        ${report.totals.excluded} sold.
+        ${report.inYard.length} in the yard + ${report.lostStolen.length} lost/stolen =
+        ${stillOurs(report)} units still ours.
+        The four tables together account for every unit except the
+        ${soldCount(report)} sold.
       </p>
     </div>`
 }
@@ -431,10 +465,17 @@ export function watchdogText(report: GpsHealthReport): string {
     lines.push(`${inventoryLine(u, true, '—')} [${formatStatus(u.status)}]`)
   }
   lines.push('')
+  lines.push(`Lost or stolen (${report.lostStolen.length}):`)
+  if (report.lostStolen.length === 0) lines.push('  none')
+  for (const u of report.lostStolen) {
+    lines.push(`${inventoryLine(u, true, '—')} [${formatStatus(u.status)}]`)
+  }
+  lines.push('')
   lines.push(
     `${report.available.length} available + ${report.onRent.length} on rent + ` +
-      `${report.inYard.length} in the yard = ${report.totals.alerting} units still ours ` +
-      `(${report.totals.excluded} sold excluded).`
+      `${report.inYard.length} in the yard + ${report.lostStolen.length} lost/stolen = ` +
+      `${stillOurs(report)} units still ours ` +
+      `(${soldCount(report)} sold excluded).`
   )
   lines.push('')
   lines.push(ADMIN_GPS_URL)

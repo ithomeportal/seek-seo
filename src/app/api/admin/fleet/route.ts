@@ -94,6 +94,8 @@ const createUnitSchema = z.object({
       'make_ready',
       'return_inspection',
       'lease_to_own',
+      'lost',
+      'stolen',
     ])
     .default('available'),
   plateNumber: z.string().max(32).nullable().optional(),
